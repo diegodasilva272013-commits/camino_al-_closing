@@ -2,7 +2,7 @@
 
 Plataforma privada de entrenamiento para closers, setters y vendedores de alto rendimiento.
 
-> Estado actual: **Etapa 1 — Base visual y navegación**. Aún sin lógica conectada a Supabase.
+> Estado actual: **Etapa 2 — Supabase conectado**. Schema, RLS y clientes listos. Auth funcional viene en Etapa 3.
 
 ## Stack
 
@@ -74,7 +74,24 @@ src/
 
 ## Próximos pasos
 
-**Etapa 2:** configuración de Supabase, schema SQL, RLS y tipos TypeScript.
+**Etapa 2 (completada):** Supabase clients, schema SQL, RLS, tipos y middleware.
 **Etapa 3:** autenticación funcional, protección de rutas y redirecciones por rol.
 **Etapa 4:** dashboard dinámico con datos reales.
 **Etapa 5+:** clases, progreso, comunidad, calendario, recursos y admin CRUDs.
+
+## Configurar Supabase (Etapa 2)
+
+1. Copia `.env.example` a `.env.local` y rellena las claves (la `anon key` ya está, falta solo `SUPABASE_SERVICE_ROLE_KEY` cuando la necesitemos).
+2. En Supabase → SQL Editor, pega y ejecuta:
+   - `supabase/migrations/0001_init.sql` (schema + función + RLS).
+   - `supabase/seed.sql` (curso y módulos iniciales).
+3. Levanta el proyecto: `npm run dev`.
+4. Verifica la conexión visitando `http://localhost:3000/api/health/supabase` → debe responder `{"ok":true}`.
+
+### Convertir un usuario en admin
+
+Desde Supabase → SQL Editor:
+
+```sql
+update public.profiles set role = 'admin' where email = 'tu@email.com';
+```
