@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Heart,
   MessageCircle,
@@ -20,8 +21,16 @@ import {
   deletePostAction,
 } from '../actions';
 import { EmojiPicker, VoiceRecorder, GifPicker } from './comment-extras';
+import { LevelBadge } from '@/components/community/level-badge';
 
 export type MediaKind = 'image' | 'video' | 'youtube' | 'document' | 'audio';
+
+export type FeedAuthor = {
+  id: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  points: number | null;
+};
 
 export type FeedComment = {
   id: string;
@@ -29,7 +38,7 @@ export type FeedComment = {
   media_url: string | null;
   media_type: MediaKind | null;
   created_at: string;
-  author: { full_name: string | null; avatar_url: string | null };
+  author: FeedAuthor;
 };
 
 export type FeedPost = {
@@ -43,7 +52,7 @@ export type FeedPost = {
   youtube_url: string | null;
   created_at: string;
   is_pinned: boolean;
-  author: { full_name: string | null; avatar_url: string | null };
+  author: FeedAuthor;
   likes: number;
   liked_by_me: boolean;
   comments: FeedComment[];
@@ -96,30 +105,37 @@ function fileNameFromUrl(url: string): string {
 function Avatar({
   url,
   name,
+  userId,
   size = 'md',
 }: {
   url: string | null;
   name: string | null;
+  userId?: string | null;
   size?: 'sm' | 'md';
 }) {
   const cls = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm';
   const initial = (name ?? '?').trim().slice(0, 1).toUpperCase();
-  if (url) {
-    return (
-      <div
-        className={`relative ${cls} overflow-hidden rounded-full border border-[rgba(212,175,55,0.35)]`}
-      >
-        <Image src={url} alt={name ?? ''} fill className="object-cover" />
-      </div>
-    );
-  }
-  return (
+  const inner = url ? (
+    <div
+      className={`relative ${cls} overflow-hidden rounded-full border border-[rgba(212,175,55,0.35)]`}
+    >
+      <Image src={url} alt={name ?? ''} fill className="object-cover" />
+    </div>
+  ) : (
     <div
       className={`${cls} flex items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#111] font-semibold text-brand-gold`}
     >
       {initial}
     </div>
   );
+  if (userId) {
+    return (
+      <Link href={`/u/${userId}`} className="shrink-0 transition hover:opacity-80">
+        {inner}
+      </Link>
+    );
+  }
+  return inner;
 }
 
 function MediaBlock({
@@ -402,12 +418,27 @@ function CommentItem({ c }: { c: FeedComment }) {
   const hasContent = c.content && c.content.trim().length > 0;
   return (
     <li className="flex gap-3">
-      <Avatar url={c.author.avatar_url} name={c.author.full_name} size="sm" />
+      <Avatar
+        url={c.author.avatar_url}
+        name={c.author.full_name}
+        userId={c.author.id}
+        size="sm"
+      />
       <div className="flex-1 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[#0c0c0c] px-3 py-2">
-        <div className="flex items-center gap-2 text-[11px]">
-          <span className="font-medium text-brand-text">
-            {c.author.full_name ?? 'Anónimo'}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          {c.author.id ? (
+            <Link
+              href={`/u/${c.author.id}`}
+              className="font-medium text-brand-text hover:text-brand-gold"
+            >
+              {c.author.full_name ?? 'Anónimo'}
+            </Link>
+          ) : (
+            <span className="font-medium text-brand-text">
+              {c.author.full_name ?? 'Anónimo'}
+            </span>
+          )}
+          <LevelBadge points={c.author.points} size="xs" />
           <span className="text-brand-muted">· {timeAgo(c.created_at)}</span>
         </div>
         {hasContent && (
@@ -478,9 +509,21 @@ export function PostCard({
     <article className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-[#0c0c0c] shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)]">
       <div className="flex items-start justify-between gap-3 p-5 pb-3">
         <div className="flex items-center gap-3">
-          <Avatar url={post.author.avatar_url} name={authorName} />
+          <Avatar
+            url={post.author.avatar_url}
+            name={authorName}
+            userId={post.author.id ?? post.user_id}
+          />
           <div>
-            <p className="text-sm font-medium text-brand-text">{authorName}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/u/${post.author.id ?? post.user_id}`}
+                className="text-sm font-medium text-brand-text hover:text-brand-gold"
+              >
+                {authorName}
+              </Link>
+              <LevelBadge points={post.author.points} size="sm" />
+            </div>
             <p className="text-[11px] text-brand-muted">
               {timeAgo(post.created_at)} ·{' '}
               <span className="text-brand-gold/80">{post.category}</span>

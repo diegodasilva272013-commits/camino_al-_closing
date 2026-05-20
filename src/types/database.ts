@@ -27,6 +27,13 @@ export type Database = {
           avatar_url: string | null;
           bio: string | null;
           role: Role;
+          points: number;
+          phone: string | null;
+          city: string | null;
+          country: string | null;
+          website: string | null;
+          instagram: string | null;
+          is_public: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -37,6 +44,13 @@ export type Database = {
           avatar_url?: string | null;
           bio?: string | null;
           role?: Role;
+          points?: number;
+          phone?: string | null;
+          city?: string | null;
+          country?: string | null;
+          website?: string | null;
+          instagram?: string | null;
+          is_public?: boolean;
           created_at?: string;
           updated_at?: string;
         };

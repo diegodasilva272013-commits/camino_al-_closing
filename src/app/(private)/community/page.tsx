@@ -30,7 +30,7 @@ export default async function CommunityPage({
   let query = supabase
     .from('community_posts')
     .select(
-      'id, user_id, category, title, content, media_url, media_type, youtube_url, is_pinned, created_at, profiles(full_name, avatar_url), post_likes(user_id), community_comments(id, content, media_url, media_type, created_at, profiles(full_name, avatar_url))'
+      'id, user_id, category, title, content, media_url, media_type, youtube_url, is_pinned, created_at, profiles(id, full_name, avatar_url, points), post_likes(user_id), community_comments(id, content, media_url, media_type, created_at, profiles(id, full_name, avatar_url, points))'
     )
     .eq('is_deleted', false)
     .order('is_pinned', { ascending: false })
@@ -53,8 +53,10 @@ export default async function CommunityPage({
         media_type: c.media_type as MediaKind | null,
         created_at: c.created_at,
         author: {
+          id: c.profiles?.id ?? null,
           full_name: c.profiles?.full_name ?? null,
           avatar_url: c.profiles?.avatar_url ?? null,
+          points: c.profiles?.points ?? 0,
         },
       }))
       .sort(
@@ -74,8 +76,10 @@ export default async function CommunityPage({
       is_pinned: p.is_pinned,
       created_at: p.created_at,
       author: {
+        id: p.profiles?.id ?? p.user_id,
         full_name: p.profiles?.full_name ?? null,
         avatar_url: p.profiles?.avatar_url ?? null,
+        points: p.profiles?.points ?? 0,
       },
       likes: likes.length,
       liked_by_me: user ? likes.some((l) => l.user_id === user.id) : false,
