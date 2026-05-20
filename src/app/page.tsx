@@ -41,7 +41,7 @@ export default function HomePage() {
             className="h-auto w-full object-cover"
           />
           {/* CTA flotante sobre la portada en desktop */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:pb-10">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:justify-end sm:pb-8 sm:pr-[7%] lg:pb-10 lg:pr-[7%]">
             <div className="pointer-events-auto flex flex-col items-center gap-3 sm:flex-row">
               <Link href="/register" className="btn-gold">
                 Entrar a la comunidad <ArrowRight className="h-4 w-4" />

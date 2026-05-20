@@ -41,6 +41,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Relationships: [];
       };
       courses: {
         Row: {
@@ -62,6 +63,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['courses']['Insert']>;
+        Relationships: [];
       };
       modules: {
         Row: {
@@ -83,6 +85,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['modules']['Insert']>;
+        Relationships: [];
       };
       lessons: {
         Row: {
@@ -112,6 +115,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['lessons']['Insert']>;
+        Relationships: [];
       };
       lesson_progress: {
         Row: {
@@ -133,15 +137,19 @@ export type Database = {
         Update: Partial<
           Database['public']['Tables']['lesson_progress']['Insert']
         >;
+        Relationships: [];
       };
       community_posts: {
         Row: {
           id: string;
           user_id: string;
           category: string;
-          title: string;
+          title: string | null;
           content: string;
           image_url: string | null;
+          media_url: string | null;
+          media_type: string | null;
+          youtube_url: string | null;
           is_pinned: boolean;
           is_deleted: boolean;
           created_at: string;
@@ -151,9 +159,12 @@ export type Database = {
           id?: string;
           user_id: string;
           category: string;
-          title: string;
+          title?: string | null;
           content: string;
           image_url?: string | null;
+          media_url?: string | null;
+          media_type?: string | null;
+          youtube_url?: string | null;
           is_pinned?: boolean;
           is_deleted?: boolean;
           created_at?: string;
@@ -162,6 +173,7 @@ export type Database = {
         Update: Partial<
           Database['public']['Tables']['community_posts']['Insert']
         >;
+        Relationships: [];
       };
       community_comments: {
         Row: {
@@ -185,6 +197,7 @@ export type Database = {
         Update: Partial<
           Database['public']['Tables']['community_comments']['Insert']
         >;
+        Relationships: [];
       };
       post_likes: {
         Row: {
@@ -200,6 +213,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['post_likes']['Insert']>;
+        Relationships: [];
       };
       events: {
         Row: {
@@ -227,6 +241,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['events']['Insert']>;
+        Relationships: [];
       };
       resources: {
         Row: {
@@ -252,6 +267,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['resources']['Insert']>;
+        Relationships: [];
       };
     };
     Functions: {
@@ -260,6 +276,9 @@ export type Database = {
         Returns: boolean;
       };
     };
+    Views: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
   };
 };
 
