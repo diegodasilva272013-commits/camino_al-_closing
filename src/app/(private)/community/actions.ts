@@ -12,6 +12,8 @@ export type PostActionState = {
   ok?: boolean;
 };
 
+type MediaType = 'image' | 'video' | 'youtube' | 'document' | 'audio';
+
 function extractYoutubeId(url: string): string | null {
   if (!url) return null;
   try {
@@ -21,7 +23,6 @@ function extractYoutubeId(url: string): string | null {
     if (host.endsWith('youtube.com')) {
       if (u.pathname === '/watch') return u.searchParams.get('v');
       const parts = u.pathname.split('/').filter(Boolean);
-      // /embed/ID, /shorts/ID, /v/ID
       if (parts.length >= 2 && ['embed', 'shorts', 'v'].includes(parts[0])) {
         return parts[1];
       }
@@ -30,6 +31,39 @@ function extractYoutubeId(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+function detectMediaType(file: File): MediaType {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
+async function uploadMedia(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+  file: File,
+  prefix: 'posts' | 'comments'
+): Promise<{ url: string; type: MediaType; error?: string }> {
+  if (file.size > MAX_BYTES) {
+    return { url: '', type: 'document', error: 'El archivo supera 50 MB.' };
+  }
+  const type = detectMediaType(file);
+  const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase();
+  const path = `${userId}/${prefix}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, bytes, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    });
+  if (upErr) return { url: '', type, error: `Error subiendo: ${upErr.message}` };
+
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { url: pub.publicUrl, type };
 }
 
 export async function createPostAction(
@@ -58,7 +92,7 @@ export async function createPostAction(
   }
 
   let media_url: string | null = null;
-  let media_type: 'image' | 'video' | 'youtube' | null = null;
+  let media_type: MediaType | null = null;
   let youtube_url: string | null = null;
 
   if (youtubeRaw) {
@@ -67,29 +101,10 @@ export async function createPostAction(
     youtube_url = `https://www.youtube.com/watch?v=${ytId}`;
     media_type = 'youtube';
   } else if (file && file.size > 0) {
-    if (file.size > MAX_BYTES) {
-      return { error: 'El archivo supera 50 MB.' };
-    }
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isVideo) {
-      return { error: 'Solo se permiten imágenes o videos.' };
-    }
-    const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase();
-    const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    const { error: upErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, bytes, {
-        contentType: file.type,
-        upsert: false,
-      });
-    if (upErr) return { error: `Error subiendo archivo: ${upErr.message}` };
-
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    media_url = pub.publicUrl;
-    media_type = isImage ? 'image' : 'video';
+    const up = await uploadMedia(supabase, user.id, file, 'posts');
+    if (up.error) return { error: up.error };
+    media_url = up.url;
+    media_type = up.type;
   }
 
   const { error: insErr } = await (supabase as any).from('community_posts').insert({
@@ -144,13 +159,28 @@ export async function createCommentAction(
 
   const postId = String(formData.get('post_id') ?? '');
   const content = String(formData.get('content') ?? '').trim();
+  const file = formData.get('media') as File | null;
   if (!postId) return { error: 'Post inválido.' };
-  if (!content) return { error: 'El comentario está vacío.' };
+  if (!content && !(file && file.size > 0)) {
+    return { error: 'El comentario está vacío.' };
+  }
+
+  let media_url: string | null = null;
+  let media_type: MediaType | null = null;
+
+  if (file && file.size > 0) {
+    const up = await uploadMedia(supabase, user.id, file, 'comments');
+    if (up.error) return { error: up.error };
+    media_url = up.url;
+    media_type = up.type;
+  }
 
   const { error } = await (supabase as any).from('community_comments').insert({
     post_id: postId,
     user_id: user.id,
-    content,
+    content: content || null,
+    media_url,
+    media_type,
   });
   if (error) return { error: error.message };
 

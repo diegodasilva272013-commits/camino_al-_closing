@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   Image as ImageIcon,
   Video,
@@ -8,16 +8,29 @@ import {
   Type,
   Loader2,
   X,
+  FileText,
 } from 'lucide-react';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 import { createPostAction } from '../actions';
 
-type Tab = 'text' | 'image' | 'video' | 'youtube';
+type Tab = 'text' | 'image' | 'video' | 'document' | 'youtube';
 
-const tabs: { id: Tab; label: string; icon: typeof Type }[] = [
+const tabs: {
+  id: Tab;
+  label: string;
+  icon: typeof Type;
+  accept?: string;
+}[] = [
   { id: 'text', label: 'Texto', icon: Type },
-  { id: 'image', label: 'Foto', icon: ImageIcon },
-  { id: 'video', label: 'Video', icon: Video },
+  { id: 'image', label: 'Foto', icon: ImageIcon, accept: 'image/*' },
+  { id: 'video', label: 'Video', icon: Video, accept: 'video/*' },
+  {
+    id: 'document',
+    label: 'Documento',
+    icon: FileText,
+    accept:
+      '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,application/pdf',
+  },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
 ];
 
@@ -33,6 +46,13 @@ export function PostComposer({ userName }: { userName: string }) {
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function reset() {
     setContent('');
     setTitle('');
@@ -41,6 +61,7 @@ export function PostComposer({ userName }: { userName: string }) {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setError(null);
+    setTab('text');
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -48,6 +69,23 @@ export function PostComposer({ userName }: { userName: string }) {
     if (preview) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
+  }
+
+  function selectTab(t: Tab) {
+    setError(null);
+    setTab(t);
+    if (t !== 'image' && t !== 'video' && t !== 'document') handleFile(null);
+    if (t !== 'youtube') setYoutubeUrl('');
+    if (t === 'image' || t === 'video' || t === 'document') {
+      // open native picker right away
+      const acc = tabs.find((x) => x.id === t)?.accept ?? '';
+      if (fileRef.current) {
+        fileRef.current.value = '';
+        fileRef.current.accept = acc;
+        // defer so accept change is applied
+        setTimeout(() => fileRef.current?.click(), 0);
+      }
+    }
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -58,7 +96,9 @@ export function PostComposer({ userName }: { userName: string }) {
     fd.set('title', title);
     fd.set('category', category);
     if (tab === 'youtube') fd.set('youtube_url', youtubeUrl);
-    if ((tab === 'image' || tab === 'video') && file) fd.set('media', file);
+    if ((tab === 'image' || tab === 'video' || tab === 'document') && file) {
+      fd.set('media', file);
+    }
 
     startTransition(async () => {
       const res = await createPostAction({}, fd);
@@ -67,19 +107,25 @@ export function PostComposer({ userName }: { userName: string }) {
     });
   }
 
-  const accept = tab === 'image' ? 'image/*' : tab === 'video' ? 'video/*' : '';
-
   return (
     <form
       onSubmit={onSubmit}
       className="rounded-2xl border border-[rgba(212,175,55,0.18)] bg-[#0c0c0c] p-5 shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)]"
     >
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+      />
+
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#111] text-sm font-semibold text-brand-gold">
           {userName.slice(0, 1).toUpperCase()}
         </div>
         <p className="text-sm text-brand-muted">
-          ¿Qué quieres compartir hoy, <span className="text-brand-text">{userName.split(' ')[0]}</span>?
+          ¿Qué quieres compartir hoy,{' '}
+          <span className="text-brand-text">{userName.split(' ')[0]}</span>?
         </p>
       </div>
 
@@ -91,12 +137,7 @@ export function PostComposer({ userName }: { userName: string }) {
             <button
               key={t.id}
               type="button"
-              onClick={() => {
-                setTab(t.id);
-                setError(null);
-                if (t.id !== 'image' && t.id !== 'video') handleFile(null);
-                if (t.id !== 'youtube') setYoutubeUrl('');
-              }}
+              onClick={() => selectTab(t.id)}
               className={
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ' +
                 (active
@@ -154,31 +195,34 @@ export function PostComposer({ userName }: { userName: string }) {
         />
       )}
 
-      {(tab === 'image' || tab === 'video') && (
-        <div className="mt-3">
-          <input
-            ref={fileRef}
-            type="file"
-            accept={accept}
-            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-xs text-brand-muted file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-[rgba(212,175,55,0.35)] file:bg-[#111] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand-gold hover:file:bg-[#1a1408]"
-          />
-          {preview && (
-            <div className="relative mt-3 overflow-hidden rounded-lg border border-[rgba(212,175,55,0.2)]">
-              <button
-                type="button"
-                onClick={() => handleFile(null)}
-                className="absolute right-2 top-2 z-10 rounded-full bg-black/70 p-1 text-brand-text hover:text-brand-gold"
-                aria-label="Quitar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              {tab === 'image' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={preview} alt="Preview" className="max-h-80 w-full object-contain bg-[#050505]" />
-              ) : (
-                <video src={preview} controls className="max-h-80 w-full bg-black" />
-              )}
+      {file && (tab === 'image' || tab === 'video' || tab === 'document') && (
+        <div className="relative mt-3 overflow-hidden rounded-lg border border-[rgba(212,175,55,0.2)]">
+          <button
+            type="button"
+            onClick={() => handleFile(null)}
+            className="absolute right-2 top-2 z-10 rounded-full bg-black/70 p-1 text-brand-text hover:text-brand-gold"
+            aria-label="Quitar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          {tab === 'image' && preview && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt="Preview"
+              className="max-h-80 w-full bg-[#050505] object-contain"
+            />
+          )}
+          {tab === 'video' && preview && (
+            <video src={preview} controls className="max-h-80 w-full bg-black" />
+          )}
+          {tab === 'document' && (
+            <div className="flex items-center gap-3 bg-[#0a0a0a] px-4 py-3 text-sm text-brand-text">
+              <FileText className="h-5 w-5 text-brand-gold" />
+              <span className="truncate">{file.name}</span>
+              <span className="ml-auto text-xs text-brand-muted">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </span>
             </div>
           )}
         </div>

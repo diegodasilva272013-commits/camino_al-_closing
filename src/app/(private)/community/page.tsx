@@ -2,7 +2,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { PostComposer } from './_components/post-composer';
-import { PostCard, type FeedPost } from './_components/post-card';
+import { PostCard, type FeedPost, type MediaKind } from './_components/post-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +30,7 @@ export default async function CommunityPage({
   let query = supabase
     .from('community_posts')
     .select(
-      'id, user_id, category, title, content, media_url, media_type, youtube_url, is_pinned, created_at, profiles(full_name, avatar_url), post_likes(user_id), community_comments(id, content, created_at, profiles(full_name, avatar_url))'
+      'id, user_id, category, title, content, media_url, media_type, youtube_url, is_pinned, created_at, profiles(full_name, avatar_url), post_likes(user_id), community_comments(id, content, media_url, media_type, created_at, profiles(full_name, avatar_url))'
     )
     .eq('is_deleted', false)
     .order('is_pinned', { ascending: false })
@@ -49,6 +49,8 @@ export default async function CommunityPage({
       .map((c: any) => ({
         id: c.id,
         content: c.content,
+        media_url: c.media_url,
+        media_type: c.media_type as MediaKind | null,
         created_at: c.created_at,
         author: {
           full_name: c.profiles?.full_name ?? null,
@@ -67,7 +69,7 @@ export default async function CommunityPage({
       title: p.title,
       content: p.content,
       media_url: p.media_url,
-      media_type: p.media_type,
+      media_type: p.media_type as MediaKind | null,
       youtube_url: p.youtube_url,
       is_pinned: p.is_pinned,
       created_at: p.created_at,
@@ -87,77 +89,73 @@ export default async function CommunityPage({
     'Tú';
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-4xl">
       <PageHeader
         eyebrow="Comunidad privada"
         title="Feed de la sala"
         description="Comparte llamadas, dudas y resultados. La autoridad se construye en público."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-        <aside className="card-premium h-fit lg:sticky lg:top-6">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-brand-gold">
-            Categorías
-          </p>
-          <ul className="space-y-1 text-sm">
-            <li>
-              <a
-                href="/community"
-                className={`block rounded-md px-2 py-1.5 transition ${
-                  !activeCat
-                    ? 'bg-[#181208] text-brand-gold'
-                    : 'text-brand-muted hover:bg-[#181818] hover:text-brand-text'
-                }`}
-              >
-                Todas
-              </a>
-            </li>
-            {COMMUNITY_CATEGORIES.map((c) => {
-              const active = activeCat === c;
-              return (
-                <li key={c}>
-                  <a
-                    href={`/community?cat=${encodeURIComponent(c)}`}
-                    className={`block rounded-md px-2 py-1.5 transition ${
-                      active
-                        ? 'bg-[#181208] text-brand-gold'
-                        : 'text-brand-muted hover:bg-[#181818] hover:text-brand-text'
-                    }`}
-                  >
-                    {c}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
+      <nav className="mb-5 -mx-1 overflow-x-auto">
+        <ul className="flex min-w-max items-center gap-2 px-1">
+          <li>
+            <a
+              href="/community"
+              className={
+                'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
+                (!activeCat
+                  ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
+                  : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-[rgba(212,175,55,0.4)] hover:text-brand-text')
+              }
+            >
+              Todas
+            </a>
+          </li>
+          {COMMUNITY_CATEGORIES.map((c) => {
+            const active = activeCat === c;
+            return (
+              <li key={c}>
+                <a
+                  href={`/community?cat=${encodeURIComponent(c)}`}
+                  className={
+                    'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
+                    (active
+                      ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
+                      : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-[rgba(212,175,55,0.4)] hover:text-brand-text')
+                  }
+                >
+                  {c}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
-        <div className="space-y-5">
-          {user ? (
-            <PostComposer userName={userName} />
-          ) : (
-            <div className="card-premium text-sm text-brand-muted">
-              Inicia sesión para publicar en la comunidad.
-            </div>
-          )}
+      <div className="space-y-5">
+        {user ? (
+          <PostComposer userName={userName} />
+        ) : (
+          <div className="card-premium text-sm text-brand-muted">
+            Inicia sesión para publicar en la comunidad.
+          </div>
+        )}
 
-          {posts.length === 0 ? (
-            <div className="card-premium text-center">
-              <p className="text-sm text-brand-text">
-                Aún no hay publicaciones en esta categoría.
-              </p>
-              <p className="mt-1 text-xs text-brand-muted">
-                Sé el primero en arrancar la conversación.
-              </p>
-            </div>
-          ) : (
-            posts.map((p) => (
-              <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} />
-            ))
-          )}
-        </div>
+        {posts.length === 0 ? (
+          <div className="card-premium text-center">
+            <p className="text-sm text-brand-text">
+              Aún no hay publicaciones en esta categoría.
+            </p>
+            <p className="mt-1 text-xs text-brand-muted">
+              Sé el primero en arrancar la conversación.
+            </p>
+          </div>
+        ) : (
+          posts.map((p) => (
+            <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} />
+          ))
+        )}
       </div>
     </div>
   );
 }
-
