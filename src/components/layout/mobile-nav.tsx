@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brand } from '@/constants/branding';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
 
 export function MobileNav() {
@@ -33,9 +34,7 @@ export function MobileNav() {
           <div className="relative flex h-full w-72 flex-col border-r border-[rgba(212,175,55,0.15)] bg-[#0a0a0a] p-4">
             <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.12)] pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gold-gradient text-[#0a0a0a] font-bold text-sm">
-                  C
-                </div>
+                <BrandLogo size="sm" />
                 <div>
                   <p className="text-sm font-semibold">{brand.name}</p>
                   <p className="text-[10px] uppercase tracking-widest text-brand-gold">

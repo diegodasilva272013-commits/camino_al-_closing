@@ -1,17 +1,17 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, Target, Users, Calendar } from 'lucide-react';
 import { brand } from '@/constants/branding';
+import { BrandLogo } from '@/components/brand/brand-logo';
 
 export default function HomePage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-brand-black">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(212,175,55,0.08),transparent_60%)]" />
 
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold-gradient text-[#0a0a0a] font-bold">
-            C
-          </div>
+          <BrandLogo size="md" priority />
           <div>
             <p className="text-sm font-semibold">{brand.name}</p>
             <p className="text-[10px] uppercase tracking-widest text-brand-gold">
@@ -29,25 +29,25 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <section className="relative z-10 mx-auto max-w-4xl px-6 py-24 text-center">
-        <p className="mb-4 text-[11px] uppercase tracking-[0.3em] text-brand-gold">
-          Centro de alto rendimiento
-        </p>
-        <h1 className="text-balance text-4xl font-semibold leading-tight text-brand-text md:text-6xl">
-          La sala privada de entrenamiento para{' '}
-          <span className="text-brand-gold">closers</span> que quieren dominar
-          la venta.
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-base text-brand-muted md:text-lg">
-          Clases, comunidad, mentorías y prácticas — todo en un solo lugar.
-          Foco, disciplina y resultados medibles.
-        </p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      {/* HERO con la portada */}
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-10 lg:pt-16">
+        <div className="relative overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] shadow-[0_30px_80px_-30px_rgba(212,175,55,0.25)]">
+          <Image
+            src="/portada.png"
+            alt="Camino al Closing — Plataforma privada de entrenamiento"
+            width={1920}
+            height={1080}
+            priority
+            className="h-auto w-full object-cover"
+          />
+        </div>
+        {/* CTAs debajo de la portada para no tapar la imagen */}
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row">
           <Link href="/register" className="btn-gold">
             Entrar a la comunidad <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link href="/dashboard" className="btn-ghost-gold">
-            Ver dashboard
+          <Link href="/login" className="btn-ghost-gold">
+            Ya tengo cuenta
           </Link>
         </div>
       </section>

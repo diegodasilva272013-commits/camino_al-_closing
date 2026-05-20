@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { brand } from '@/constants/branding';
+import { BrandLogo } from '@/components/brand/brand-logo';
 
 export default function AuthLayout({
   children,
@@ -11,9 +12,7 @@ export default function AuthLayout({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(212,175,55,0.08),transparent_60%)]" />
       <div className="relative z-10 w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold-gradient text-[#0a0a0a] font-bold">
-            C
-          </div>
+          <BrandLogo size="md" priority />
           <div className="text-center">
             <p className="text-sm font-semibold">{brand.name}</p>
             <p className="text-[10px] uppercase tracking-widest text-brand-gold">

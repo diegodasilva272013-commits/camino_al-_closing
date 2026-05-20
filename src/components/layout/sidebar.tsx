@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { brand } from '@/constants/branding';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
 
 export function Sidebar() {
@@ -13,9 +14,7 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-[rgba(212,175,55,0.12)] lg:bg-[#0a0a0a]">
       <div className="flex h-16 items-center gap-3 border-b border-[rgba(212,175,55,0.12)] px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold-gradient text-[#0a0a0a] font-bold">
-          C
-        </div>
+        <BrandLogo size="md" />
         <div className="flex flex-col leading-tight">
           <span className="text-sm font-semibold text-brand-text">
             {brand.name}
