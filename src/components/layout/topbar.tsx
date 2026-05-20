@@ -1,9 +1,26 @@
-'use client';
-
 import { Bell, Search } from 'lucide-react';
 import { MobileNav } from './mobile-nav';
+import { UserMenu } from './user-menu';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
-export function Topbar() {
+function getInitials(name: string | null | undefined, email: string): string {
+  const base = (name && name.trim().length > 0 ? name : email).trim();
+  const parts = base.split(/\s+/).slice(0, 2);
+  const initials = parts.map((p) => p[0]?.toUpperCase() ?? '').join('');
+  return initials || 'CC';
+}
+
+export async function Topbar() {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const email = user?.email ?? '';
+  const fullName =
+    (user?.user_metadata?.full_name as string | undefined) ?? null;
+  const initials = user ? getInitials(fullName, email) : 'CC';
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a]/80 px-4 backdrop-blur lg:px-8">
       <MobileNav />
@@ -27,9 +44,13 @@ export function Topbar() {
         >
           <Bell className="h-4 w-4" />
         </button>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#181818] text-sm font-medium text-brand-gold">
-          CC
-        </div>
+        {user ? (
+          <UserMenu initials={initials} email={email} fullName={fullName} />
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#181818] text-sm font-medium text-brand-gold">
+            CC
+          </div>
+        )}
       </div>
     </header>
   );
