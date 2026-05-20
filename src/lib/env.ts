@@ -26,4 +26,7 @@ export const env = {
   tenor: {
     apiKey: process.env.TENOR_API_KEY ?? '',
   },
+  giphy: {
+    apiKey: process.env.GIPHY_API_KEY ?? '',
+  },
 } as const;
