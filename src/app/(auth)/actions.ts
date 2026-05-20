@@ -3,12 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-
-export type AuthActionState = {
-  error?: string;
-  ok?: boolean;
-  message?: string;
-};
+import type { AuthActionState } from './types';
 
 function getOrigin(): string {
   // En producción usar NEXT_PUBLIC_SITE_URL, en local cae a localhost.

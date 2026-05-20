@@ -1,7 +1,8 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import { registerAction, type AuthActionState } from '../actions';
+import { registerAction } from '../actions';
+import type { AuthActionState } from '../types';
 
 const initial: AuthActionState = {};
 
