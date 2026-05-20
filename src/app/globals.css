@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #050505;
+  color: #f5f5f5;
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .text-gold {
+    color: #d4af37;
+  }
+
+  .border-gold {
+    border-color: rgba(212, 175, 55, 0.25);
+  }
+
+  .border-gold-strong {
+    border-color: rgba(212, 175, 55, 0.6);
+  }
+
+  .bg-surface {
+    background-color: #111111;
+  }
+
+  .bg-surface-soft {
+    background-color: #181818;
+  }
+
+  .card-premium {
+    @apply rounded-xl border border-[rgba(212,175,55,0.18)] bg-[#111111] p-5 shadow-[0_1px_0_0_rgba(212,175,55,0.08)_inset,0_20px_40px_-30px_rgba(0,0,0,0.8)];
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-gold-gradient px-4 py-2 text-sm font-medium text-[#0a0a0a] transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40;
+  }
+
+  .btn-ghost-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-[rgba(212,175,55,0.35)] px-4 py-2 text-sm font-medium text-[#F5F5F5] transition hover:border-[#D4AF37] hover:text-[#D4AF37];
+  }
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.35);
+  color: #fff;
+}
+
+/* Scrollbar premium */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f1f1f;
+  border-radius: 6px;
+  border: 2px solid #0a0a0a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a2a;
+}
