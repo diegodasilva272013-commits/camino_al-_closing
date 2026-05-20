@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Target, Users, Calendar } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
 
@@ -40,49 +40,62 @@ export default function HomePage() {
             priority
             className="h-auto w-full object-cover"
           />
-        </div>
-        {/* CTAs debajo de la portada para no tapar la imagen */}
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row">
-          <Link href="/register" className="btn-gold">
-            Entrar a la comunidad <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/login" className="btn-ghost-gold">
-            Ya tengo cuenta
-          </Link>
+          {/* CTA flotante sobre la portada en desktop */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:pb-10">
+            <div className="pointer-events-auto flex flex-col items-center gap-3 sm:flex-row">
+              <Link href="/register" className="btn-gold">
+                Entrar a la comunidad <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/login" className="btn-ghost-gold">
+                Ya tengo cuenta
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto grid max-w-5xl gap-4 px-6 pb-24 md:grid-cols-3">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-6 px-6 pb-24 md:grid-cols-3">
         {[
           {
-            icon: Target,
+            image: '/calendario.png',
             title: 'Entrenamiento real',
             desc: 'Apertura, cualificación, objeciones y cierre. Estructura clara para escalar.',
           },
           {
-            icon: Users,
+            image: '/comunidad.png',
             title: 'Comunidad privada',
             desc: 'Comparte llamadas, recibe feedback y crece con otros closers.',
           },
           {
-            icon: Calendar,
+            image: '/meentorias.png',
             title: 'Mentorías en vivo',
             desc: 'Calendario semanal de prácticas, roleplays y revisiones.',
           },
-        ].map((f) => {
-          const Icon = f.icon;
-          return (
-            <div key={f.title} className="card-premium">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-[rgba(212,175,55,0.3)] bg-[#0d0d0d] text-brand-gold">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-semibold text-brand-text">
+        ].map((f) => (
+          <div
+            key={f.title}
+            className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)] transition-all hover:border-[rgba(212,175,55,0.4)] hover:shadow-[0_25px_70px_-25px_rgba(212,175,55,0.4)]"
+          >
+            <div className="relative aspect-video w-full overflow-hidden">
+              <Image
+                src={f.image}
+                alt={f.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/30 to-transparent" />
+            </div>
+            <div className="flex flex-1 flex-col p-6">
+              <h3 className="text-base font-semibold text-brand-gold">
                 {f.title}
               </h3>
-              <p className="mt-2 text-sm text-brand-muted">{f.desc}</p>
+              <p className="mt-2 text-sm leading-relaxed text-brand-muted">
+                {f.desc}
+              </p>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </section>
 
       <footer className="relative z-10 border-t border-[rgba(212,175,55,0.1)] py-6 text-center text-xs text-brand-muted">
