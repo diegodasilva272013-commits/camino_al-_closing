@@ -23,4 +23,7 @@ export const env = {
     // service role solo en server; puede estar vacío en local hasta que se necesite
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   },
+  tenor: {
+    apiKey: process.env.TENOR_API_KEY ?? '',
+  },
 } as const;

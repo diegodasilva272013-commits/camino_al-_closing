@@ -19,7 +19,7 @@ import {
   createCommentAction,
   deletePostAction,
 } from '../actions';
-import { EmojiPicker, VoiceRecorder } from './comment-extras';
+import { EmojiPicker, VoiceRecorder, GifPicker } from './comment-extras';
 
 export type MediaKind = 'image' | 'video' | 'youtube' | 'document' | 'audio';
 
@@ -190,7 +190,9 @@ function CommentComposer({ postId }: { postId: string }) {
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [gif, setGif] = useState<{ url: string; alt: string } | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showGif, setShowGif] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -207,6 +209,14 @@ function CommentComposer({ postId }: { postId: string }) {
     if (preview) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
+    if (f) setGif(null);
+  }
+
+  function handleGif(g: { url: string; alt: string }) {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(null);
+    setPreview(null);
+    setGif(g);
   }
 
   function reset() {
@@ -214,15 +224,17 @@ function CommentComposer({ postId }: { postId: string }) {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setFile(null);
+    setGif(null);
   }
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!text.trim() && !file) return;
+    if (!text.trim() && !file && !gif) return;
     const fd = new FormData();
     fd.set('post_id', postId);
     fd.set('content', text);
     if (file) fd.set('media', file);
+    if (gif) fd.set('gif_url', gif.url);
     startTransition(async () => {
       const res = await createCommentAction({}, fd);
       if (!res.error) reset();
@@ -240,6 +252,37 @@ function CommentComposer({ postId }: { postId: string }) {
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
       />
+
+      {gif && (
+        <div className="relative inline-block rounded-lg border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] p-2">
+          <button
+            type="button"
+            onClick={() => setGif(null)}
+            className="absolute -right-2 -top-2 rounded-full bg-black/80 p-0.5 text-brand-text hover:text-red-300"
+            aria-label="Quitar GIF"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={gif.url}
+            alt={gif.alt}
+            className="max-h-40 rounded object-contain"
+          />
+        </div>
+      )}
 
       {file && (
         <div className="relative inline-block rounded-lg border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] p-2">
@@ -287,7 +330,10 @@ function CommentComposer({ postId }: { postId: string }) {
         <div className="relative flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setShowEmoji((v) => !v)}
+            onClick={() => {
+              setShowEmoji((v) => !v);
+              setShowGif(false);
+            }}
             title="Emojis"
             className="rounded-full border border-[rgba(212,175,55,0.18)] p-2 text-brand-muted transition hover:border-brand-gold hover:text-brand-gold"
           >
@@ -304,8 +350,22 @@ function CommentComposer({ postId }: { postId: string }) {
           )}
           <button
             type="button"
-            onClick={() => pickFile('image/*,image/gif')}
-            title="Foto o GIF"
+            onClick={() => {
+              setShowGif((v) => !v);
+              setShowEmoji(false);
+            }}
+            title="GIF (Tenor)"
+            className="rounded-full border border-[rgba(212,175,55,0.18)] px-2 py-1 text-[10px] font-bold tracking-wider text-brand-muted transition hover:border-brand-gold hover:text-brand-gold"
+          >
+            GIF
+          </button>
+          {showGif && (
+            <GifPicker onPick={handleGif} onClose={() => setShowGif(false)} />
+          )}
+          <button
+            type="button"
+            onClick={() => pickFile('image/*')}
+            title="Foto"
             className="rounded-full border border-[rgba(212,175,55,0.18)] p-2 text-brand-muted transition hover:border-brand-gold hover:text-brand-gold"
           >
             <ImagePlus className="h-4 w-4" />
@@ -323,7 +383,7 @@ function CommentComposer({ postId }: { postId: string }) {
         />
         <button
           type="submit"
-          disabled={isPending || (!text.trim() && !file)}
+          disabled={isPending || (!text.trim() && !file && !gif)}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gold-gradient text-[#0a0a0a] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Enviar"
         >

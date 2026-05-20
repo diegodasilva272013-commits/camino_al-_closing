@@ -160,15 +160,22 @@ export async function createCommentAction(
   const postId = String(formData.get('post_id') ?? '');
   const content = String(formData.get('content') ?? '').trim();
   const file = formData.get('media') as File | null;
+  const gifUrl = String(formData.get('gif_url') ?? '').trim();
   if (!postId) return { error: 'Post inválido.' };
-  if (!content && !(file && file.size > 0)) {
+  if (!content && !(file && file.size > 0) && !gifUrl) {
     return { error: 'El comentario está vacío.' };
   }
 
   let media_url: string | null = null;
   let media_type: MediaType | null = null;
 
-  if (file && file.size > 0) {
+  if (gifUrl) {
+    if (!/^https?:\/\//i.test(gifUrl)) {
+      return { error: 'GIF inválido.' };
+    }
+    media_url = gifUrl;
+    media_type = 'image';
+  } else if (file && file.size > 0) {
     const up = await uploadMedia(supabase, user.id, file, 'comments');
     if (up.error) return { error: up.error };
     media_url = up.url;

@@ -216,3 +216,107 @@ function XIcon() {
     </svg>
   );
 }
+
+type GifItem = { id: string; preview: string; full: string; alt: string };
+
+export function GifPicker({
+  onPick,
+  onClose,
+}: {
+  onPick: (gif: { url: string; alt: string }) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [q, setQ] = useState('');
+  const [items, setItems] = useState<GifItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [onClose]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setLoading(true);
+    setError(null);
+    const url = `/api/gifs?q=${encodeURIComponent(q)}&limit=24`;
+    const t = setTimeout(() => {
+      fetch(url, { signal: ctrl.signal })
+        .then(async (r) => {
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error ?? 'Error');
+          setItems(j.items ?? []);
+        })
+        .catch((e) => {
+          if (e.name !== 'AbortError') setError(String(e.message ?? e));
+        })
+        .finally(() => setLoading(false));
+    }, q ? 300 : 0);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute bottom-12 left-0 z-30 w-[340px] rounded-xl border border-[rgba(212,175,55,0.25)] bg-[#0c0c0c] p-3 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)]"
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar GIFs en Tenor…"
+          className="flex-1 rounded-full border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] px-3 py-1.5 text-xs text-brand-text placeholder:text-brand-muted/60 focus:border-brand-gold focus:outline-none"
+        />
+        <span className="text-[10px] uppercase tracking-wider text-brand-gold/70">
+          Tenor
+        </span>
+      </div>
+
+      <div className="max-h-72 overflow-y-auto">
+        {error && (
+          <p className="px-1 py-3 text-xs text-red-300">
+            {error.includes('TENOR_API_KEY')
+              ? 'Configura TENOR_API_KEY en .env.local para activar GIFs.'
+              : error}
+          </p>
+        )}
+        {!error && loading && items.length === 0 && (
+          <p className="px-1 py-3 text-xs text-brand-muted">Cargando…</p>
+        )}
+        {!error && !loading && items.length === 0 && (
+          <p className="px-1 py-3 text-xs text-brand-muted">Sin resultados.</p>
+        )}
+        <div className="grid grid-cols-3 gap-1.5">
+          {items.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => {
+                onPick({ url: g.full, alt: g.alt });
+                onClose();
+              }}
+              className="group relative overflow-hidden rounded-md border border-transparent transition hover:border-brand-gold"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={g.preview}
+                alt={g.alt}
+                className="h-24 w-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
