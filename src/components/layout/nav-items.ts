@@ -6,6 +6,7 @@ import {
   FolderOpen,
   User,
   Shield,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ export const PRIVATE_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clases', href: '/classes', icon: GraduationCap },
   { label: 'Comunidad', href: '/community', icon: Users },
+  { label: 'Mensajes', href: '/chat', icon: MessageSquare },
   { label: 'Calendario', href: '/calendar', icon: Calendar },
   { label: 'Recursos', href: '/resources', icon: FolderOpen },
   { label: 'Perfil', href: '/profile', icon: User },

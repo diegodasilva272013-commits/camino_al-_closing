@@ -287,11 +287,105 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['resources']['Insert']>;
         Relationships: [];
       };
+      chat_conversations: {
+        Row: {
+          id: string;
+          type: 'dm' | 'group' | 'channel';
+          name: string | null;
+          avatar_url: string | null;
+          description: string | null;
+          created_by: string | null;
+          last_message_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: 'dm' | 'group' | 'channel';
+          name?: string | null;
+          avatar_url?: string | null;
+          description?: string | null;
+          created_by?: string | null;
+          last_message_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['chat_conversations']['Insert']>;
+        Relationships: [];
+      };
+      chat_members: {
+        Row: {
+          conversation_id: string;
+          user_id: string;
+          role: 'owner' | 'admin' | 'member';
+          joined_at: string;
+          last_read_at: string;
+          muted: boolean;
+        };
+        Insert: {
+          conversation_id: string;
+          user_id: string;
+          role?: 'owner' | 'admin' | 'member';
+          joined_at?: string;
+          last_read_at?: string;
+          muted?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['chat_members']['Insert']>;
+        Relationships: [];
+      };
+      chat_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          user_id: string;
+          content: string | null;
+          media_url: string | null;
+          media_type: 'image' | 'video' | 'audio' | 'file' | 'gif' | null;
+          media_name: string | null;
+          reply_to_id: string | null;
+          created_at: string;
+          edited_at: string | null;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          user_id: string;
+          content?: string | null;
+          media_url?: string | null;
+          media_type?: 'image' | 'video' | 'audio' | 'file' | 'gif' | null;
+          media_name?: string | null;
+          reply_to_id?: string | null;
+          created_at?: string;
+          edited_at?: string | null;
+          deleted_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['chat_messages']['Insert']>;
+        Relationships: [];
+      };
+      chat_reactions: {
+        Row: {
+          message_id: string;
+          user_id: string;
+          emoji: string;
+          created_at: string;
+        };
+        Insert: {
+          message_id: string;
+          user_id: string;
+          emoji: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['chat_reactions']['Insert']>;
+        Relationships: [];
+      };
     };
     Functions: {
       is_admin: {
         Args: { user_id: string };
         Returns: boolean;
+      };
+      get_or_create_dm: {
+        Args: { p_other: string };
+        Returns: string;
       };
     };
     Views: { [_ in never]: never };
