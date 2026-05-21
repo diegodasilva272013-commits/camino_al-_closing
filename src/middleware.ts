@@ -52,6 +52,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/resources') ||
     pathname.startsWith('/profile') ||
     pathname.startsWith('/chat') ||
+    pathname.startsWith('/leaderboard') ||
     pathname.startsWith('/admin');
 
   if (!user && isPrivateRoute) {

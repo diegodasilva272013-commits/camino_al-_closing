@@ -387,6 +387,16 @@ export type Database = {
         Args: { p_other: string };
         Returns: string;
       };
+      leaderboard_window: {
+        Args: { p_days: number };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          points: number;
+          rank: number;
+        }[];
+      };
     };
     Views: { [_ in never]: never };
     Enums: { [_ in never]: never };
