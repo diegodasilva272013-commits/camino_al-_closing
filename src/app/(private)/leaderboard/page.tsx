@@ -39,9 +39,9 @@ export default async function LeaderboardPage() {
   if (!user) redirect('/login?redirectTo=/leaderboard');
 
   const [w7, w30, wAll] = await Promise.all([
-    supabase.rpc('leaderboard_window', { p_days: 7 }),
-    supabase.rpc('leaderboard_window', { p_days: 30 }),
-    supabase.rpc('leaderboard_window', { p_days: 0 }),
+    (supabase as any).rpc('leaderboard_window', { p_days: 7 }),
+    (supabase as any).rpc('leaderboard_window', { p_days: 30 }),
+    (supabase as any).rpc('leaderboard_window', { p_days: 0 }),
   ]);
 
   const data7 = ((w7.data ?? []) as Row[]) ?? [];
