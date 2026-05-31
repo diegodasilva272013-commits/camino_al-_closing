@@ -377,6 +377,44 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['chat_reactions']['Insert']>;
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          actor_id: string | null;
+          type:
+            | 'post_like'
+            | 'post_comment'
+            | 'comment_reply'
+            | 'chat_message'
+            | 'event_reminder'
+            | 'system';
+          title: string;
+          body: string | null;
+          link: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          actor_id?: string | null;
+          type:
+            | 'post_like'
+            | 'post_comment'
+            | 'comment_reply'
+            | 'chat_message'
+            | 'event_reminder'
+            | 'system';
+          title: string;
+          body?: string | null;
+          link?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
+        Relationships: [];
+      };
     };
     Functions: {
       is_admin: {
@@ -396,6 +434,10 @@ export type Database = {
           points: number;
           rank: number;
         }[];
+      };
+      unread_notifications_count: {
+        Args: { p_user: string };
+        Returns: number;
       };
     };
     Views: { [_ in never]: never };

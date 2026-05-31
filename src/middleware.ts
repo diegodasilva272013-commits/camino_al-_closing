@@ -53,6 +53,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/profile') ||
     pathname.startsWith('/chat') ||
     pathname.startsWith('/leaderboard') ||
+    pathname.startsWith('/notifications') ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/u/') ||
     pathname.startsWith('/admin');
 
   if (!user && isPrivateRoute) {
@@ -67,6 +70,23 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/dashboard';
     url.search = '';
     return NextResponse.redirect(url);
+  }
+
+  // Protección extra: solo admins pueden entrar a /admin/*
+  if (user && pathname.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const role = (profile as { role?: string } | null)?.role;
+    if (role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

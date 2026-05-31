@@ -1,6 +1,7 @@
-import { Bell, Search } from 'lucide-react';
 import { MobileNav } from './mobile-nav';
 import { UserMenu } from './user-menu';
+import { SearchInput } from './search-input';
+import { NotificationsBell, type NotificationItem } from './notifications-bell';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 function getInitials(name: string | null | undefined, email: string): string {
@@ -10,7 +11,7 @@ function getInitials(name: string | null | undefined, email: string): string {
   return initials || 'CC';
 }
 
-export async function Topbar() {
+export async function Topbar({ isAdmin = false }: { isAdmin?: boolean }) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -21,29 +22,37 @@ export async function Topbar() {
     (user?.user_metadata?.full_name as string | undefined) ?? null;
   const initials = user ? getInitials(fullName, email) : 'CC';
 
+  let unread = 0;
+  let items: NotificationItem[] = [];
+  if (user) {
+    const { data: notifs } = await supabase
+      .from('notifications')
+      .select('id, type, title, body, link, read_at, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    items = (notifs ?? []) as NotificationItem[];
+    unread = items.filter((n) => !n.read_at).length;
+    if (items.length === 10) {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('read_at', null);
+      unread = count ?? unread;
+    }
+  }
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a]/80 px-4 backdrop-blur lg:px-8">
-      <MobileNav />
+      <MobileNav isAdmin={isAdmin} />
 
       <div className="hidden flex-1 md:flex">
-        <div className="relative w-full max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
-          <input
-            type="text"
-            placeholder="Buscar clases, recursos, publicaciones..."
-            className="w-full rounded-md border border-[rgba(212,175,55,0.15)] bg-[#111111] py-2 pl-9 pr-3 text-sm text-brand-text placeholder:text-brand-muted focus:border-[rgba(212,175,55,0.45)] focus:outline-none"
-          />
-        </div>
+        <SearchInput />
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        <button
-          type="button"
-          className="rounded-md border border-[rgba(212,175,55,0.18)] p-2 text-brand-muted transition hover:text-brand-gold"
-          aria-label="Notificaciones"
-        >
-          <Bell className="h-4 w-4" />
-        </button>
+        {user && <NotificationsBell initialUnread={unread} initialItems={items} />}
         {user ? (
           <UserMenu initials={initials} email={email} fullName={fullName} />
         ) : (

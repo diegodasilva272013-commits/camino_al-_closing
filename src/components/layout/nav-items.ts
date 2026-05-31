@@ -8,6 +8,7 @@ import {
   Shield,
   MessageSquare,
   Trophy,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export const PRIVATE_NAV: NavItem[] = [
   { label: 'Mensajes', href: '/chat', icon: MessageSquare },
   { label: 'Calendario', href: '/calendar', icon: Calendar },
   { label: 'Recursos', href: '/resources', icon: FolderOpen },
+  { label: 'Notificaciones', href: '/notifications', icon: Bell },
   { label: 'Perfil', href: '/profile', icon: User },
 ];
 

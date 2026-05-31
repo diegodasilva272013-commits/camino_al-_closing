@@ -7,9 +7,9 @@ import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
 
-export function Sidebar() {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
-  const items = [...PRIVATE_NAV, ...ADMIN_NAV];
+  const items = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
 
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-[rgba(212,175,55,0.12)] lg:bg-[#0a0a0a]">

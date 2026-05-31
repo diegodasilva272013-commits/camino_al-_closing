@@ -9,10 +9,10 @@ import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
 
-export function MobileNav() {
+export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const items = [...PRIVATE_NAV, ...ADMIN_NAV];
+  const items = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
 
   return (
     <div className="lg:hidden">
