@@ -20,32 +20,117 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ------- Modo claro: overrides ------- */
-html.light body { background-color: #f7f5ef; color: #1a1a1a; }
+/* ============================================================
+   LIGHT MODE — paleta luxury cream/dorado
+   Aplicado SOLO cuando <html> tiene la clase .light
+   ============================================================ */
+html.light { color-scheme: light; }
+
+html.light body {
+  background-color: #f6f1e6;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(212,175,55,0.07), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(212,175,55,0.05), transparent 40%);
+  color: #1a1410;
+}
+
+/* ---- Cards / contenedores oscuros → blancos con borde dorado ---- */
 html.light .card-premium {
   background-color: #ffffff !important;
-  border-color: rgba(212,175,55,0.35) !important;
-  box-shadow: 0 8px 24px -16px rgba(0,0,0,0.12) !important;
+  border-color: rgba(212,175,55,0.4) !important;
+  box-shadow: 0 4px 18px -10px rgba(120,90,20,0.18) !important;
 }
-html.light .text-brand-text { color: #1a1a1a !important; }
-html.light .text-brand-muted { color: #6b6b6b !important; }
-html.light .text-white { color: #1a1a1a !important; }
-html.light .text-white\/90 { color: rgba(26,26,26,0.9) !important; }
-html.light .bg-surface { background-color: #f0ece1 !important; }
-html.light .bg-surface-soft { background-color: #ffffff !important; }
-html.light .bg-black\/20,
-html.light .bg-\[\#0c0c0c\],
-html.light .bg-\[\#111111\],
-html.light .bg-\[\#0a0a0a\] { background-color: #ffffff !important; }
-html.light .border-white\/5,
-html.light .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
-html.light .divide-white\/5 > * + * { border-color: rgba(0,0,0,0.08) !important; }
-html.light .btn-ghost-gold { color: #1a1a1a !important; }
+
+/* Todos los backgrounds hex oscuros (#0xxx, #1xxx) → blanco */
+html.light [class*="bg-[#0"],
+html.light [class*="bg-[#1"] {
+  background-color: #ffffff !important;
+}
+
+/* Tintes dorados oscuros (bg-[#1a1408], #13110a, #241a0c) */
+html.light [class*="bg-[#1a1408]"],
+html.light [class*="bg-[#13110a]"],
+html.light [class*="bg-[#241a0c]"],
+html.light [class*="bg-[#1a1a08]"] {
+  background-color: rgba(212,175,55,0.12) !important;
+}
+
+/* Header sticky / aside / overlays con /80 /60 /40 */
+html.light header[class*="bg-[#0a0a0a]"] {
+  background-color: rgba(246,241,230,0.9) !important;
+  border-bottom-color: rgba(0,0,0,0.06) !important;
+}
+html.light aside[class*="bg-[#0a0a0a]"] {
+  background-color: #fbf8ee !important;
+  border-color: rgba(0,0,0,0.06) !important;
+}
+html.light [class*="bg-black/"] {
+  background-color: rgba(0,0,0,0.04) !important;
+}
+
+/* ---- Texto: blanco/gris claro → negro ---- */
+html.light .text-brand-text,
+html.light [class*="text-brand-text/"] { color: #1a1410 !important; }
+html.light .text-white,
+html.light [class*="text-white/"] { color: #1a1410 !important; }
+html.light .text-brand-muted,
+html.light [class*="text-brand-muted/"] { color: #6a5a4a !important; }
+html.light .text-brand-text\/90 { color: rgba(26,20,16,0.92) !important; }
+
+/* Oro: bajamos un poco para legibilidad sobre blanco */
+html.light .text-brand-gold { color: #a67c1a !important; }
+html.light .text-gold { color: #a67c1a !important; }
+
+/* ---- Bordes blancos → grises suaves ---- */
+html.light [class*="border-white/"] { border-color: rgba(0,0,0,0.1) !important; }
+html.light [class*="divide-white/"] > * + * { border-color: rgba(0,0,0,0.08) !important; }
+html.light [class*="border-[rgba(212,175,55,0.05)]"],
+html.light [class*="border-[rgba(212,175,55,0.06)]"],
+html.light [class*="border-[rgba(212,175,55,0.08)]"],
+html.light [class*="border-[rgba(212,175,55,0.12)]"],
+html.light [class*="border-[rgba(212,175,55,0.15)]"],
+html.light [class*="border-[rgba(212,175,55,0.18)]"] {
+  border-color: rgba(212,175,55,0.45) !important;
+}
+
+/* ---- Inputs ---- */
 html.light input,
 html.light textarea,
-html.light select { color: #1a1a1a !important; background-color: #ffffff !important; }
+html.light select {
+  background-color: #ffffff !important;
+  color: #1a1410 !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
 html.light input::placeholder,
-html.light textarea::placeholder { color: #999 !important; }
+html.light textarea::placeholder { color: #9c8f7e !important; }
+
+/* ---- Botones ---- */
+html.light .btn-ghost-gold { color: #1a1410 !important; border-color: rgba(212,175,55,0.5) !important; }
+html.light .btn-ghost-gold:hover { color: #a67c1a !important; border-color: #a67c1a !important; }
+/* btn-gold: el dorado se queda igual (texto negro sobre dorado), ya funciona en ambos */
+
+/* ---- Surface utilities ---- */
+html.light .bg-surface { background-color: #fbf8ee !important; }
+html.light .bg-surface-soft { background-color: #ffffff !important; }
+
+/* ---- Sidebar items activos ---- */
+html.light [class*="bg-[#1a1a1a]"] { background-color: rgba(212,175,55,0.15) !important; }
+
+/* ---- Hover tints dorados muy sutiles ---- */
+html.light [class*="hover:bg-[#141414]"]:hover { background-color: rgba(0,0,0,0.04) !important; }
+
+/* ---- Scrollbar light ---- */
+html.light ::-webkit-scrollbar-track { background: #ece6d4; }
+html.light ::-webkit-scrollbar-thumb { background: #c9bd9a; border: 2px solid #ece6d4; border-radius: 6px; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #b0a07b; }
+
+/* ---- Selección ---- */
+html.light ::selection { background: rgba(212,175,55,0.45); color: #1a1410; }
+
+/* ---- Chat: burbuja "otro" (no mía) usa bg-[#16161a] que ya se sobrescribe a blanco;
+       le ponemos un gris suave para distinguir de mi burbuja dorada ---- */
+html.light [class*="bg-[#16161a]"] { background-color: #f0ebdc !important; }
+html.light [class*="bg-[#0c0c0c]/"] { background-color: rgba(255,255,255,0.85) !important; }
 
 @layer utilities {
   .text-gold {
