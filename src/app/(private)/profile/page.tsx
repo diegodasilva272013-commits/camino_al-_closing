@@ -9,6 +9,7 @@ import {
 } from '@/components/community/level-badge';
 import { AvatarUploader } from './_components/avatar-uploader';
 import { AiAvatarStudio } from './_components/ai-avatar-studio';
+import { ClientErrorBoundary } from './_components/error-boundary';
 import { ProfileForm } from './_components/profile-form';
 import { PasswordForm } from './_components/password-form';
 
@@ -154,12 +155,14 @@ export default async function ProfilePage() {
         </aside>
 
         <div className="space-y-5 lg:col-span-2">
-          <AiAvatarStudio
-            credits={p.ai_avatar_credits ?? 0}
-            currentLevel={getLevel(p.points ?? 0).level}
-            currentStyle={p.ai_avatar_style ?? null}
-            currentAiAvatar={p.ai_avatar_url ?? null}
-          />
+          <ClientErrorBoundary label="Avatar IA Studio">
+            <AiAvatarStudio
+              credits={p.ai_avatar_credits ?? 0}
+              currentLevel={getLevel(p.points ?? 0).level}
+              currentStyle={p.ai_avatar_style ?? null}
+              currentAiAvatar={p.ai_avatar_url ?? null}
+            />
+          </ClientErrorBoundary>
 
           <section className="card-premium">
             <h3 className="mb-3 text-base font-semibold text-brand-text">
