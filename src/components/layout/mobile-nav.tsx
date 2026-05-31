@@ -35,10 +35,10 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[rgba(212,175,55,0.18)] text-brand-text"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[rgba(212,175,55,0.25)] text-brand-text active:bg-[#1a1a1a]"
         aria-label="Abrir menú"
       >
-        <Menu className="h-4 w-4" />
+        <Menu className="h-5 w-5" />
       </button>
 
       {open && (

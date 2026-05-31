@@ -35,9 +35,9 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label="Cambiar tema"
       title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[rgba(212,175,55,0.25)] text-brand-muted transition hover:border-brand-gold hover:text-brand-gold"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[rgba(212,175,55,0.25)] text-brand-muted transition hover:border-brand-gold hover:text-brand-gold active:bg-[#1a1a1a]"
     >
-      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </button>
   );
 }

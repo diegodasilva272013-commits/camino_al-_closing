@@ -30,14 +30,14 @@ export function UserMenu({ initials, email, fullName }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[#181818] py-1 pl-1 pr-2 text-sm text-brand-gold transition hover:border-[rgba(212,175,55,0.6)]"
+        className="flex h-11 items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[#181818] py-1 pl-1 pr-2.5 text-sm text-brand-gold transition hover:border-[rgba(212,175,55,0.6)] active:bg-[#1a1a1a]"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0d0d0d] text-xs font-medium">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0d0d0d] text-xs font-medium">
           {initials}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 text-brand-muted" />
+        <ChevronDown className="h-4 w-4 text-brand-muted" />
       </button>
 
       {open && (

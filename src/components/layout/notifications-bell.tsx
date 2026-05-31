@@ -72,10 +72,10 @@ export function NotificationsBell({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-[rgba(212,175,55,0.18)] text-brand-muted transition hover:text-brand-gold"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-[rgba(212,175,55,0.25)] text-brand-muted transition hover:text-brand-gold active:bg-[#1a1a1a]"
         aria-label="Notificaciones"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-5 w-5" />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-semibold text-black">
             {unread > 9 ? '9+' : unread}
