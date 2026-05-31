@@ -9,28 +9,34 @@ export default function HomePage() {
     <div className="relative min-h-screen overflow-hidden bg-brand-black">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(212,175,55,0.08),transparent_60%)]" />
 
-      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
+      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="flex min-w-0 items-center gap-3">
           <BrandLogo size="md" priority />
-          <div>
-            <p className="text-sm font-semibold">{brand.name}</p>
-            <p className="text-[10px] uppercase tracking-widest text-brand-gold">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold sm:text-base">{brand.name}</p>
+            <p className="hidden text-[10px] uppercase tracking-widest text-brand-gold sm:block">
               {brand.tagline}
             </p>
           </div>
         </div>
-        <nav className="flex items-center gap-3">
-          <Link href="/login" className="btn-ghost-gold">
+        <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <Link
+            href="/login"
+            className="rounded-full border border-brand-gold/40 px-3 py-2 text-xs font-medium text-brand-text hover:bg-brand-gold/10 sm:px-4 sm:text-sm"
+          >
             Iniciar sesión
           </Link>
-          <Link href="/register" className="btn-gold">
+          <Link
+            href="/register"
+            className="rounded-full bg-brand-gold px-3 py-2 text-xs font-semibold text-brand-black hover:opacity-90 sm:px-4 sm:text-sm"
+          >
             Crear cuenta
           </Link>
         </nav>
       </header>
 
       {/* HERO con la portada */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-10 lg:pt-16">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6 sm:pb-20 sm:pt-10 lg:pt-16">
         <div className="relative overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] shadow-[0_30px_80px_-30px_rgba(212,175,55,0.25)]">
           <Image
             src="/portada.png"
@@ -40,9 +46,9 @@ export default function HomePage() {
             priority
             className="h-auto w-full object-cover"
           />
-          {/* CTA flotante sobre la portada en desktop */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:justify-end sm:pb-8 sm:pr-[7%] lg:pb-10 lg:pr-[7%]">
-            <div className="pointer-events-auto flex flex-col items-center gap-3 sm:flex-row">
+          {/* CTA flotante solo en desktop */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden justify-end pb-8 pr-[7%] sm:flex lg:pb-10 lg:pr-[7%]">
+            <div className="pointer-events-auto flex items-center gap-3">
               <Link href="/register" className="btn-gold">
                 Entrar a la comunidad <ArrowRight className="h-4 w-4" />
               </Link>
@@ -52,9 +58,25 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* CTAs debajo de la portada SOLO en mobile */}
+        <div className="mt-5 flex flex-col gap-3 sm:hidden">
+          <Link
+            href="/register"
+            className="flex items-center justify-center gap-2 rounded-full bg-brand-gold px-5 py-3 text-sm font-semibold text-brand-black hover:opacity-90"
+          >
+            Entrar a la comunidad <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/login"
+            className="flex items-center justify-center rounded-full border border-brand-gold/40 px-5 py-3 text-sm font-medium text-brand-text hover:bg-brand-gold/10"
+          >
+            Ya tengo cuenta
+          </Link>
+        </div>
       </section>
 
-      <section className="relative z-10 mx-auto grid max-w-6xl gap-6 px-6 pb-24 md:grid-cols-3">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-6 px-4 pb-24 sm:px-6 md:grid-cols-3">
         {[
           {
             image: '/calendario.png',

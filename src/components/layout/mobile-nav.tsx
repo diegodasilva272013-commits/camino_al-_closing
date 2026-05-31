@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
@@ -14,6 +14,22 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const items = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
 
+  // Lock scroll del body cuando el drawer está abierto
+  useEffect(() => {
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [open]);
+
+  // Cerrar al cambiar de ruta
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   return (
     <div className="lg:hidden">
       <button
@@ -26,17 +42,27 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        <div
+          className="fixed inset-0 z-[100] flex"
+          style={{ position: 'fixed' }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            aria-label="Cerrar menú"
             onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
           />
-          <div className="relative flex h-full w-72 flex-col border-r border-[rgba(212,175,55,0.15)] bg-[#0a0a0a] p-4">
+          <div
+            className="relative flex h-full w-[82vw] max-w-[320px] flex-col border-r border-[rgba(212,175,55,0.2)] p-4 shadow-2xl"
+            style={{ backgroundColor: '#0a0a0a' }}
+          >
             <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.12)] pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <BrandLogo size="sm" />
-                <div>
-                  <p className="text-sm font-semibold">{brand.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{brand.name}</p>
                   <p className="text-[10px] uppercase tracking-widest text-brand-gold">
                     {brand.tagline}
                   </p>
@@ -52,7 +78,7 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
               </button>
             </div>
 
-            <nav className="mt-4 space-y-1">
+            <nav className="mt-4 flex-1 space-y-1 overflow-y-auto pr-1">
               {items.map((item) => {
                 const Icon = item.icon;
                 const active =
@@ -64,14 +90,14 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+                      'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition',
                       active
                         ? 'bg-[#1a1a1a] text-brand-gold border border-[rgba(212,175,55,0.25)]'
                         : 'text-brand-muted hover:bg-[#141414] hover:text-brand-text border border-transparent'
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 );
               })}
