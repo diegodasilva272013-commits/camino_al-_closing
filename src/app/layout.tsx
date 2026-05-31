@@ -36,9 +36,10 @@ export const metadata: Metadata = {
     locale: 'es_AR',
     images: [
       {
-        url: '/portada.png',
-        width: 1672,
-        height: 941,
+        url: '/og-image.jpg',
+        width: 1200,
+        height: 630,
+        type: 'image/jpeg',
         alt: brand.full,
       },
     ],
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: brand.full,
     description: brand.description,
-    images: ['/portada.png'],
+    images: ['/og-image.jpg'],
   },
   appleWebApp: {
     capable: true,
