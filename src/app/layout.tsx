@@ -12,6 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://camino-al-closing.vercel.app'),
   title: {
     default: brand.full,
     template: `%s — ${brand.name}`,
@@ -24,7 +25,29 @@ export const metadata: Metadata = {
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
-    apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  openGraph: {
+    type: 'website',
+    url: 'https://camino-al-closing.vercel.app',
+    siteName: brand.name,
+    title: brand.full,
+    description: brand.description,
+    locale: 'es_AR',
+    images: [
+      {
+        url: '/portada.png',
+        width: 1672,
+        height: 941,
+        alt: brand.full,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: brand.full,
+    description: brand.description,
+    images: ['/portada.png'],
   },
   appleWebApp: {
     capable: true,
