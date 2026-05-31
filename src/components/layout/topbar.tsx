@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { MobileNav } from './mobile-nav';
 import { UserMenu } from './user-menu';
 import { SearchInput } from './search-input';
 import { NotificationsBell, type NotificationItem } from './notifications-bell';
 import { ThemeToggle } from './theme-toggle';
+import { BrandLogo } from '@/components/brand/brand-logo';
+import { brand } from '@/constants/branding';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 function getInitials(name: string | null | undefined, email: string): string {
@@ -45,14 +48,22 @@ export async function Topbar({ isAdmin = false }: { isAdmin?: boolean }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a]/80 px-4 backdrop-blur lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a]/90 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-8">
       <MobileNav isAdmin={isAdmin} />
+
+      {/* Marca en móvil (cuando el sidebar está oculto) */}
+      <Link href="/dashboard" className="flex min-w-0 items-center gap-2 lg:hidden">
+        <BrandLogo size="sm" />
+        <span className="truncate text-sm font-semibold text-brand-text">
+          {brand.name}
+        </span>
+      </Link>
 
       <div className="hidden flex-1 md:flex">
         <SearchInput />
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <ThemeToggle />
         {user && <NotificationsBell initialUnread={unread} initialItems={items} />}
         {user ? (

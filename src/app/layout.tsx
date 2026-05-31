@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { brand } from '@/constants/branding';
 import { PWARegister } from '@/components/pwa-register';
-import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import './globals.css';
 
 const inter = Inter({
@@ -82,7 +81,6 @@ export default function RootLayout({
       <body className="min-h-screen bg-brand-black text-brand-text antialiased">
         {children}
         <PWARegister />
-        <PWAInstallPrompt />
       </body>
     </html>
   );
