@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import Image from 'next/image';
 import {
   Sparkles,
   Loader2,
@@ -66,9 +65,14 @@ export function AiAvatarStudio({
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setPhoto(f);
-    setPhotoPreview(URL.createObjectURL(f));
-    setMsg(null);
+    try {
+      const url = URL.createObjectURL(f);
+      setPhoto(f);
+      setPhotoPreview(url);
+      setMsg(null);
+    } catch (err: any) {
+      setMsg({ ok: false, text: 'No se pudo leer la imagen: ' + (err?.message ?? 'error') });
+    }
   }
 
   function onGenerate() {
@@ -188,12 +192,11 @@ export function AiAvatarStudio({
           </p>
           <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-brand-gold/30 bg-[#0a0a0a]">
             {result ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={result}
                 alt="Avatar IA"
-                fill
-                className="object-cover"
-                unoptimized
+                className="h-full w-full object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-center text-xs text-brand-muted">
