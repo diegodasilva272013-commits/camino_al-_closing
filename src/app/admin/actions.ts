@@ -499,6 +499,3 @@ export async function deleteQuizQuestionAction(id: string): Promise<void> {
   await logAdminAction({ adminId: ctx.userId, action: 'quiz_question.delete', targetType: 'quiz_question', targetId: id });
   revalidatePath('/admin/quizzes');
 }
-
-// Exports auxiliares
-export { COMMUNITY_CATEGORIES };
