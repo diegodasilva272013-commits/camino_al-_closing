@@ -1,5 +1,5 @@
-// Camino al Closing — Service Worker minimalista (network-first, no caching agresivo)
-const CACHE = 'cac-v1';
+// Camino al Closing — Service Worker (network-first, sin cache para HTML)
+const CACHE = 'cac-v3-2026053101';
 const ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -20,12 +20,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  // Solo GET, mismo origen, evitamos APIs y rutas dinámicas
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/data')) return;
 
+  // HTML y navegación: siempre red, nunca cache (evita servir versión vieja)
+  const isHTML =
+    req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+  if (isHTML) {
+    event.respondWith(
+      fetch(req).catch(() => caches.match('/manifest.json'))
+    );
+    return;
+  }
+
+  // Resto (JS/CSS/imágenes): network-first con fallback a cache
   event.respondWith(
     fetch(req)
       .then((res) => {
