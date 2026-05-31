@@ -32,4 +32,10 @@ export const env = {
   openai: {
     apiKey: process.env.OPENAI_API_KEY ?? '',
   },
+  push: {
+    publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+    privateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+    subject: process.env.VAPID_SUBJECT ?? 'mailto:hello@caminoalclosing.com',
+    webhookSecret: process.env.PUSH_WEBHOOK_SECRET ?? '',
+  },
 } as const;

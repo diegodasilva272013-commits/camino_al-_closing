@@ -10,6 +10,7 @@ import {
 import { AvatarUploader } from './_components/avatar-uploader';
 import { AiAvatarStudio } from './_components/ai-avatar-studio';
 import { ClientErrorBoundary } from './_components/error-boundary';
+import { PushOptIn } from './_components/push-opt-in';
 import { ProfileForm } from './_components/profile-form';
 import { PasswordForm } from './_components/password-form';
 
@@ -163,6 +164,8 @@ export default async function ProfilePage() {
               currentAiAvatar={p.ai_avatar_url ?? null}
             />
           </ClientErrorBoundary>
+
+          <PushOptIn />
 
           <section className="card-premium">
             <h3 className="mb-3 text-base font-semibold text-brand-text">
