@@ -43,7 +43,7 @@ export function UserMenu({ initials, email, fullName }: Props) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-60 overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl"
+          className="absolute right-0 z-50 mt-2 w-[min(15rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl"
         >
           <div className="border-b border-[rgba(212,175,55,0.12)] px-3 py-3">
             <p className="truncate text-sm font-medium text-brand-text">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
+
 type Theme = 'dark' | 'light';
 
 function applyTheme(t: Theme) {

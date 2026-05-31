@@ -72,7 +72,7 @@ export function NotificationsBell({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-md border border-[rgba(212,175,55,0.18)] p-2 text-brand-muted transition hover:text-brand-gold"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-[rgba(212,175,55,0.18)] text-brand-muted transition hover:text-brand-gold"
         aria-label="Notificaciones"
       >
         <Bell className="h-4 w-4" />
@@ -84,7 +84,7 @@ export function NotificationsBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl">
+        <div className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl">
           <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.12)] px-3 py-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-gold">
               Notificaciones
