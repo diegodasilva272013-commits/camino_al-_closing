@@ -95,8 +95,9 @@ function MediaThumbnail({
   type: MediaKind | null;
   ytId: string | null;
 }) {
-  // Tamaño fijo 132x132 al estilo Skool
-  const wrap = 'relative h-[132px] w-[132px] shrink-0 overflow-hidden rounded-lg bg-[#0a0a0a]';
+  // Thumbnail enmarcado, alineado con el bloque de texto
+  const wrap =
+    'relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-xl border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] shadow-[0_8px_24px_-16px_rgba(0,0,0,0.6)]';
   if (!type) return null;
   if (type === 'youtube' && ytId) {
     return (
@@ -211,9 +212,9 @@ export function FeedPostCard({
   return (
     <article
       onClick={() => setExpanded(true)}
-      className="card-premium cursor-pointer p-0 transition hover:border-[rgba(212,175,55,0.45)]"
+      className="card-premium cursor-pointer p-0 transition hover:-translate-y-0.5 hover:border-[rgba(212,175,55,0.45)] hover:shadow-[0_24px_60px_-30px_rgba(212,175,55,0.35)]"
     >
-      <div className="flex gap-4 p-4">
+      <div className="flex gap-3.5 p-5">
         {/* Avatar */}
         <Link
           href={post.author.id ? `/u/${post.author.id}` : '#'}
@@ -251,16 +252,16 @@ export function FeedPostCard({
           </div>
 
           {/* Layout título/contenido + thumbnail derecho */}
-          <div className="mt-2 flex gap-3">
+          <div className="mt-2.5 flex items-start gap-4">
             <div className="min-w-0 flex-1">
               {post.title && (
-                <h3 className="flex items-start gap-2 text-base font-semibold text-brand-text">
+                <h3 className="flex items-start gap-2 text-base font-semibold leading-snug text-brand-text">
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
                   <span className="line-clamp-2">{post.title}</span>
                 </h3>
               )}
               {post.content && (
-                <div className="mt-1 line-clamp-3 text-sm text-brand-text/85">
+                <div className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-brand-text/85">
                   <Markdown source={post.content} />
                 </div>
               )}
@@ -276,22 +277,22 @@ export function FeedPostCard({
           </div>
 
           {/* Footer: like, comments, avatars, "Nuevo comentario hace…" */}
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-[rgba(212,175,55,0.1)] pt-3 text-sm">
             <button
               type="button"
               onClick={handleLike}
               className={
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ' +
+                'inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ' +
                 (liked
                   ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
-                  : 'border-white/10 text-brand-muted hover:border-brand-gold hover:text-brand-gold')
+                  : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-brand-gold hover:text-brand-gold')
               }
             >
               <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-current' : ''}`} />
               <span>{compactCount(likes)}</span>
             </button>
 
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-brand-muted">
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-[rgba(212,175,55,0.18)] px-3 text-xs font-medium text-brand-muted">
               <MessageCircle className="h-3.5 w-3.5" />
               <span>{compactCount(post.comments.length)}</span>
             </span>
@@ -311,7 +312,7 @@ export function FeedPostCard({
             )}
 
             {lastComment && (
-              <span className="text-xs text-brand-gold hover:underline">
+              <span className="ml-auto text-xs font-medium text-brand-gold hover:underline">
                 Nuevo comentario {timeAgo(lastComment.created_at)}
               </span>
             )}
