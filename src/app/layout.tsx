@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { brand } from '@/constants/branding';
 import { PWARegister } from '@/components/pwa-register';
-import { SplashVideo } from '@/components/splash-video';
 import './globals.css';
 
 const inter = Inter({
@@ -78,9 +77,45 @@ export default function RootLayout({
               "try{var t=localStorage.getItem('cac:theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}",
           }}
         />
+        {/* Splash inline (no depende de React): aparece al instante */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              #cac-splash{position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease}
+              #cac-splash.cac-hide{opacity:0;pointer-events:none}
+              #cac-splash .cac-bg{position:absolute;width:160px;height:160px;background:url('/Logo2.png') center/contain no-repeat;opacity:.9}
+              #cac-splash video{position:absolute;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%);object-fit:cover;background:#000}
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen bg-brand-black text-brand-text antialiased">
-        <SplashVideo />
+        <div id="cac-splash" aria-hidden="true">
+          <div className="cac-bg" />
+          <video
+            src="/Cinematic_logo_reveal_animation_202605311327.mp4"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+          />
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                var s=document.getElementById('cac-splash');
+                if(!s)return;
+                var v=s.querySelector('video');
+                var done=false;
+                function hide(){if(done)return;done=true;s.classList.add('cac-hide');setTimeout(function(){s.remove();},600);}
+                if(v){v.addEventListener('ended',hide);v.addEventListener('error',hide);v.play&&v.play().catch(function(){});}
+                setTimeout(hide,8000);
+                s.addEventListener('click',hide);
+              })();
+            `,
+          }}
+        />
         {children}
         <PWARegister />
       </body>
