@@ -36,18 +36,18 @@ export function ComposerTrigger({
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="flex w-full items-center gap-3 rounded-xl border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] px-4 py-3 text-left transition hover:border-brand-gold"
+      className="flex w-full items-center gap-3 rounded-xl border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] px-3 py-3 text-left transition hover:border-brand-gold sm:px-4"
     >
       {avatarUrl ? (
-        <div className="relative h-9 w-9 overflow-hidden rounded-full border border-[rgba(212,175,55,0.35)]">
+        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[rgba(212,175,55,0.35)]">
           <Image src={avatarUrl} alt={userName} fill className="object-cover" />
         </div>
       ) : (
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#111] text-sm font-semibold text-brand-gold">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[#111] text-sm font-semibold text-brand-gold">
           {initial}
         </div>
       )}
-      <span className="text-sm text-brand-muted">Escribe algo…</span>
+      <span className="truncate text-sm text-brand-muted">Escribe algo…</span>
     </button>
   );
 }

@@ -79,14 +79,14 @@ export function GroupSidebar({
     <aside className="space-y-4">
       {/* Tarjeta principal del grupo */}
       <section className="overflow-hidden rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a]">
-        <div className="relative h-36 w-full bg-[#0a0a0a]">
+        <div className="relative h-28 w-full bg-[#0a0a0a] sm:h-36">
           <Image
             src="/Logo2.png"
             alt={brand.name}
             fill
             priority
-            sizes="320px"
-            className="object-cover"
+            sizes="(max-width: 640px) 100vw, 320px"
+            className="object-contain p-2"
           />
         </div>
         <div className="space-y-3 p-4">

@@ -168,7 +168,7 @@ function MediaBlock({
   }
   if (type === 'audio' && url) {
     return (
-      <div className="bg-[#0a0a0a] px-5 py-3">
+      <div className="bg-[#0a0a0a] px-3 py-3 sm:px-5">
         <audio src={url} controls className="w-full" />
       </div>
     );
@@ -508,24 +508,24 @@ export function PostCard({
 
   return (
     <article className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-[#0c0c0c] shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)]">
-      <div className="flex items-start justify-between gap-3 p-5 pb-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-2 p-3 pb-2 sm:gap-3 sm:p-5 sm:pb-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Avatar
             url={post.author.avatar_url}
             name={authorName}
             userId={post.author.id ?? post.user_id}
           />
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <Link
                 href={`/u/${post.author.id ?? post.user_id}`}
-                className="text-sm font-medium text-brand-text hover:text-brand-gold"
+                className="truncate text-sm font-medium text-brand-text hover:text-brand-gold"
               >
                 {authorName}
               </Link>
               <LevelBadge points={post.author.points} size="sm" />
             </div>
-            <p className="text-[11px] text-brand-muted">
+            <p className="truncate text-[11px] text-brand-muted">
               {timeAgo(post.created_at)} ·{' '}
               <span className="text-brand-gold/80">{post.category}</span>
               {post.is_pinned && (
@@ -565,7 +565,7 @@ export function PostCard({
         )}
       </div>
 
-      <div className="space-y-3 px-5 pb-4">
+      <div className="space-y-3 px-3 pb-4 sm:px-5">
         {post.title && (
           <h3 className="text-lg font-semibold text-brand-text">{post.title}</h3>
         )}
@@ -579,7 +579,7 @@ export function PostCard({
 
       <MediaBlock url={post.media_url} type={post.media_type} ytId={ytId} />
 
-      <div className="flex items-center gap-4 border-t border-[rgba(212,175,55,0.1)] px-5 py-3 text-xs text-brand-muted">
+      <div className="flex items-center gap-3 border-t border-[rgba(212,175,55,0.1)] px-3 py-3 text-xs text-brand-muted sm:gap-4 sm:px-5">
         <button
           type="button"
           onClick={onLike}
@@ -604,7 +604,7 @@ export function PostCard({
       </div>
 
       {open && (
-        <div className="space-y-4 border-t border-[rgba(212,175,55,0.1)] bg-[#0a0a0a] px-5 py-4">
+        <div className="space-y-4 border-t border-[rgba(212,175,55,0.1)] bg-[#0a0a0a] px-3 py-4 sm:px-5">
           {post.comments.length === 0 && (
             <p className="text-xs text-brand-muted">
               Sé el primero en comentar.
