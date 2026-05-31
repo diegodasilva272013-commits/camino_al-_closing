@@ -86,7 +86,7 @@ export function GroupSidebar({
             fill
             priority
             sizes="320px"
-            className="object-contain p-3"
+            className="object-cover"
           />
         </div>
         <div className="space-y-3 p-4">
