@@ -238,6 +238,126 @@ html, body, header, aside, main, section, article, div, button, a, input, textar
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
 }
 
+/* ============================================================
+   LIGHT MODE — pulidos finales (después del catch-all general)
+   ============================================================ */
+
+/* 1. Logo cover de la comunidad: el PNG es oscuro por diseño
+      → en light le damos un marco dorado luxury en vez de blanco */
+html.light section.overflow-hidden > div.relative.h-36.w-full {
+  background:
+    radial-gradient(ellipse at center, rgba(212, 175, 55, 0.18), transparent 65%),
+    linear-gradient(180deg, #1f1608 0%, #0e0a04 100%) !important;
+  box-shadow: inset 0 -1px 0 var(--border-gold);
+}
+
+/* 2. btn-ghost-gold (MI PERFIL): forzar texto oscuro con mayor especificidad */
+html.light .btn-ghost-gold,
+html.light a.btn-ghost-gold,
+html.light button.btn-ghost-gold {
+  color: var(--text-primary) !important;
+  background-color: #ffffff !important;
+  border-color: var(--border-gold) !important;
+}
+html.light .btn-ghost-gold:hover {
+  background-color: rgba(176, 136, 32, 0.08) !important;
+  color: var(--gold) !important;
+  border-color: var(--gold) !important;
+}
+
+/* 3. Píldoras de categorías inactivas: más contraste */
+html.light a.rounded-full.border[class*="border-[rgba(212,175,55,0.18)]"] {
+  background-color: #ffffff !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-secondary) !important;
+}
+html.light a.rounded-full.border[class*="border-[rgba(212,175,55,0.18)]"]:hover {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+/* Píldora activa: tinte dorado claro con borde dorado fuerte */
+html.light a.rounded-full.border-brand-gold[class*="bg-[#1a1408]"] {
+  background-color: rgba(176, 136, 32, 0.14) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  box-shadow: 0 2px 8px -4px rgba(176, 136, 32, 0.4);
+}
+
+/* 4. Composer (post-composer): caja con sombra dorada en vez de glow oscuro */
+html.light .rounded-2xl[class*="bg-[#0c0c0c]"] {
+  background-color: var(--bg-elevated) !important;
+  box-shadow: 0 12px 32px -20px rgba(120, 85, 20, 0.25),
+              0 1px 0 0 rgba(212, 175, 55, 0.08) inset !important;
+}
+/* Avatar inicial del composer (bg-[#111]) */
+html.light .rounded-full[class*="bg-[#111]"] {
+  background-color: var(--bg-soft) !important;
+}
+
+/* 5. LV badges: paleta oscura saturada → tintes luxury sobre cream */
+html.light [class*="bg-zinc-800"]      { background-color: #e9e2d0 !important; color: #4a3f2e !important; border-color: rgba(120, 95, 50, 0.25) !important; }
+html.light [class*="bg-amber-950"]     { background-color: #f5e6c4 !important; color: #7a5a10 !important; border-color: rgba(176, 130, 30, 0.4) !important; }
+html.light [class*="bg-sky-950"]       { background-color: #d8e7f1 !important; color: #1d5378 !important; border-color: rgba(40, 90, 130, 0.35) !important; }
+html.light [class*="bg-emerald-950"]   { background-color: #d3ead9 !important; color: #1f5a36 !important; border-color: rgba(35, 110, 65, 0.35) !important; }
+html.light [class*="bg-orange-950"]    { background-color: #f5dcc3 !important; color: #8a3d12 !important; border-color: rgba(170, 75, 30, 0.35) !important; }
+html.light [class*="bg-cyan-950"]      { background-color: #cee5e7 !important; color: #155a63 !important; border-color: rgba(30, 100, 110, 0.35) !important; }
+html.light [class*="bg-purple-950"]    { background-color: #e3d6ee !important; color: #4d2575 !important; border-color: rgba(90, 50, 140, 0.35) !important; }
+html.light [class*="bg-yellow-950"]    { background-color: #f6e9b8 !important; color: #6e5006 !important; border-color: rgba(150, 110, 20, 0.4) !important; }
+html.light [class*="bg-rose-950"]      { background-color: #f1d7dd !important; color: #7a1d3a !important; border-color: rgba(150, 40, 70, 0.35) !important; }
+/* Texto interior de las badges */
+html.light [class*="text-zinc-300"]    { color: #4a3f2e !important; }
+html.light [class*="text-amber-300"]   { color: #7a5a10 !important; }
+html.light [class*="text-sky-300"]     { color: #1d5378 !important; }
+html.light [class*="text-emerald-300"] { color: #1f5a36 !important; }
+html.light [class*="text-orange-300"]  { color: #8a3d12 !important; }
+html.light [class*="text-cyan-200"]    { color: #155a63 !important; }
+html.light [class*="text-purple-300"]  { color: #4d2575 !important; }
+html.light [class*="text-yellow-300"]  { color: #6e5006 !important; }
+html.light [class*="text-rose-300"]    { color: #7a1d3a !important; }
+
+/* 6. Separadores en cards (ranking, stats) */
+html.light .border-y.border-white\/5 { border-color: var(--border-soft) !important; }
+
+/* 7. Avatares circulares con borde dorado → suma sombra cálida */
+html.light .rounded-full[class*="border-[rgba(212,175,55"] {
+  box-shadow: 0 2px 6px -2px rgba(176, 136, 32, 0.25);
+}
+
+/* 8. Sidebar nav: hover más visible y warm */
+html.light aside nav a[class*="hover:bg-[#141414]"]:hover {
+  background-color: rgba(176, 136, 32, 0.08) !important;
+  color: var(--text-primary) !important;
+  border-color: rgba(176, 136, 32, 0.2) !important;
+}
+/* Item activo (gold tint) refinado */
+html.light aside nav a.border[class*="bg-[#1a1a1a]"] {
+  background-color: rgba(176, 136, 32, 0.14) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  box-shadow: 0 2px 8px -4px rgba(176, 136, 32, 0.35);
+}
+
+/* 9. Topbar: sombra sutil para separar del contenido */
+html.light header[class*="bg-[#0a0a0a]"] {
+  box-shadow: 0 1px 0 0 var(--border-soft),
+              0 8px 24px -20px rgba(70, 45, 5, 0.15);
+}
+
+/* 10. Sidebar (aside lateral izq): borde derecho más definido */
+html.light aside[class*="border-r"] {
+  border-right-color: var(--border-default) !important;
+  box-shadow: 1px 0 24px -20px rgba(70, 45, 5, 0.15);
+}
+
+/* Pequeños extras de pulido */
+html.light .text-brand-gold\/80 { color: rgba(176, 136, 32, 0.85) !important; }
+html.light .text-brand-muted\/80 { color: rgba(122, 104, 80, 0.85) !important; }
+/* Texto color amber/emerald/rose puros (status pills, links) — bajamos un poco */
+html.light .text-amber-400 { color: #a07614 !important; }
+html.light .text-emerald-400 { color: #1f7a45 !important; }
+html.light .text-rose-400 { color: #a8264a !important; }
+html.light .text-sky-400 { color: #1f6da3 !important; }
+
 @layer utilities {
   .text-gold {
     color: #d4af37;
