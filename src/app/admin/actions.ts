@@ -417,13 +417,13 @@ export async function saveQuizAction(
   const description = clean(formData.get('description'), 1000);
   const lesson_id = clean(formData.get('lesson_id'));
   const module_id = clean(formData.get('module_id'));
-  const pass_score_raw = clean(formData.get('pass_score'));
-  const pass_score = pass_score_raw ? Math.max(0, Math.min(100, parseInt(pass_score_raw, 10) || 70)) : 70;
+  const pass_score_raw = clean(formData.get('passing_score')) ?? clean(formData.get('pass_score'));
+  const passing_score = pass_score_raw ? Math.max(0, Math.min(100, parseInt(pass_score_raw, 10) || 70)) : 70;
   if (!title) return { error: 'El título es obligatorio.' };
   if (!lesson_id && !module_id) return { error: 'Debes asociar el quiz a una lección o módulo.' };
 
   const supabase = createSupabaseServerClient();
-  const payload: any = { title, description, lesson_id, module_id, pass_score };
+  const payload: any = { title, description, lesson_id, module_id, passing_score };
 
   if (id) {
     const { error } = await (supabase as any).from('quizzes').update(payload).eq('id', id);
@@ -454,13 +454,13 @@ export async function saveQuizQuestionAction(
   const ctx = await requireAdmin();
   const id = clean(formData.get('id'));
   const quiz_id = clean(formData.get('quiz_id'));
-  const question = clean(formData.get('question'), 1000);
+  const prompt = clean(formData.get('prompt'), 1000) ?? clean(formData.get('question'), 1000);
   const explanation = clean(formData.get('explanation'), 1000);
   const order_raw = clean(formData.get('order_index'));
   const order_index = order_raw ? parseInt(order_raw, 10) || 0 : 0;
   const optionsRaw = clean(formData.get('options'), 4000);
   const correct = clean(formData.get('correct_option_id'), 50);
-  if (!quiz_id || !question || !optionsRaw || !correct) {
+  if (!quiz_id || !prompt || !optionsRaw || !correct) {
     return { error: 'Faltan campos obligatorios.' };
   }
   let options: { id: string; label: string }[] = [];
@@ -477,7 +477,7 @@ export async function saveQuizQuestionAction(
   if (!options.some((o) => o.id === correct)) return { error: 'El id correcto no está en las opciones.' };
 
   const supabase = createSupabaseServerClient();
-  const payload: any = { quiz_id, question, explanation, options, correct_option_id: correct, order_index };
+  const payload: any = { quiz_id, prompt, explanation, options, correct_option_id: correct, order_index };
   if (id) {
     const { error } = await (supabase as any).from('quiz_questions').update(payload).eq('id', id);
     if (error) return { error: error.message };

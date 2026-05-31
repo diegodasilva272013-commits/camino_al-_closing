@@ -62,7 +62,7 @@ export function QuizForm({
       <label className="block w-40">
         <span className="text-xs uppercase text-brand-muted">% para aprobar</span>
         <input
-          name="pass_score"
+          name="passing_score"
           type="number"
           min={0}
           max={100}
@@ -91,7 +91,7 @@ export function QuestionForm({
       <label className="block">
         <span className="text-xs uppercase text-brand-muted">Pregunta</span>
         <textarea
-          name="question"
+          name="prompt"
           required
           rows={2}
           maxLength={1000}

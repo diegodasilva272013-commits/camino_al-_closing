@@ -18,13 +18,13 @@ type Quiz = {
   description: string | null;
   lesson_id: string | null;
   module_id: string | null;
-  pass_score: number;
+  passing_score: number;
   created_at: string;
 };
 type Question = {
   id: string;
   quiz_id: string;
-  question: string;
+  prompt: string;
   options: { id: string; label: string }[];
   correct_option_id: string;
   explanation: string | null;
@@ -70,7 +70,7 @@ export default async function AdminQuizzesPage() {
                   <h3 className="text-lg font-semibold text-brand-text">{quiz.title}</h3>
                   <p className="text-xs text-brand-muted">
                     Lección: {quiz.lesson_id ? lessonMap[quiz.lesson_id] ?? quiz.lesson_id.slice(0, 8) : '—'}
-                    {' · '}Aprobar: {quiz.pass_score}%{' · '}Preguntas: {qs.length}
+                    {' · '}Aprobar: {quiz.passing_score}%{' · '}Preguntas: {qs.length}
                   </p>
                   {quiz.description && (
                     <p className="mt-1 text-sm text-brand-muted">{quiz.description}</p>
@@ -88,7 +88,7 @@ export default async function AdminQuizzesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-brand-text">
-                          <span className="text-brand-gold">#{q.order_index}</span> {q.question}
+                          <span className="text-brand-gold">#{q.order_index}</span> {q.prompt}
                         </p>
                         <ul className="mt-1 space-y-0.5 text-xs">
                           {q.options.map((o) => (
