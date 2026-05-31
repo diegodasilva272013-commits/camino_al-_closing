@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 
 const BUCKET = 'community-media';
@@ -76,6 +77,9 @@ export async function createPostAction(
   } = await supabase.auth.getUser();
 
   if (!user) return { error: 'Debes iniciar sesión.' };
+
+  const rl = checkRateLimit('post.create', user.id, 5, 60_000);
+  if (!rl.ok) return { error: rl.error ?? 'Demasiadas publicaciones, espera un momento.' };
 
   const content = String(formData.get('content') ?? '').trim();
   const titleRaw = String(formData.get('title') ?? '').trim();
@@ -156,6 +160,9 @@ export async function createCommentAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: 'Debes iniciar sesión.' };
+
+  const rl = checkRateLimit('comment.create', user.id, 15, 60_000);
+  if (!rl.ok) return { error: rl.error ?? 'Demasiados comentarios.' };
 
   const postId = String(formData.get('post_id') ?? '');
   const content = String(formData.get('content') ?? '').trim();

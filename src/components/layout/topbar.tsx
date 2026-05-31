@@ -2,6 +2,7 @@ import { MobileNav } from './mobile-nav';
 import { UserMenu } from './user-menu';
 import { SearchInput } from './search-input';
 import { NotificationsBell, type NotificationItem } from './notifications-bell';
+import { ThemeToggle } from './theme-toggle';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 function getInitials(name: string | null | undefined, email: string): string {
@@ -52,6 +53,7 @@ export async function Topbar({ isAdmin = false }: { isAdmin?: boolean }) {
       </div>
 
       <div className="ml-auto flex items-center gap-3">
+        <ThemeToggle />
         {user && <NotificationsBell initialUnread={unread} initialItems={items} />}
         {user ? (
           <UserMenu initials={initials} email={email} fullName={fullName} />

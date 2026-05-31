@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/current-user';
+import { logAdminAction } from '@/lib/audit';
 import { COMMUNITY_CATEGORIES, RESOURCE_CATEGORIES, EVENT_TYPES } from '@/constants/categories';
 
 export type AdminState = { ok?: boolean; error?: string };
@@ -26,13 +27,20 @@ export async function updateUserRoleAction(
   userId: string,
   role: 'student' | 'mentor' | 'admin'
 ): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   if (!['student', 'mentor', 'admin'].includes(role)) return;
   const supabase = createSupabaseServerClient();
   await (supabase as any)
     .from('profiles')
     .update({ role, updated_at: new Date().toISOString() })
     .eq('id', userId);
+  await logAdminAction({
+    adminId: ctx.userId,
+    action: 'user.role_change',
+    targetType: 'user',
+    targetId: userId,
+    metadata: { new_role: role },
+  });
   revalidatePath('/admin/users');
 }
 
@@ -40,7 +48,7 @@ export async function adjustUserPointsAction(
   userId: string,
   delta: number
 ): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   if (!Number.isFinite(delta) || delta === 0) return;
   const supabase = createSupabaseServerClient();
   const { data } = await supabase
@@ -54,6 +62,13 @@ export async function adjustUserPointsAction(
     .from('profiles')
     .update({ points: next, updated_at: new Date().toISOString() })
     .eq('id', userId);
+  await logAdminAction({
+    adminId: ctx.userId,
+    action: 'user.points_adjust',
+    targetType: 'user',
+    targetId: userId,
+    metadata: { delta, previous: current, next },
+  });
   revalidatePath('/admin/users');
   revalidatePath('/leaderboard');
 }
@@ -90,10 +105,11 @@ export async function saveCourseAction(
 }
 
 export async function deleteCourseAction(id: string): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   if (!id) return;
   const supabase = createSupabaseServerClient();
   await supabase.from('courses').delete().eq('id', id);
+  await logAdminAction({ adminId: ctx.userId, action: 'course.delete', targetType: 'course', targetId: id });
   revalidatePath('/admin/courses');
   revalidatePath('/classes');
 }
@@ -385,6 +401,103 @@ export async function moderatorDeleteCommentAction(commentId: string): Promise<v
     .eq('id', commentId);
   revalidatePath('/admin/community');
   revalidatePath('/community');
+}
+
+// =====================================================================
+// QUIZZES
+// =====================================================================
+
+export async function saveQuizAction(
+  _prev: AdminState,
+  formData: FormData
+): Promise<AdminState> {
+  const ctx = await requireAdmin();
+  const id = clean(formData.get('id'));
+  const title = clean(formData.get('title'), 200);
+  const description = clean(formData.get('description'), 1000);
+  const lesson_id = clean(formData.get('lesson_id'));
+  const module_id = clean(formData.get('module_id'));
+  const pass_score_raw = clean(formData.get('pass_score'));
+  const pass_score = pass_score_raw ? Math.max(0, Math.min(100, parseInt(pass_score_raw, 10) || 70)) : 70;
+  if (!title) return { error: 'El título es obligatorio.' };
+  if (!lesson_id && !module_id) return { error: 'Debes asociar el quiz a una lección o módulo.' };
+
+  const supabase = createSupabaseServerClient();
+  const payload: any = { title, description, lesson_id, module_id, pass_score };
+
+  if (id) {
+    const { error } = await (supabase as any).from('quizzes').update(payload).eq('id', id);
+    if (error) return { error: error.message };
+    await logAdminAction({ adminId: ctx.userId, action: 'quiz.update', targetType: 'quiz', targetId: id });
+  } else {
+    const { data, error } = await (supabase as any).from('quizzes').insert(payload).select('id').single();
+    if (error) return { error: error.message };
+    await logAdminAction({ adminId: ctx.userId, action: 'quiz.create', targetType: 'quiz', targetId: data?.id });
+  }
+  revalidatePath('/admin/quizzes');
+  return { ok: true };
+}
+
+export async function deleteQuizAction(id: string): Promise<void> {
+  const ctx = await requireAdmin();
+  if (!id) return;
+  const supabase = createSupabaseServerClient();
+  await supabase.from('quizzes').delete().eq('id', id);
+  await logAdminAction({ adminId: ctx.userId, action: 'quiz.delete', targetType: 'quiz', targetId: id });
+  revalidatePath('/admin/quizzes');
+}
+
+export async function saveQuizQuestionAction(
+  _prev: AdminState,
+  formData: FormData
+): Promise<AdminState> {
+  const ctx = await requireAdmin();
+  const id = clean(formData.get('id'));
+  const quiz_id = clean(formData.get('quiz_id'));
+  const question = clean(formData.get('question'), 1000);
+  const explanation = clean(formData.get('explanation'), 1000);
+  const order_raw = clean(formData.get('order_index'));
+  const order_index = order_raw ? parseInt(order_raw, 10) || 0 : 0;
+  const optionsRaw = clean(formData.get('options'), 4000);
+  const correct = clean(formData.get('correct_option_id'), 50);
+  if (!quiz_id || !question || !optionsRaw || !correct) {
+    return { error: 'Faltan campos obligatorios.' };
+  }
+  let options: { id: string; label: string }[] = [];
+  try {
+    const parsed = JSON.parse(optionsRaw);
+    if (!Array.isArray(parsed)) throw new Error('Opciones deben ser un array.');
+    options = parsed
+      .map((o: any) => ({ id: String(o.id ?? '').trim(), label: String(o.label ?? '').trim() }))
+      .filter((o) => o.id && o.label);
+  } catch {
+    return { error: 'Las opciones deben ser JSON válido: [{"id":"a","label":"..."}]' };
+  }
+  if (options.length < 2) return { error: 'Mínimo 2 opciones.' };
+  if (!options.some((o) => o.id === correct)) return { error: 'El id correcto no está en las opciones.' };
+
+  const supabase = createSupabaseServerClient();
+  const payload: any = { quiz_id, question, explanation, options, correct_option_id: correct, order_index };
+  if (id) {
+    const { error } = await (supabase as any).from('quiz_questions').update(payload).eq('id', id);
+    if (error) return { error: error.message };
+    await logAdminAction({ adminId: ctx.userId, action: 'quiz_question.update', targetType: 'quiz_question', targetId: id });
+  } else {
+    const { error } = await (supabase as any).from('quiz_questions').insert(payload);
+    if (error) return { error: error.message };
+    await logAdminAction({ adminId: ctx.userId, action: 'quiz_question.create', targetType: 'quiz', targetId: quiz_id });
+  }
+  revalidatePath('/admin/quizzes');
+  return { ok: true };
+}
+
+export async function deleteQuizQuestionAction(id: string): Promise<void> {
+  const ctx = await requireAdmin();
+  if (!id) return;
+  const supabase = createSupabaseServerClient();
+  await supabase.from('quiz_questions').delete().eq('id', id);
+  await logAdminAction({ adminId: ctx.userId, action: 'quiz_question.delete', targetType: 'quiz_question', targetId: id });
+  revalidatePath('/admin/quizzes');
 }
 
 // Exports auxiliares

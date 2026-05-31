@@ -6,6 +6,10 @@
   color-scheme: dark;
 }
 
+html.light {
+  color-scheme: light;
+}
+
 html,
 body {
   background-color: #050505;
@@ -15,6 +19,33 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ------- Modo claro: overrides ------- */
+html.light body { background-color: #f7f5ef; color: #1a1a1a; }
+html.light .card-premium {
+  background-color: #ffffff !important;
+  border-color: rgba(212,175,55,0.35) !important;
+  box-shadow: 0 8px 24px -16px rgba(0,0,0,0.12) !important;
+}
+html.light .text-brand-text { color: #1a1a1a !important; }
+html.light .text-brand-muted { color: #6b6b6b !important; }
+html.light .text-white { color: #1a1a1a !important; }
+html.light .text-white\/90 { color: rgba(26,26,26,0.9) !important; }
+html.light .bg-surface { background-color: #f0ece1 !important; }
+html.light .bg-surface-soft { background-color: #ffffff !important; }
+html.light .bg-black\/20,
+html.light .bg-\[\#0c0c0c\],
+html.light .bg-\[\#111111\],
+html.light .bg-\[\#0a0a0a\] { background-color: #ffffff !important; }
+html.light .border-white\/5,
+html.light .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
+html.light .divide-white\/5 > * + * { border-color: rgba(0,0,0,0.08) !important; }
+html.light .btn-ghost-gold { color: #1a1a1a !important; }
+html.light input,
+html.light textarea,
+html.light select { color: #1a1a1a !important; background-color: #ffffff !important; }
+html.light input::placeholder,
+html.light textarea::placeholder { color: #999 !important; }
 
 @layer utilities {
   .text-gold {

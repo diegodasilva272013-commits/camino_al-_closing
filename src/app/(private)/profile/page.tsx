@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'full_name, email, avatar_url, bio, role, points, phone, city, country, website, instagram, is_public'
+      'full_name, email, avatar_url, bio, role, points, phone, city, country, website, instagram, is_public, current_streak, longest_streak'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -41,6 +41,8 @@ export default async function ProfilePage() {
     website: string | null;
     instagram: string | null;
     is_public: boolean | null;
+    current_streak: number | null;
+    longest_streak: number | null;
   };
 
   const [{ count: postsCount }, { count: commentsCount }] = await Promise.all([
@@ -60,6 +62,28 @@ export default async function ProfilePage() {
     .select('post_id, community_posts!inner(user_id)')
     .eq('community_posts.user_id', user.id);
   const likesReceived = likeRows?.length ?? 0;
+
+  // Badges, certificados, lecciones completadas
+  const [badgesRes, certsRes, lessonsDoneRes] = await Promise.all([
+    supabase
+      .from('user_badges')
+      .select('badge_code, earned_at, badges(title, description, icon)')
+      .eq('user_id', user.id)
+      .order('earned_at', { ascending: false }),
+    supabase
+      .from('certificates')
+      .select('id, code, issued_at, courses(title)')
+      .eq('user_id', user.id)
+      .order('issued_at', { ascending: false }),
+    supabase
+      .from('lesson_progress')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('completed', true),
+  ]);
+  const badges = (badgesRes.data ?? []) as any[];
+  const certs = (certsRes.data ?? []) as any[];
+  const lessonsDone = lessonsDoneRes.count ?? 0;
 
   const initial = (p.full_name?.trim()?.charAt(0) ?? user.email?.charAt(0) ?? '?').toUpperCase();
   const displayName = p.full_name?.trim() || user.email?.split('@')[0] || 'Tu perfil';
@@ -98,16 +122,96 @@ export default async function ProfilePage() {
 
           <LevelProgressCard points={p.points ?? 0} />
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="card-premium">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-brand-muted">Racha</p>
+                <p className="mt-1 text-2xl font-bold text-brand-gold">
+                  🔥 {p.current_streak ?? 0}
+                  <span className="ml-1 text-xs font-normal text-brand-muted">días seguidos</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-brand-muted">Máximo</p>
+                <p className="text-sm font-semibold text-white">{p.longest_streak ?? 0} días</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
             <Stat label="Posts" value={postsCount ?? 0} />
-            <Stat label="Comentarios" value={commentsCount ?? 0} />
+            <Stat label="Coment." value={commentsCount ?? 0} />
             <Stat label="Likes" value={likesReceived} />
+            <Stat label="Clases" value={lessonsDone} />
           </div>
 
           <PointsLegend />
         </aside>
 
         <div className="space-y-5 lg:col-span-2">
+          <section className="card-premium">
+            <h3 className="mb-3 text-base font-semibold text-brand-text">
+              🏅 Logros
+            </h3>
+            {badges.length === 0 ? (
+              <p className="text-sm text-brand-muted">
+                Aún no desbloqueaste ninguno. Participá en la comunidad, completá clases y mantén tu racha activa.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {badges.map((b: any) => (
+                  <div
+                    key={b.badge_code}
+                    className="rounded-xl border border-brand-gold/30 bg-gradient-to-br from-brand-gold/15 to-transparent p-3"
+                    title={b.badges?.description ?? ''}
+                  >
+                    <p className="text-sm font-semibold text-brand-gold">
+                      {b.badges?.title ?? b.badge_code}
+                    </p>
+                    {b.badges?.description ? (
+                      <p className="mt-0.5 text-[11px] text-brand-muted">
+                        {b.badges.description}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[10px] text-brand-muted">
+                      {new Date(b.earned_at).toLocaleDateString('es-AR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {certs.length > 0 ? (
+            <section className="card-premium">
+              <h3 className="mb-3 text-base font-semibold text-brand-text">
+                🎓 Certificados
+              </h3>
+              <ul className="divide-y divide-white/5">
+                {certs.map((c: any) => (
+                  <li key={c.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {c.courses?.title ?? 'Curso'}
+                      </p>
+                      <p className="text-[11px] text-brand-muted">
+                        Código: {c.code} · {new Date(c.issued_at).toLocaleDateString('es-AR')}
+                      </p>
+                    </div>
+                    <a
+                      href={`/api/certificates/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-ghost-gold"
+                    >
+                      Descargar
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <section className="card-premium">
             <h3 className="mb-1 text-base font-semibold text-brand-text">
               Información del perfil

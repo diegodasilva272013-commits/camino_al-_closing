@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -130,6 +131,9 @@ export async function sendMessageAction(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: 'No autenticado' };
+
+  const rl = checkRateLimit('chat.send', user.id, 30, 60_000);
+  if (!rl.ok) return { error: rl.error ?? 'Demasiados mensajes.' };
 
   const content = input.content?.trim() || null;
   if (!content && !input.mediaUrl) return { error: 'Mensaje vacío' };

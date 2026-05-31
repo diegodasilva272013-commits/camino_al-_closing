@@ -45,6 +45,38 @@ export function PostComposer({ userName }: { userName: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  function wrapSelection(prefix: string, suffix: string) {
+    const el = contentRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const before = content.slice(0, start);
+    const sel = content.slice(start, end);
+    const after = content.slice(end);
+    const next = `${before}${prefix}${sel || 'texto'}${suffix}${after}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + prefix.length + (sel || 'texto').length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  function insertAtLineStart(token: string) {
+    const el = contentRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+    const next = `${content.slice(0, lineStart)}${token}${content.slice(lineStart)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + token.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
 
   useEffect(() => {
     return () => {
@@ -174,16 +206,58 @@ export function PostComposer({ userName }: { userName: string }) {
       </div>
 
       <textarea
+        ref={contentRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={3}
         placeholder={
           tab === 'youtube'
             ? 'Cuéntales por qué deben verlo…'
-            : 'Comparte tu experiencia, resultados o pregunta…'
+            : 'Comparte tu experiencia, resultados o pregunta… (soporta **negrita**, *cursiva*, `código`, [link](url) y listas con -)'
         }
         className="mt-3 w-full resize-none rounded-md border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted/60 focus:border-brand-gold focus:outline-none"
       />
+
+      <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-brand-muted">
+        <span className="mr-1">Formato:</span>
+        {[
+          { label: 'B', wrap: '**' },
+          { label: 'I', wrap: '*' },
+          { label: '`', wrap: '`' },
+        ].map((b) => (
+          <button
+            key={b.label}
+            type="button"
+            onClick={() => wrapSelection(b.wrap, b.wrap)}
+            className="rounded border border-white/10 px-2 py-0.5 hover:border-brand-gold hover:text-brand-gold"
+            title={`Envolver con ${b.wrap}`}
+          >
+            <span className={b.label === 'B' ? 'font-bold' : b.label === 'I' ? 'italic' : 'font-mono'}>
+              {b.label}
+            </span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const url = prompt('URL (https://…)');
+            if (!url) return;
+            wrapSelection('[', `](${url})`);
+          }}
+          className="rounded border border-white/10 px-2 py-0.5 hover:border-brand-gold hover:text-brand-gold"
+          title="Insertar enlace"
+        >
+          🔗
+        </button>
+        <button
+          type="button"
+          onClick={() => insertAtLineStart('- ')}
+          className="rounded border border-white/10 px-2 py-0.5 hover:border-brand-gold hover:text-brand-gold"
+          title="Lista"
+        >
+          • lista
+        </button>
+      </div>
 
       {tab === 'youtube' && (
         <input

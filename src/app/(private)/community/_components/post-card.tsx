@@ -22,6 +22,7 @@ import {
 } from '../actions';
 import { EmojiPicker, VoiceRecorder, GifPicker } from './comment-extras';
 import { LevelBadge } from '@/components/community/level-badge';
+import { Markdown } from '@/components/ui/markdown';
 
 export type MediaKind = 'image' | 'video' | 'youtube' | 'document' | 'audio';
 
@@ -569,9 +570,10 @@ export function PostCard({
           <h3 className="text-lg font-semibold text-brand-text">{post.title}</h3>
         )}
         {post.content && (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-brand-text/90">
-            {post.content}
-          </p>
+          <Markdown
+            source={post.content}
+            className="text-sm leading-relaxed text-brand-text/90"
+          />
         )}
       </div>
 

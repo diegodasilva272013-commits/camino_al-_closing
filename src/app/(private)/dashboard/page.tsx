@@ -13,6 +13,10 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getLevel } from '@/lib/levels';
+import {
+  OnboardingChecklist,
+  type ChecklistStep,
+} from './_components/onboarding-checklist';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +40,7 @@ export default async function DashboardPage() {
     user
       ? supabase
           .from('profiles')
-          .select('full_name, points')
+          .select('full_name, points, bio, avatar_url, onboarding_completed, current_streak')
           .eq('id', user.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -69,7 +73,14 @@ export default async function DashboardPage() {
       .maybeSingle(),
   ]);
 
-  const profile = profileRes.data as { full_name: string | null; points: number } | null;
+  const profile = profileRes.data as {
+    full_name: string | null;
+    points: number;
+    bio: string | null;
+    avatar_url: string | null;
+    onboarding_completed: string[] | null;
+    current_streak: number | null;
+  } | null;
   const nextEvent = nextEventRes.data as any;
   const allLessons = (lessonsRes.data ?? []) as any[];
   const pinned = pinnedRes.data as any;
@@ -94,6 +105,62 @@ export default async function DashboardPage() {
     'Closer';
   const level = getLevel(profile?.points ?? 0);
 
+  // ---- Onboarding checklist ----
+  const ob = new Set(profile?.onboarding_completed ?? []);
+  // Auto-detect: si el usuario ya completó cosas reales, marcamos los pasos correspondientes
+  const profileDone =
+    ob.has('profile') ||
+    (!!profile?.full_name && profile.full_name.trim().length > 1 && (profile.avatar_url || profile.bio));
+  const firstLessonDone = ob.has('first_lesson') || completedCount >= 1;
+  // Hace falta saber si publicó algo / unió chat
+  let firstPostDone = ob.has('first_post');
+  let joinedChatDone = ob.has('joined_chat');
+  if (user) {
+    const [{ count: pCount }, { count: cmCount }] = await Promise.all([
+      supabase
+        .from('community_posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_deleted', false),
+      supabase
+        .from('chat_members')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+    ]);
+    if ((pCount ?? 0) > 0) firstPostDone = true;
+    if ((cmCount ?? 0) > 0) joinedChatDone = true;
+  }
+  const checklist: ChecklistStep[] = [
+    {
+      key: 'profile',
+      label: 'Completá tu perfil',
+      description: 'Foto, nombre y una breve bio',
+      href: '/profile',
+      done: !!profileDone,
+    },
+    {
+      key: 'first_lesson',
+      label: 'Mirá tu primera clase',
+      description: 'Activá tu progreso',
+      href: '/classes',
+      done: firstLessonDone,
+    },
+    {
+      key: 'first_post',
+      label: 'Presentate en la comunidad',
+      description: 'Tu primer post',
+      href: '/community',
+      done: firstPostDone,
+    },
+    {
+      key: 'joined_chat',
+      label: 'Entrá al chat',
+      description: 'Conectá con otros',
+      href: '/chat',
+      done: joinedChatDone,
+    },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
@@ -108,6 +175,7 @@ export default async function DashboardPage() {
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <OnboardingChecklist steps={checklist} />
         <div className="card-premium md:col-span-2">
           <p className="text-[11px] uppercase tracking-[0.18em] text-brand-gold">
             Próximo evento
