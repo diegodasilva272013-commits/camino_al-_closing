@@ -229,7 +229,7 @@ function Board({
 
       {/* Podio */}
       {podium.length > 0 && (
-        <div className="mb-5 grid grid-cols-3 items-end gap-2 md:gap-4">
+        <div className="mb-5 grid grid-cols-3 items-end gap-1 sm:gap-2 md:gap-4">
           {/* Plata (2) */}
           {podium[1] ? (
             <PodiumColumn row={podium[1]} medal="silver" isMe={podium[1].user_id === currentUserId} />

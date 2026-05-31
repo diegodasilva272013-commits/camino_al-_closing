@@ -291,7 +291,7 @@ export function GifPicker({
   return (
     <div
       ref={ref}
-      className="absolute bottom-12 left-0 z-30 w-[380px] overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.3)] bg-[#0c0c0c]/95 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+      className="absolute bottom-12 left-0 z-30 w-[min(380px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.3)] bg-[#0c0c0c]/95 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-xl"
     >
       {/* Search header */}
       <div className="border-b border-[rgba(212,175,55,0.12)] bg-gradient-to-b from-[#141008] to-[#0c0c0c] p-3">

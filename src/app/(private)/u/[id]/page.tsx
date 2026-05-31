@@ -169,7 +169,7 @@ export default async function PublicProfilePage({
 
       <div className="mt-5 grid gap-5 md:grid-cols-3">
         <LevelProgressCard points={p.points ?? 0} className="md:col-span-2" />
-        <div className="grid grid-cols-3 gap-2 md:col-span-1 md:grid-cols-1">
+        <div className="grid grid-cols-3 gap-1 sm:gap-2 md:col-span-1 md:grid-cols-1">
           <Stat label="Posts" value={postsCount ?? 0} />
           <Stat label="Comentarios" value={commentsCount ?? 0} />
           <Stat label="Likes" value={likesReceived} />

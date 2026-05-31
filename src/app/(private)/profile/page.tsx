@@ -145,7 +145,7 @@ export default async function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat label="Posts" value={postsCount ?? 0} />
             <Stat label="Coment." value={commentsCount ?? 0} />
             <Stat label="Likes" value={likesReceived} />

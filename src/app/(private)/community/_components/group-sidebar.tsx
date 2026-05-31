@@ -117,7 +117,7 @@ export function GroupSidebar({
             </ul>
           )}
 
-          <div className="grid grid-cols-3 gap-2 border-y border-white/5 py-3">
+          <div className="grid grid-cols-3 gap-1 border-y border-white/5 py-3 sm:gap-2">
             <div>
               <p className="text-base font-semibold text-brand-text">
                 {stats.members.toLocaleString('es-AR')}

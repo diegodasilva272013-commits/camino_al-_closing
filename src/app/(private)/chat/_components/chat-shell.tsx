@@ -1094,8 +1094,8 @@ function MessageInput({
               <Smile className="h-4 w-4" />
             </button>
             {showEmoji && (
-              <div className="absolute bottom-12 left-0 z-30 w-72 rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] p-2 shadow-xl">
-                <div className="grid grid-cols-8 gap-1">
+              <div className="absolute bottom-12 left-0 z-30 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] p-2 shadow-xl">
+                <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
                   {COMMON_EMOJIS.map((e) => (
                     <button
                       key={e}
