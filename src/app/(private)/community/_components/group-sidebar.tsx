@@ -79,13 +79,15 @@ export function GroupSidebar({
     <aside className="space-y-4">
       {/* Tarjeta principal del grupo */}
       <section className="overflow-hidden rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a]">
-        <div className="relative h-28 w-full bg-gold-gradient">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,0,0,0.4),transparent_60%)]" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-black tracking-widest text-black/80">
-              CAC
-            </span>
-          </div>
+        <div className="relative h-36 w-full bg-[#0a0a0a]">
+          <Image
+            src="/Logo2.png"
+            alt={brand.name}
+            fill
+            priority
+            sizes="320px"
+            className="object-contain p-3"
+          />
         </div>
         <div className="space-y-3 p-4">
           <div>
