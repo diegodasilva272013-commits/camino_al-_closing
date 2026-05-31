@@ -17,6 +17,7 @@ import {
   OnboardingChecklist,
   type ChecklistStep,
 } from './_components/onboarding-checklist';
+import { MissionsCard } from './_components/missions-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +176,7 @@ export default async function DashboardPage() {
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <MissionsCard />
         <OnboardingChecklist steps={checklist} />
         <div className="card-premium md:col-span-2">
           <p className="text-[11px] uppercase tracking-[0.18em] text-brand-gold">
