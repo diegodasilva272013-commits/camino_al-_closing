@@ -36,6 +36,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${inter.variable} dark`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.classList.remove('light');localStorage.removeItem('cac:theme');}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-brand-black text-brand-text antialiased">
         {children}
         <PWARegister />
