@@ -105,7 +105,10 @@ export function AiAvatarStudio({
   const noCredits = credits <= 0;
 
   return (
-    <section className="card-premium">
+    <section className="card-premium border-2 border-brand-gold">
+      <div className="mb-3 rounded-lg bg-brand-gold/20 px-3 py-2 text-center text-sm font-bold text-brand-gold">
+        ✨ NUEVO · Studio de Avatar IA ✨
+      </div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 text-base font-semibold text-brand-text">
