@@ -1,5 +1,5 @@
 // Camino al Closing — Service Worker (network-first, sin cache para HTML)
-const CACHE = 'cac-v3-2026053103';
+const CACHE = 'cac-v3-2026053104';
 const ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -28,6 +28,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/data')) return;
+
+  // Bypass para videos (browser usa Range requests, no juegan bien con cache)
+  if (/\.(mp4|webm|mov|m4v)$/i.test(url.pathname)) return;
 
   // HTML y navegación: siempre red, nunca cache (evita servir versión vieja)
   const isHTML =
