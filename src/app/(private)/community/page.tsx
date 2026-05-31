@@ -1,10 +1,24 @@
-import { PageHeader } from '@/components/layout/page-header';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { PostComposer } from './_components/post-composer';
-import { PostCard, type FeedPost, type MediaKind } from './_components/post-card';
+import { ComposerTrigger } from './_components/composer-trigger';
+import { EventBanner } from './_components/event-banner';
+import { FeedPostCard } from './_components/feed-post';
+import {
+  GroupSidebar,
+  type SidebarLeader,
+  type SidebarMember,
+  type SidebarLink,
+} from './_components/group-sidebar';
+import type { FeedPost, MediaKind } from './_components/post-card';
 
 export const dynamic = 'force-dynamic';
+
+const QUICK_LINKS: SidebarLink[] = [
+  { label: 'Empieza aquí (Onboarding)', href: '/dashboard', emoji: '🚀' },
+  { label: 'Clases', href: '/classes', emoji: '🎓' },
+  { label: 'Calendario de eventos', href: '/calendar', emoji: '📅' },
+  { label: 'Recursos', href: '/resources', emoji: '📂' },
+];
 
 export default async function CommunityPage({
   searchParams,
@@ -16,14 +30,6 @@ export default async function CommunityPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .maybeSingle()
-    : { data: null };
 
   const activeCat = searchParams.cat ?? null;
 
@@ -41,7 +47,53 @@ export default async function CommunityPage({
     query = query.eq('category', activeCat);
   }
 
-  const { data: rawPosts } = await query;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [
+    rawPostsRes,
+    profileRes,
+    membersCountRes,
+    adminsCountRes,
+    onlineTodayRes,
+    recentMembersRes,
+    upcomingEventRes,
+    topRes,
+  ] = await Promise.all([
+    query,
+    user
+      ? supabase
+          .from('profiles')
+          .select('full_name, avatar_url, role')
+          .eq('id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'admin'),
+    (supabase as any)
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('last_active_date', todayIso),
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .order('created_at', { ascending: false })
+      .limit(6),
+    supabase
+      .from('events')
+      .select('id, title, start_time')
+      .eq('status', 'active')
+      .gte('start_time', new Date().toISOString())
+      .order('start_time', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    (supabase as any).rpc('leaderboard_window', { p_days: 30 }),
+  ]);
+
+  const rawPosts = rawPostsRes.data;
+  const profile = (profileRes as any)?.data ?? null;
+  const isAdmin = profile?.role === 'admin';
 
   const posts: FeedPost[] = (rawPosts ?? []).map((p: any) => {
     const likes: { user_id: string }[] = p.post_likes ?? [];
@@ -88,77 +140,115 @@ export default async function CommunityPage({
   });
 
   const userName =
-    (profile as { full_name?: string | null } | null)?.full_name?.trim() ||
-    user?.email?.split('@')[0] ||
-    'Tú';
+    profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Tú';
+  const userAvatar = profile?.avatar_url ?? null;
+
+  const recentMembers: SidebarMember[] = ((recentMembersRes.data as any) ?? []).map(
+    (m: any) => ({ id: m.id, full_name: m.full_name, avatar_url: m.avatar_url })
+  );
+
+  const topMembers: SidebarLeader[] = (((topRes as any)?.data as any[]) ?? [])
+    .slice(0, 5)
+    .map((r) => ({
+      user_id: r.user_id,
+      full_name: r.full_name,
+      avatar_url: r.avatar_url,
+      points: r.points,
+      rank: r.rank,
+    }));
+
+  const upcomingEvent = (upcomingEventRes as any)?.data as
+    | { id: string; title: string; start_time: string }
+    | null;
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <PageHeader
-        eyebrow="Comunidad privada"
-        title="Feed de la sala"
-        description="Comparte llamadas, dudas y resultados. La autoridad se construye en público."
-      />
+    <div className="mx-auto max-w-7xl">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* Columna principal */}
+        <div className="space-y-4">
+          {user ? (
+            <ComposerTrigger userName={userName} avatarUrl={userAvatar} />
+          ) : (
+            <div className="card-premium text-sm text-brand-muted">
+              Inicia sesión para publicar en la comunidad.
+            </div>
+          )}
 
-      <nav className="mb-5 -mx-1 overflow-x-auto">
-        <ul className="flex min-w-max items-center gap-2 px-1">
-          <li>
-            <a
-              href="/community"
-              className={
-                'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
-                (!activeCat
-                  ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
-                  : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-[rgba(212,175,55,0.4)] hover:text-brand-text')
-              }
-            >
-              Todas
-            </a>
-          </li>
-          {COMMUNITY_CATEGORIES.map((c) => {
-            const active = activeCat === c;
-            return (
-              <li key={c}>
+          {upcomingEvent && (
+            <EventBanner
+              title={upcomingEvent.title}
+              startTimeIso={upcomingEvent.start_time}
+            />
+          )}
+
+          {/* Pills categorías */}
+          <nav className="-mx-1 overflow-x-auto">
+            <ul className="flex min-w-max items-center gap-2 px-1">
+              <li>
                 <a
-                  href={`/community?cat=${encodeURIComponent(c)}`}
+                  href="/community"
                   className={
                     'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
-                    (active
+                    (!activeCat
                       ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
                       : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-[rgba(212,175,55,0.4)] hover:text-brand-text')
                   }
                 >
-                  {c}
+                  Todas
                 </a>
               </li>
-            );
-          })}
-        </ul>
-      </nav>
+              {COMMUNITY_CATEGORIES.map((c) => {
+                const active = activeCat === c;
+                return (
+                  <li key={c}>
+                    <a
+                      href={`/community?cat=${encodeURIComponent(c)}`}
+                      className={
+                        'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
+                        (active
+                          ? 'border-brand-gold bg-[#1a1408] text-brand-gold'
+                          : 'border-[rgba(212,175,55,0.18)] text-brand-muted hover:border-[rgba(212,175,55,0.4)] hover:text-brand-text')
+                      }
+                    >
+                      {c}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-      <div className="space-y-5">
-        {user ? (
-          <PostComposer userName={userName} />
-        ) : (
-          <div className="card-premium text-sm text-brand-muted">
-            Inicia sesión para publicar en la comunidad.
+          {/* Feed */}
+          <div className="space-y-3">
+            {posts.length === 0 ? (
+              <div className="card-premium text-center">
+                <p className="text-sm text-brand-text">
+                  Aún no hay publicaciones en esta categoría.
+                </p>
+                <p className="mt-1 text-xs text-brand-muted">
+                  Sé el primero en arrancar la conversación.
+                </p>
+              </div>
+            ) : (
+              posts.map((p) => (
+                <FeedPostCard key={p.id} post={p} currentUserId={user?.id ?? null} />
+              ))
+            )}
           </div>
-        )}
+        </div>
 
-        {posts.length === 0 ? (
-          <div className="card-premium text-center">
-            <p className="text-sm text-brand-text">
-              Aún no hay publicaciones en esta categoría.
-            </p>
-            <p className="mt-1 text-xs text-brand-muted">
-              Sé el primero en arrancar la conversación.
-            </p>
-          </div>
-        ) : (
-          posts.map((p) => (
-            <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} />
-          ))
-        )}
+        {/* Sidebar */}
+        <GroupSidebar
+          stats={{
+            members: membersCountRes.count ?? 0,
+            online: (onlineTodayRes as any).count ?? 0,
+            admins: adminsCountRes.count ?? 0,
+          }}
+          recentMembers={recentMembers}
+          topMembers={topMembers}
+          links={QUICK_LINKS}
+          isAdmin={isAdmin}
+        />
       </div>
     </div>
   );
