@@ -2,109 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKENS — fuente de verdad para ambos temas
+   ============================================================ */
 :root {
   color-scheme: dark;
+  /* Backgrounds */
+  --bg-base: #050505;
+  --bg-elevated: #111111;
+  --bg-soft: #181818;
+  --bg-sunken: #0a0a0a;
+  --bg-overlay: rgba(255, 255, 255, 0.04);
+  /* Texto */
+  --text-primary: #f5f5f5;
+  --text-secondary: rgba(245, 245, 245, 0.78);
+  --text-muted: #a3a3a3;
+  --text-on-gold: #0a0a0a;
+  /* Bordes */
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(212, 175, 55, 0.18);
+  --border-gold: rgba(212, 175, 55, 0.45);
+  /* Oro */
+  --gold: #d4af37;
+  --gold-soft: #b8892d;
+  --gold-deep: #8a6515;
+  /* Sombras */
+  --shadow-card: 0 1px 0 0 rgba(212, 175, 55, 0.08) inset,
+                 0 20px 40px -30px rgba(0, 0, 0, 0.8);
+  --shadow-gold: 0 8px 24px -12px rgba(212, 175, 55, 0.6);
+  /* Scrollbar */
+  --scrollbar-track: #0a0a0a;
+  --scrollbar-thumb: #1f1f1f;
 }
 
 html.light {
   color-scheme: light;
+  /* Cream luxury palette */
+  --bg-base: #f4ecdc;        /* fondo principal cálido */
+  --bg-elevated: #fbf6e9;     /* cards */
+  --bg-soft: #efe7d4;         /* hover sutil */
+  --bg-sunken: #ebe2cd;       /* inputs / paneles hundidos */
+  --bg-overlay: rgba(120, 85, 20, 0.06);
+  --text-primary: #2a1f10;    /* marrón oscuro cálido, no negro puro */
+  --text-secondary: rgba(42, 31, 16, 0.78);
+  --text-muted: #7a6850;
+  --text-on-gold: #1a1006;
+  --border-soft: rgba(120, 85, 20, 0.10);
+  --border-default: rgba(176, 136, 32, 0.30);
+  --border-gold: rgba(176, 136, 32, 0.55);
+  --gold: #b08820;            /* dorado más oscuro para contraste sobre cream */
+  --gold-soft: #d4af37;
+  --gold-deep: #6b4f0d;
+  --shadow-card: 0 1px 0 0 rgba(176, 136, 32, 0.10) inset,
+                 0 12px 28px -18px rgba(70, 45, 5, 0.22);
+  --shadow-gold: 0 8px 24px -12px rgba(176, 136, 32, 0.55);
+  --scrollbar-track: #e9dfc8;
+  --scrollbar-thumb: #c9b98c;
 }
 
 html,
 body {
-  background-color: #050505;
-  color: #f5f5f5;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ============================================================
-   LIGHT MODE — paleta luxury cream/dorado
-   Aplicado SOLO cuando <html> tiene la clase .light
-   ============================================================ */
-html.light { color-scheme: light; }
-
 html.light body {
-  background-color: #f6f1e6;
   background-image:
-    radial-gradient(circle at 0% 0%, rgba(212,175,55,0.07), transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(212,175,55,0.05), transparent 40%);
-  color: #1a1410;
+    radial-gradient(ellipse at top left, rgba(212, 175, 55, 0.10), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(176, 136, 32, 0.06), transparent 55%);
 }
 
-/* Clases temáticas Tailwind (no arbitrarias) */
-html.light .bg-brand-black { background-color: #f6f1e6 !important; }
-html.light .from-brand-black { --tw-gradient-from: #f6f1e6 !important; }
-html.light .to-brand-black { --tw-gradient-to: #f6f1e6 !important; }
-html.light .via-brand-black { --tw-gradient-via: #f6f1e6 !important; }
+/* ============================================================
+   LIGHT MODE — overrides usando tokens
+   Estrategia: catch-all por atributo + clases tematicas Tailwind.
+   ============================================================ */
 
-/* Texto con gradiente dorado (bg-clip-text + text-transparent) → oro oscuro sólido */
-html.light .bg-clip-text.text-transparent,
-html.light [class*="bg-gradient"].text-transparent {
-  background: none !important;
-  -webkit-text-fill-color: #a67c1a !important;
-  color: #a67c1a !important;
-}
+/* ---- Fondos oscuros del tema Tailwind ---- */
+html.light .bg-brand-black { background-color: var(--bg-base) !important; }
+html.light .from-brand-black { --tw-gradient-from: var(--bg-base) !important; --tw-gradient-to: rgba(244, 236, 220, 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+html.light .to-brand-black { --tw-gradient-to: var(--bg-base) !important; }
+html.light .via-brand-black { --tw-gradient-via: var(--bg-base) !important; }
+html.light .bg-black { background-color: var(--bg-base) !important; }
+html.light .bg-brand-surface { background-color: var(--bg-elevated) !important; }
+html.light .bg-brand-surfaceSoft { background-color: var(--bg-soft) !important; }
+html.light .bg-surface { background-color: var(--bg-elevated) !important; }
+html.light .bg-surface-soft { background-color: var(--bg-soft) !important; }
 
-/* ---- Cards / contenedores oscuros → blancos con borde dorado ---- */
-html.light .card-premium {
-  background-color: #ffffff !important;
-  border-color: rgba(212,175,55,0.4) !important;
-  box-shadow: 0 4px 18px -10px rgba(120,90,20,0.18) !important;
-}
-
-/* Todos los backgrounds hex oscuros (#0xxx, #1xxx) → blanco */
+/* ---- Fondos con hex arbitrario oscuro (#0xx / #1xx) → elevated ---- */
 html.light [class*="bg-[#0"],
 html.light [class*="bg-[#1"] {
-  background-color: #ffffff !important;
+  background-color: var(--bg-elevated) !important;
 }
-
-/* Tintes dorados oscuros (bg-[#1a1408], #13110a, #241a0c) */
+/* Tintes dorados oscuros → tinte dorado claro */
 html.light [class*="bg-[#1a1408]"],
 html.light [class*="bg-[#13110a]"],
+html.light [class*="bg-[#141008]"],
+html.light [class*="bg-[#1a1305]"],
+html.light [class*="bg-[#0d0905]"],
 html.light [class*="bg-[#241a0c]"],
 html.light [class*="bg-[#1a1a08]"] {
-  background-color: rgba(212,175,55,0.12) !important;
+  background-color: rgba(212, 175, 55, 0.08) !important;
+}
+/* Negros translúcidos (bg-black/20, /40, etc) → overlay sutil */
+html.light [class*="bg-black/"] {
+  background-color: var(--bg-overlay) !important;
 }
 
-/* Header sticky / aside / overlays con /80 /60 /40 */
+/* ---- Gradientes oscuros en chat / headers ---- */
+html.light [class*="from-[#141008]"] { --tw-gradient-from: rgba(212, 175, 55, 0.10) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(244,236,220,0)) !important; }
+html.light [class*="from-[#1a1305]"] { --tw-gradient-from: rgba(212, 175, 55, 0.14) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via, rgba(244,236,220,0.5)), var(--tw-gradient-to, rgba(244,236,220,0)) !important; }
+html.light [class*="from-[#0a0a0a]"] { --tw-gradient-from: rgba(244, 236, 220, 0.6) !important; }
+html.light [class*="to-[#0c0c0c]"] { --tw-gradient-to: var(--bg-elevated) !important; }
+html.light [class*="to-[#0a0a0a]"] { --tw-gradient-to: var(--bg-base) !important; }
+html.light [class*="via-[#0d0905]"] { --tw-gradient-via: rgba(212, 175, 55, 0.06) !important; }
+html.light [class*="via-[#0a0a0a]"] { --tw-gradient-via: rgba(244, 236, 220, 0.5) !important; }
+
+/* ---- Header / sidebar especificos ---- */
 html.light header[class*="bg-[#0a0a0a]"] {
-  background-color: rgba(246,241,230,0.9) !important;
-  border-bottom-color: rgba(0,0,0,0.06) !important;
+  background-color: rgba(244, 236, 220, 0.88) !important;
+  border-bottom-color: var(--border-soft) !important;
+  backdrop-filter: blur(12px);
 }
 html.light aside[class*="bg-[#0a0a0a]"] {
-  background-color: #fbf8ee !important;
-  border-color: rgba(0,0,0,0.06) !important;
-}
-html.light [class*="bg-black/"] {
-  background-color: rgba(0,0,0,0.04) !important;
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-soft) !important;
 }
 
-/* ---- Texto: blanco/gris claro → negro ---- */
+/* ---- Sidebar nav item activo ---- */
+html.light [class*="bg-[#1a1a1a]"] {
+  background-color: rgba(176, 136, 32, 0.12) !important;
+}
+
+/* ---- Texto ---- */
 html.light .text-brand-text,
-html.light [class*="text-brand-text/"] { color: #1a1410 !important; }
-html.light .text-white,
-html.light [class*="text-white/"] { color: #1a1410 !important; }
+html.light [class*="text-brand-text/"] { color: var(--text-primary) !important; }
+html.light .text-white { color: var(--text-primary) !important; }
+html.light [class*="text-white/"] { color: var(--text-secondary) !important; }
 html.light .text-brand-muted,
-html.light [class*="text-brand-muted/"] { color: #6a5a4a !important; }
-html.light .text-brand-text\/90 { color: rgba(26,20,16,0.92) !important; }
+html.light [class*="text-brand-muted/"] { color: var(--text-muted) !important; }
+html.light .text-neutral-300,
+html.light .text-neutral-400,
+html.light .text-neutral-500 { color: var(--text-muted) !important; }
+html.light .text-brand-gold,
+html.light .text-gold { color: var(--gold) !important; }
 
-/* Oro: bajamos un poco para legibilidad sobre blanco */
-html.light .text-brand-gold { color: #a67c1a !important; }
-html.light .text-gold { color: #a67c1a !important; }
+/* Gradiente dorado de títulos → oro sólido para legibilidad */
+html.light .bg-clip-text.text-transparent {
+  background: none !important;
+  -webkit-text-fill-color: var(--gold-deep) !important;
+  color: var(--gold-deep) !important;
+}
 
-/* ---- Bordes blancos → grises suaves ---- */
-html.light [class*="border-white/"] { border-color: rgba(0,0,0,0.1) !important; }
-html.light [class*="divide-white/"] > * + * { border-color: rgba(0,0,0,0.08) !important; }
-html.light [class*="border-[rgba(212,175,55,0.05)]"],
-html.light [class*="border-[rgba(212,175,55,0.06)]"],
-html.light [class*="border-[rgba(212,175,55,0.08)]"],
-html.light [class*="border-[rgba(212,175,55,0.12)]"],
-html.light [class*="border-[rgba(212,175,55,0.15)]"],
-html.light [class*="border-[rgba(212,175,55,0.18)]"] {
-  border-color: rgba(212,175,55,0.45) !important;
+/* ---- Bordes ---- */
+html.light [class*="border-white/"] { border-color: var(--border-soft) !important; }
+html.light [class*="divide-white/"] > * + * { border-color: var(--border-soft) !important; }
+html.light [class*="border-[rgba(212,175,55,0.0"],
+html.light [class*="border-[rgba(212,175,55,0.1"],
+html.light [class*="border-[rgba(212,175,55,0.2"] {
+  border-color: var(--border-default) !important;
+}
+html.light .border-brand-gold\/30,
+html.light .border-brand-gold\/40,
+html.light .border-brand-gold\/60 { border-color: var(--border-gold) !important; }
+
+/* ---- Card premium en light: blanco cremoso + sombra cálida ---- */
+html.light .card-premium {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-default) !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 /* ---- Inputs ---- */
@@ -112,39 +181,62 @@ html.light input,
 html.light textarea,
 html.light select {
   background-color: #ffffff !important;
-  color: #1a1410 !important;
-  border-color: rgba(0,0,0,0.12) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
 }
 html.light input::placeholder,
-html.light textarea::placeholder { color: #9c8f7e !important; }
+html.light textarea::placeholder { color: var(--text-muted) !important; }
+html.light input:focus,
+html.light textarea:focus,
+html.light select:focus {
+  border-color: var(--gold) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(176, 136, 32, 0.15) !important;
+}
 
 /* ---- Botones ---- */
-html.light .btn-ghost-gold { color: #1a1410 !important; border-color: rgba(212,175,55,0.5) !important; }
-html.light .btn-ghost-gold:hover { color: #a67c1a !important; border-color: #a67c1a !important; }
-/* btn-gold: el dorado se queda igual (texto negro sobre dorado), ya funciona en ambos */
+html.light .btn-ghost-gold {
+  color: var(--text-primary) !important;
+  border-color: var(--border-gold) !important;
+}
+html.light .btn-ghost-gold:hover {
+  color: var(--gold) !important;
+  border-color: var(--gold) !important;
+  background-color: rgba(176, 136, 32, 0.05) !important;
+}
+/* btn-gold mantiene el gradiente dorado (luce bien en ambos temas) */
 
-/* ---- Surface utilities ---- */
-html.light .bg-surface { background-color: #fbf8ee !important; }
-html.light .bg-surface-soft { background-color: #ffffff !important; }
+/* ---- Hover sobre cards / items ---- */
+html.light [class*="hover:bg-[#141414]"]:hover,
+html.light [class*="hover:bg-[#1a1a1a]"]:hover,
+html.light [class*="hover:bg-white/"]:hover {
+  background-color: var(--bg-soft) !important;
+}
 
-/* ---- Sidebar items activos ---- */
-html.light [class*="bg-[#1a1a1a]"] { background-color: rgba(212,175,55,0.15) !important; }
-
-/* ---- Hover tints dorados muy sutiles ---- */
-html.light [class*="hover:bg-[#141414]"]:hover { background-color: rgba(0,0,0,0.04) !important; }
-
-/* ---- Scrollbar light ---- */
-html.light ::-webkit-scrollbar-track { background: #ece6d4; }
-html.light ::-webkit-scrollbar-thumb { background: #c9bd9a; border: 2px solid #ece6d4; border-radius: 6px; }
-html.light ::-webkit-scrollbar-thumb:hover { background: #b0a07b; }
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--scrollbar-track);
+}
+html.light ::-webkit-scrollbar-thumb:hover { background: #b0a073; }
 
 /* ---- Selección ---- */
-html.light ::selection { background: rgba(212,175,55,0.45); color: #1a1410; }
+::selection { background: rgba(212, 175, 55, 0.35); color: #fff; }
+html.light ::selection { background: rgba(176, 136, 32, 0.35); color: var(--text-primary); }
 
-/* ---- Chat: burbuja "otro" (no mía) usa bg-[#16161a] que ya se sobrescribe a blanco;
-       le ponemos un gris suave para distinguir de mi burbuja dorada ---- */
-html.light [class*="bg-[#16161a]"] { background-color: #f0ebdc !important; }
-html.light [class*="bg-[#0c0c0c]/"] { background-color: rgba(255,255,255,0.85) !important; }
+/* ---- Chat: burbuja "otro" diferenciada de la mía dorada ---- */
+html.light [class*="bg-[#16161a]"] {
+  background-color: #ffffff !important;
+  border: 1px solid var(--border-soft);
+}
+
+/* ---- Transición suave al cambiar tema ---- */
+html, body, header, aside, main, section, article, div, button, a, input, textarea {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
 
 @layer utilities {
   .text-gold {
@@ -178,26 +270,4 @@ html.light [class*="bg-[#0c0c0c]/"] { background-color: rgba(255,255,255,0.85) !
   .btn-ghost-gold {
     @apply inline-flex items-center justify-center gap-2 rounded-md border border-[rgba(212,175,55,0.35)] px-4 py-2 text-sm font-medium text-[#F5F5F5] transition hover:border-[#D4AF37] hover:text-[#D4AF37];
   }
-}
-
-::selection {
-  background: rgba(212, 175, 55, 0.35);
-  color: #fff;
-}
-
-/* Scrollbar premium */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: #0a0a0a;
-}
-::-webkit-scrollbar-thumb {
-  background: #1f1f1f;
-  border-radius: 6px;
-  border: 2px solid #0a0a0a;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #2a2a2a;
 }
