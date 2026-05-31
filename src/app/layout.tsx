@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { brand } from '@/constants/branding';
 import { PWARegister } from '@/components/pwa-register';
+import { SplashVideo } from '@/components/splash-video';
 import './globals.css';
 
 const inter = Inter({
@@ -79,6 +80,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-brand-black text-brand-text antialiased">
+        <SplashVideo />
         {children}
         <PWARegister />
       </body>
