@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
@@ -11,8 +12,13 @@ import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
 
 export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const items = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Lock scroll del body cuando el drawer está abierto
   useEffect(() => {
@@ -41,10 +47,9 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex"
-          style={{ position: 'fixed' }}
+          className="fixed inset-0 z-[2000] flex"
           role="dialog"
           aria-modal="true"
         >
@@ -103,7 +108,8 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
               })}
             </nav>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

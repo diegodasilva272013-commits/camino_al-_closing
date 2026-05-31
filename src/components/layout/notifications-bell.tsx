@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Bell, Check } from 'lucide-react';
 import { markAllNotificationsReadAction, markNotificationReadAction } from '@/app/(private)/notifications/actions';
@@ -32,18 +33,41 @@ export function NotificationsBell({
   initialItems: NotificationItem[];
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [unread, setUnread] = useState(initialUnread);
   const [items, setItems] = useState(initialItems);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
     function onClick(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-notif-root]')) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
     }
-    if (open) document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    const id = window.setTimeout(() => {
+      document.addEventListener('click', onClick);
+    }, 0);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener('click', onClick);
+    };
   }, [open]);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    }
+    setOpen((o) => !o);
+  }
 
   function handleMarkAll() {
     startTransition(async () => {
@@ -70,8 +94,9 @@ export function NotificationsBell({
   return (
     <div className="relative" data-notif-root>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-[rgba(212,175,55,0.25)] text-brand-muted transition hover:text-brand-gold active:bg-[#1a1a1a]"
         aria-label="Notificaciones"
       >
@@ -83,8 +108,12 @@ export function NotificationsBell({
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl">
+      {open && mounted && pos && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[1500] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] shadow-xl"
+          style={{ top: pos.top, right: pos.right }}
+        >
           <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.12)] px-3 py-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-gold">
               Notificaciones
@@ -148,7 +177,8 @@ export function NotificationsBell({
           >
             Ver todas
           </Link>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
