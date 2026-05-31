@@ -34,6 +34,20 @@ html.light body {
   color: #1a1410;
 }
 
+/* Clases temáticas Tailwind (no arbitrarias) */
+html.light .bg-brand-black { background-color: #f6f1e6 !important; }
+html.light .from-brand-black { --tw-gradient-from: #f6f1e6 !important; }
+html.light .to-brand-black { --tw-gradient-to: #f6f1e6 !important; }
+html.light .via-brand-black { --tw-gradient-via: #f6f1e6 !important; }
+
+/* Texto con gradiente dorado (bg-clip-text + text-transparent) → oro oscuro sólido */
+html.light .bg-clip-text.text-transparent,
+html.light [class*="bg-gradient"].text-transparent {
+  background: none !important;
+  -webkit-text-fill-color: #a67c1a !important;
+  color: #a67c1a !important;
+}
+
 /* ---- Cards / contenedores oscuros → blancos con borde dorado ---- */
 html.light .card-premium {
   background-color: #ffffff !important;
