@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getLevel } from '@/lib/levels';
 import {
   LevelProgressCard,
   PointsLegend,
 } from '@/components/community/level-badge';
 import { AvatarUploader } from './_components/avatar-uploader';
+import { AiAvatarStudio } from './_components/ai-avatar-studio';
 import { ProfileForm } from './_components/profile-form';
 import { PasswordForm } from './_components/password-form';
 
@@ -23,7 +25,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'full_name, email, avatar_url, bio, role, points, phone, city, country, website, instagram, is_public, current_streak, longest_streak'
+      'full_name, email, avatar_url, bio, role, points, phone, city, country, website, instagram, is_public, current_streak, longest_streak, ai_avatar_credits, ai_avatar_style, ai_avatar_url'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -43,6 +45,9 @@ export default async function ProfilePage() {
     is_public: boolean | null;
     current_streak: number | null;
     longest_streak: number | null;
+    ai_avatar_credits: number | null;
+    ai_avatar_style: 'pixar' | 'cartoon' | 'marvel' | null;
+    ai_avatar_url: string | null;
   };
 
   const [{ count: postsCount }, { count: commentsCount }] = await Promise.all([
@@ -149,6 +154,13 @@ export default async function ProfilePage() {
         </aside>
 
         <div className="space-y-5 lg:col-span-2">
+          <AiAvatarStudio
+            credits={p.ai_avatar_credits ?? 0}
+            currentLevel={getLevel(p.points ?? 0).level}
+            currentStyle={p.ai_avatar_style ?? null}
+            currentAiAvatar={p.ai_avatar_url ?? null}
+          />
+
           <section className="card-premium">
             <h3 className="mb-3 text-base font-semibold text-brand-text">
               🏅 Logros

@@ -29,4 +29,7 @@ export const env = {
   giphy: {
     apiKey: process.env.GIPHY_API_KEY ?? '',
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY ?? '',
+  },
 } as const;
