@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
-import { requireAdmin } from '@/lib/current-user';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
-    await requireAdmin();
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('trainer_files')
@@ -22,7 +20,6 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

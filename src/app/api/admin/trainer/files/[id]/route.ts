@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
-import { requireAdmin } from '@/lib/current-user';
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
     const supabase = createSupabaseAdminClient();
     const { error } = await supabase
       .from('trainer_files')
