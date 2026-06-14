@@ -10,34 +10,38 @@ export type CurrentUserContext = {
 };
 
 /**
- * Devuelve el usuario autenticado + su perfil. Null si no hay sesión.
+ * Devuelve el usuario autenticado + su perfil. Null si no hay sesión o si Supabase no está configurado.
  */
 export async function getCurrentUserContext(): Promise<CurrentUserContext | null> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, full_name, avatar_url, email')
-    .eq('id', user.id)
-    .maybeSingle();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, full_name, avatar_url, email')
+      .eq('id', user.id)
+      .maybeSingle();
 
-  const role = ((profile as { role?: string } | null)?.role ?? 'student') as
-    | 'student'
-    | 'mentor'
-    | 'admin';
+    const role = ((profile as { role?: string } | null)?.role ?? 'student') as
+      | 'student'
+      | 'mentor'
+      | 'admin';
 
-  return {
-    userId: user.id,
-    email: user.email ?? (profile as any)?.email ?? null,
-    fullName: (profile as any)?.full_name ?? null,
-    avatarUrl: (profile as any)?.avatar_url ?? null,
-    role,
-    isAdmin: role === 'admin',
-  };
+    return {
+      userId: user.id,
+      email: user.email ?? (profile as any)?.email ?? null,
+      fullName: (profile as any)?.full_name ?? null,
+      avatarUrl: (profile as any)?.avatar_url ?? null,
+      role,
+      isAdmin: role === 'admin',
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

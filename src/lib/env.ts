@@ -3,6 +3,10 @@
  */
 function required(name: string, value: string | undefined): string {
   if (!value) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[env] Variable de entorno faltante: ${name}. Revisa tu .env.local.`);
+      return '';
+    }
     throw new Error(
       `[env] Variable de entorno faltante: ${name}. Revisa tu .env.local.`
     );

@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Trophy,
   Bell,
+  Swords,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export type NavItem = {
 
 export const PRIVATE_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Trainer', href: '/trainer', icon: Swords },
   { label: 'Clases', href: '/classes', icon: GraduationCap },
   { label: 'Comunidad', href: '/community', icon: Users },
   { label: 'Ranking', href: '/leaderboard', icon: Trophy },
