@@ -64,14 +64,22 @@ function BrainPanel({ onClose }: { onClose: () => void }) {
     if (d.ok) setTimeout(() => setStatus(null), 2500);
   }
 
-  async function upload(file: File) {
+  async function upload(fileList: FileList | File[]) {
+    const arr = Array.from(fileList);
+    if (!arr.length) return;
     setUploading(true); setStatus(null);
-    const fd = new FormData(); fd.append('file', file);
-    const res = await fetch('/api/admin/trainer/files', { method:'POST', body: fd });
-    const d = await res.json();
+    const results = await Promise.all(arr.map(async file => {
+      const fd = new FormData(); fd.append('file', file);
+      const res = await fetch('/api/admin/trainer/files', { method:'POST', body: fd });
+      return res.json();
+    }));
     setUploading(false);
-    if (d.error) { setStatus({type:'err', msg: d.error}); }
-    else { setFiles(p => [d, ...p]); setStatus({type:'ok', msg:`"${file.name}" subido`}); setTimeout(()=>setStatus(null),2500); }
+    const errors = results.filter(r => r.error);
+    const added = results.filter(r => !r.error);
+    if (added.length) setFiles(p => [...added, ...p]);
+    if (errors.length) setStatus({type:'err', msg: errors.map((e:any)=>e.error).join(', ')});
+    else setStatus({type:'ok', msg: arr.length === 1 ? `"${arr[0].name}" subido` : `${arr.length} archivos subidos`});
+    setTimeout(()=>setStatus(null), 3000);
   }
 
   async function deleteFile(id: string, name: string) {
@@ -147,16 +155,16 @@ function BrainPanel({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <>
-              <div onDrop={e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) upload(f);}} onDragOver={e=>e.preventDefault()}
+              <div onDrop={e=>{e.preventDefault(); if(e.dataTransfer.files.length) upload(e.dataTransfer.files);}} onDragOver={e=>e.preventDefault()}
                 onClick={()=>fileRef.current?.click()}
                 className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] p-8 text-center hover:border-brand-gold/40 hover:bg-[#111] transition">
                 {uploading ? <Loader2 className="h-7 w-7 animate-spin text-brand-gold"/> : <Upload className="h-7 w-7 text-brand-muted"/>}
                 <div>
                   <p className="text-sm font-medium text-brand-text">{uploading ? 'Procesando...' : 'Arrastrá o hacé clic'}</p>
-                  <p className="text-xs text-brand-muted mt-0.5">PDF, TXT o MD — el texto se extrae automáticamente</p>
+                  <p className="text-xs text-brand-muted mt-0.5">PDF, TXT o MD · podés seleccionar varios a la vez</p>
                 </div>
-                <input ref={fileRef} type="file" accept=".pdf,.txt,.md" className="hidden"
-                  onChange={e=>{const f=e.target.files?.[0]; if(f) upload(f); e.target.value='';}} />
+                <input ref={fileRef} type="file" accept=".pdf,.txt,.md" multiple className="hidden"
+                  onChange={e=>{if(e.target.files?.length) upload(e.target.files); e.target.value='';}} />
               </div>
               {files.length === 0 ? (
                 <p className="text-center text-sm text-brand-muted py-4">No hay archivos subidos todavía</p>
