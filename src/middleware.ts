@@ -56,6 +56,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/notifications') ||
     pathname.startsWith('/search') ||
     pathname.startsWith('/u/') ||
+    pathname.startsWith('/leads') ||
+    pathname.startsWith('/reporte-diario') ||
+    pathname.startsWith('/aperturas') ||
+    pathname.startsWith('/trainer') ||
     pathname.startsWith('/admin');
 
   if (!user && isPrivateRoute) {

@@ -607,6 +607,154 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['trainer_files']['Insert']>;
         Relationships: [];
       };
+      leads: {
+        Row: {
+          id: string;
+          first_name: string;
+          last_name: string | null;
+          phone: string;
+          country: string | null;
+          source: string | null;
+          assigned_to_user_id: string | null;
+          batch_id: string | null;
+          assigned_at: string | null;
+          current_status: string;
+          follow_up_count: number;
+          max_follow_ups: number;
+          last_action_at: string | null;
+          next_follow_up_at: string | null;
+          opening_message_used: string | null;
+          notes: string | null;
+          is_closed: boolean;
+          closed_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          first_name: string;
+          last_name?: string | null;
+          phone: string;
+          country?: string | null;
+          source?: string | null;
+          assigned_to_user_id?: string | null;
+          batch_id?: string | null;
+          assigned_at?: string | null;
+          current_status?: string;
+          follow_up_count?: number;
+          max_follow_ups?: number;
+          last_action_at?: string | null;
+          next_follow_up_at?: string | null;
+          opening_message_used?: string | null;
+          notes?: string | null;
+          is_closed?: boolean;
+          closed_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['leads']['Insert']>;
+        Relationships: [];
+      };
+      lead_activities: {
+        Row: {
+          id: string;
+          lead_id: string;
+          user_id: string;
+          type: string;
+          previous_status: string | null;
+          new_status: string | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          user_id: string;
+          type: string;
+          previous_status?: string | null;
+          new_status?: string | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['lead_activities']['Insert']>;
+        Relationships: [];
+      };
+      daily_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          date: string;
+          total_assigned: number;
+          total_contacted: number;
+          total_no_contacted: number;
+          total_no_response: number;
+          total_responded: number;
+          total_interested: number;
+          total_invited_to_group: number;
+          total_entered_group: number;
+          total_active_group: number;
+          total_diagnosis_started: number;
+          total_deep_diagnosis: number;
+          total_meeting_proposed: number;
+          total_meeting_scheduled: number;
+          total_no_fit: number;
+          total_future_follow_up: number;
+          pending_follow_ups: number;
+          completed_leads: number;
+          productivity_score: number;
+          summary: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          date: string;
+          total_assigned?: number;
+          total_contacted?: number;
+          total_no_contacted?: number;
+          total_no_response?: number;
+          total_responded?: number;
+          total_interested?: number;
+          total_invited_to_group?: number;
+          total_entered_group?: number;
+          total_active_group?: number;
+          total_diagnosis_started?: number;
+          total_deep_diagnosis?: number;
+          total_meeting_proposed?: number;
+          total_meeting_scheduled?: number;
+          total_no_fit?: number;
+          total_future_follow_up?: number;
+          pending_follow_ups?: number;
+          completed_leads?: number;
+          productivity_score?: number;
+          summary?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['daily_reports']['Insert']>;
+        Relationships: [];
+      };
+      opening_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          message: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          message: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['opening_messages']['Insert']>;
+        Relationships: [];
+      };
     };
     Functions: {
       is_admin: {

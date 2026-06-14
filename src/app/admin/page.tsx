@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   ClipboardList,
   Brain,
+  Users2,
+  BarChart2,
+  FileText,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +43,9 @@ const sections = [
     desc: 'Instrucciones, reglas y material para la IA del entrenamiento.',
     icon: Brain,
   },
+  { href: '/admin/leads', label: 'Leads — Gestión', desc: 'Importar CSV y asignar leads a setters.', icon: Users2 },
+  { href: '/admin/leads-dashboard', label: 'Leads — Dashboard', desc: 'Métricas globales y ranking de setters.', icon: BarChart2 },
+  { href: '/admin/reportes', label: 'Reportes Diarios', desc: 'Ver reportes de jornada por usuario y fecha.', icon: FileText },
 ];
 
 function buildDailyBuckets(rows: { created_at: string }[], days = 30) {

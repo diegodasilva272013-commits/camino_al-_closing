@@ -8,33 +8,55 @@ import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
-import { PRIVATE_NAV, ADMIN_NAV } from './nav-items';
+import { PRIVATE_NAV, ADMIN_NAV, isNavGroup, type NavItem } from './nav-items';
+
+function NavLink({
+  item,
+  pathname,
+  onClose,
+}: {
+  item: NavItem;
+  pathname: string;
+  onClose: () => void;
+}) {
+  const Icon = item.icon;
+  const active =
+    pathname === item.href ||
+    (item.href !== '/' && pathname?.startsWith(item.href));
+  return (
+    <Link
+      href={item.href}
+      onClick={onClose}
+      className={cn(
+        'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition',
+        active
+          ? 'bg-[#1a1a1a] text-brand-gold border border-[rgba(212,175,55,0.25)]'
+          : 'text-brand-muted hover:bg-[#141414] hover:text-brand-text border border-transparent'
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="truncate">{item.label}</span>
+    </Link>
+  );
+}
 
 export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const items = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
+  const entries = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Lock scroll del body cuando el drawer está abierto
   useEffect(() => {
     if (open) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prev;
-      };
+      return () => { document.body.style.overflow = prev; };
     }
   }, [open]);
 
-  // Cerrar al cambiar de ruta
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   return (
     <div className="lg:hidden">
@@ -48,11 +70,7 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
       </button>
 
       {open && mounted && createPortal(
-        <div
-          className="fixed inset-0 z-[2000] flex"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="fixed inset-0 z-[2000] flex" role="dialog" aria-modal="true">
           <button
             type="button"
             aria-label="Cerrar menú"
@@ -84,26 +102,31 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
 
             <nav className="mt-4 flex-1 space-y-1 overflow-y-auto pr-1">
-              {items.map((item) => {
-                const Icon = item.icon;
-                const active =
-                  pathname === item.href ||
-                  (item.href !== '/' && pathname?.startsWith(item.href));
+              {entries.map((entry) => {
+                if (isNavGroup(entry)) {
+                  return (
+                    <div key={entry.groupLabel} className="mt-3 pt-3 border-t border-[rgba(212,175,55,0.08)]">
+                      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/60">
+                        {entry.groupLabel}
+                      </p>
+                      {entry.items.map((item) => (
+                        <NavLink
+                          key={item.href}
+                          item={item}
+                          pathname={pathname}
+                          onClose={() => setOpen(false)}
+                        />
+                      ))}
+                    </div>
+                  );
+                }
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition',
-                      active
-                        ? 'bg-[#1a1a1a] text-brand-gold border border-[rgba(212,175,55,0.25)]'
-                        : 'text-brand-muted hover:bg-[#141414] hover:text-brand-text border border-transparent'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
+                  <NavLink
+                    key={entry.href}
+                    item={entry}
+                    pathname={pathname}
+                    onClose={() => setOpen(false)}
+                  />
                 );
               })}
             </nav>
