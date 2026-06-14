@@ -567,6 +567,46 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['admin_audit_logs']['Insert']>;
         Relationships: [];
       };
+      trainer_brain: {
+        Row: {
+          id: number;
+          base_prompt: string;
+          rules: string;
+          mode_fria: string;
+          mode_tibia: string;
+          mode_caliente: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          base_prompt?: string;
+          rules?: string;
+          mode_fria?: string;
+          mode_tibia?: string;
+          mode_caliente?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['trainer_brain']['Insert']>;
+        Relationships: [];
+      };
+      trainer_files: {
+        Row: {
+          id: string;
+          name: string;
+          content_text: string;
+          size_bytes: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          content_text?: string;
+          size_bytes?: number | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['trainer_files']['Insert']>;
+        Relationships: [];
+      };
     };
     Functions: {
       is_admin: {
@@ -614,39 +654,6 @@ export type Database = {
           rank: number;
           created_at: string;
         }[];
-      };
-    };
-      trainer_brain: {
-        Row: {
-          id: number;
-          base_prompt: string;
-          rules: string;
-          mode_fria: string;
-          mode_tibia: string;
-          mode_caliente: string;
-          updated_at: string;
-        };
-        Insert: Partial<Database['public']['Tables']['trainer_brain']['Row']>;
-        Update: Partial<Database['public']['Tables']['trainer_brain']['Row']>;
-        Relationships: [];
-      };
-      trainer_files: {
-        Row: {
-          id: string;
-          name: string;
-          content_text: string;
-          size_bytes: number | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          content_text?: string;
-          size_bytes?: number | null;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['trainer_files']['Insert']>;
-        Relationships: [];
       };
     };
     Views: { [_ in never]: never };

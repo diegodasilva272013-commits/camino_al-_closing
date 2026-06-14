@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (ext === 'txt' || ext === 'md') {
       content_text = buffer.toString('utf-8');
     } else if (ext === 'pdf') {
-      const pdfParse = (await import('pdf-parse')).default;
+      const pdfParse = require('pdf-parse');
       const parsed = await pdfParse(buffer);
       content_text = parsed.text;
     } else {
