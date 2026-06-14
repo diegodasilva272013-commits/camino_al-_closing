@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, RotateCcw, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
+import { Send, RotateCcw, ChevronLeft, Settings } from 'lucide-react';
 
 type ScenarioId = string;
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -194,9 +195,18 @@ export default function TrainerPage() {
 
     return (
       <div className="mx-auto max-w-5xl space-y-8 px-2 py-8">
-        <div className="text-center space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
-          <p className="text-sm text-brand-muted">Elegí el escenario y practicá como en campo real</p>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
+            <p className="text-sm text-brand-muted">Elegí el escenario y practicá como en campo real</p>
+          </div>
+          <Link
+            href="/admin/trainer"
+            className="flex items-center gap-2 rounded-lg border border-[rgba(212,175,55,0.3)] bg-[#111] px-3 py-2 text-xs text-brand-gold hover:bg-[#1a1a1a] transition"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Configurar cerebro
+          </Link>
         </div>
 
         {groups.map(g => {
