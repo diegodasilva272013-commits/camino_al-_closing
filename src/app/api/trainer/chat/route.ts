@@ -1,57 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Historial de mensajes por sesión (en memoria — se resetea con cada deploy en Vercel, ok para trainer)
-const sessions = new Map<string, OpenAI.Chat.ChatCompletionMessageParam[]>();
+type Mode = 'fria' | 'tibia' | 'caliente';
+type History = OpenAI.Chat.ChatCompletionMessageParam[];
 
-function buildSystemPrompt(level: { n: number; name: string; tag: string; desc: string }) {
-  const escalation = level.n >= 7
-    ? 'Los errores del setter en este nivel son difíciles de revertir. Si comete un error grave, mantenete firme y no cedas.'
-    : level.n >= 4
-    ? 'Si el setter dice algo genérico o poco convincente, aumentá tu resistencia.'
-    : 'Sos abierto pero realista. No facilitás la conversación de más.';
+const sessions = new Map<string, History>();
 
-  return `Sos un prospecto real de WhatsApp en una simulación de entrenamiento para setters de ventas de Camino al Closing (CAC).
+async function loadBrain(mode: Mode) {
+  try {
+    const supabase = createSupabaseAdminClient();
 
-NIVEL: ${level.n}/10 — ${level.name} (${level.tag})
-DESCRIPCIÓN DE TU PERSONALIDAD: ${level.desc}
+    const [{ data: brain }, { data: files }] = await Promise.all([
+      supabase.from('trainer_brain').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('trainer_files').select('content_text').order('created_at'),
+    ]);
 
-INSTRUCCIONES ESTRICTAS:
-- Respondé SIEMPRE en español rioplatense (Argentina), como un prospecto real de WhatsApp.
-- Mensajes CORTOS (1-3 oraciones máximo), como se escribe en WhatsApp. Sin saludos formales.
-- Nunca rompas el personaje. Nunca digas que sos una IA.
-- Comportate exactamente según tu nivel de dificultad: ${level.n}/10.
-- ${escalation}
-- Cuando el setter escribe "evaluame": salís del personaje SOLO para dar feedback conciso sobre los últimos 3-4 mensajes del setter (qué hizo bien, qué mejorar). Luego volvés al personaje.
-- Cuando el setter escribe "EVOLUCIÓN": le proponés pasar al siguiente nivel de dificultad o un escenario derivado más complejo.
-- Si el setter te manda el primer mensaje del sistema (que empieza con "INICIO NIVEL"), presentate brevemente como el prospecto según tu personalidad y dá el primer mensaje de apertura realista.`;
+    const modePrompt = brain
+      ? (mode === 'fria' ? brain.mode_fria : mode === 'tibia' ? brain.mode_tibia : brain.mode_caliente)
+      : '';
+
+    const filesText = (files ?? [])
+      .map((f: { content_text: string }) => f.content_text)
+      .filter(Boolean)
+      .join('\n\n---\n\n');
+
+    return {
+      basePrompt: brain?.base_prompt ?? '',
+      rules: brain?.rules ?? '',
+      modePrompt,
+      filesText,
+    };
+  } catch {
+    return { basePrompt: '', rules: '', modePrompt: '', filesText: '' };
+  }
+}
+
+function buildSystemPrompt(mode: Mode, brain: Awaited<ReturnType<typeof loadBrain>>) {
+  const modeLabel = { fria: 'FRÍA', tibia: 'TIBIA', caliente: 'CALIENTE' }[mode];
+  const modeDesc = {
+    fria: 'El prospecto no te conoce, nunca tuvo contacto con CAC. Actitud escéptica o indiferente al principio.',
+    tibia: 'El prospecto tiene algún contacto previo (vio algo en redes, lo referenciaron, abrió un email). Curioso pero con dudas.',
+    caliente: 'El prospecto ya mostró interés activo. Está cerca de cerrar pero tiene objeciones finales o necesita el último empujón.',
+  }[mode];
+
+  const parts = [
+    `Sos un prospecto real de WhatsApp en una simulación de entrenamiento para setters de ventas de Camino al Closing (CAC).`,
+    `MODO: PROSPECCIÓN ${modeLabel}`,
+    `CONTEXTO DEL MODO: ${modeDesc}`,
+    brain.basePrompt ? `\nINSTRUCCIONES BASE DEL ENTRENADOR:\n${brain.basePrompt}` : '',
+    brain.rules ? `\nREGLAS GENERALES:\n${brain.rules}` : '',
+    brain.modePrompt ? `\nINSTRUCCIONES ESPECÍFICAS PARA ESTE MODO:\n${brain.modePrompt}` : '',
+    brain.filesText ? `\nMATERIAL DE REFERENCIA:\n${brain.filesText}` : '',
+    `\nINSTRUCCIONES SIEMPRE ACTIVAS:
+- Respondé SIEMPRE en español rioplatense, como un prospecto real de WhatsApp.
+- Mensajes CORTOS (1-3 oraciones máximo). Sin saludos formales.
+- Nunca rompas el personaje ni digas que sos una IA.
+- Cuando el setter escribe "evaluame": salís del personaje para dar feedback breve (qué hizo bien, qué mejorar) y luego volvés al personaje.
+- Cuando el setter escribe "EVOLUCIÓN": proponé un escenario más desafiante del mismo modo.
+- Si el setter manda el primer mensaje "INICIO SIMULACIÓN": presentate como el prospecto según tu modo y dá el primer mensaje de apertura realista.`,
+  ].filter(Boolean);
+
+  return parts.join('\n');
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, message, level } = await req.json() as {
+    const { sessionId, message, mode } = await req.json() as {
       sessionId: string;
       message: string;
-      level: { n: number; name: string; tag: string; desc: string };
+      mode: Mode;
     };
 
-    if (!sessions.has(sessionId)) {
-      sessions.set(sessionId, []);
-    }
-
+    if (!sessions.has(sessionId)) sessions.set(sessionId, []);
     const history = sessions.get(sessionId)!;
     history.push({ role: 'user', content: message });
 
+    const brain = await loadBrain(mode);
+    const systemPrompt = buildSystemPrompt(mode, brain);
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: buildSystemPrompt(level) },
-        ...history,
-      ],
+      messages: [{ role: 'system', content: systemPrompt }, ...history],
       temperature: 0.85,
-      max_tokens: 200,
+      max_tokens: 250,
     });
 
     const reply = completion.choices[0]?.message?.content ?? '';

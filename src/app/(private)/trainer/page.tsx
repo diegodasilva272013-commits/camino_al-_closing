@@ -1,367 +1,257 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, RotateCcw, ChevronLeft, Zap, Target, Shield, Crown } from 'lucide-react';
+import { Send, RotateCcw, ChevronLeft } from 'lucide-react';
 
-// ---------------------------------------------------------------------------
-// Datos de niveles
-// ---------------------------------------------------------------------------
-const LEVELS = [
-  { n: 1,  name: 'Campo Abierto',        diff: 1,  tag: 'INTRODUCTORIO', desc: 'Prospecto curioso, sin experiencias negativas. Apertura, rapport y propuesta sin obstáculos reales.' },
-  { n: 2,  name: 'Ocupado pero Abierto', diff: 2,  tag: 'BÁSICO',        desc: 'Poco tiempo, no hostil. Generá valor rápido sin presionar.' },
-  { n: 3,  name: 'Escéptico Racional',   diff: 3,  tag: 'BÁSICO',        desc: 'Exige razones reales. Preguntas directas, no acepta vaguedades.' },
-  { n: 4,  name: 'Quemado por Cursos',   diff: 4,  tag: 'INTERMEDIO',    desc: 'Invirtió antes y le fue mal. Desconfía del rubro. Validar sin atacar.' },
-  { n: 5,  name: 'Indiferente Real',     diff: 5,  tag: 'INTERMEDIO',    desc: 'No tiene problema que resolver. Cualificar y decidir cuándo continuar.' },
-  { n: 6,  name: 'Desconfiado Activo',   diff: 6,  tag: 'AVANZADO',      desc: 'Reconoce y nombra técnicas cuando las detecta. Autenticidad sobre técnica.' },
-  { n: 7,  name: 'Hostil Controlado',    diff: 7,  tag: 'AVANZADO',      desc: 'Empieza molesto. Desactivar la hostilidad antes de poder avanzar.' },
-  { n: 8,  name: 'Trampa Activa',        diff: 8,  tag: 'EXPERTO',       desc: 'Parece interesado pero busca que el setter prometa. Integridad bajo presión.' },
-  { n: 9,  name: 'Prospecto Complejo',   diff: 9,  tag: 'EXPERTO',       desc: 'Múltiples objeciones superpuestas. Criterio puro: leer, adaptar, priorizar.' },
-  { n: 10, name: 'Campo Real Extremo',   diff: 10, tag: 'ÉLITE',         desc: 'Lo peor posible. Todo al máximo. No solo ganar — es ver hasta dónde llegás.' },
+type Mode = 'fria' | 'tibia' | 'caliente';
+type Msg = { role: 'user' | 'assistant'; content: string };
+
+const MODES = [
+  {
+    id: 'fria' as Mode,
+    emoji: '🧊',
+    label: 'PROSPECCIÓN FRÍA',
+    desc: 'El prospecto no te conoce. Nunca tuvo contacto con CAC. Actitud escéptica o indiferente desde el primer mensaje.',
+    color: 'sky',
+    border: 'border-sky-500/30',
+    bg: 'bg-sky-500/5',
+    activeBg: 'bg-sky-500/10',
+    badge: 'text-sky-400 bg-sky-400/10 border-sky-400/30',
+    btn: 'bg-sky-500 hover:bg-sky-400',
+  },
+  {
+    id: 'tibia' as Mode,
+    emoji: '🌡️',
+    label: 'PROSPECCIÓN TIBIA',
+    desc: 'Vio algo de CAC en redes o lo referenciaron. Tiene curiosidad pero también dudas. No está convencido todavía.',
+    color: 'amber',
+    border: 'border-amber-500/30',
+    bg: 'bg-amber-500/5',
+    activeBg: 'bg-amber-500/10',
+    badge: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+    btn: 'bg-amber-500 hover:bg-amber-400',
+  },
+  {
+    id: 'caliente' as Mode,
+    emoji: '🔥',
+    label: 'PROSPECCIÓN CALIENTE',
+    desc: 'Ya mostró interés activo. Está cerca de cerrar pero tiene objeciones finales o necesita el último empujón.',
+    color: 'red',
+    border: 'border-red-500/30',
+    bg: 'bg-red-500/5',
+    activeBg: 'bg-red-500/10',
+    badge: 'text-red-400 bg-red-400/10 border-red-400/30',
+    btn: 'bg-red-500 hover:bg-red-400',
+  },
 ];
 
-const TAG_COLORS: Record<string, string> = {
-  INTRODUCTORIO: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
-  BÁSICO:        'text-sky-400 bg-sky-400/10 border-sky-400/30',
-  INTERMEDIO:    'text-amber-400 bg-amber-400/10 border-amber-400/30',
-  AVANZADO:      'text-orange-400 bg-orange-400/10 border-orange-400/30',
-  EXPERTO:       'text-red-400 bg-red-400/10 border-red-400/30',
-  ÉLITE:         'text-purple-400 bg-purple-400/10 border-purple-400/30',
-};
-
-const TAG_ICON: Record<string, React.ReactNode> = {
-  INTRODUCTORIO: <Target className="h-3 w-3" />,
-  BÁSICO:        <Target className="h-3 w-3" />,
-  INTERMEDIO:    <Zap className="h-3 w-3" />,
-  AVANZADO:      <Shield className="h-3 w-3" />,
-  EXPERTO:       <Shield className="h-3 w-3" />,
-  ÉLITE:         <Crown className="h-3 w-3" />,
-};
-
-type Level = typeof LEVELS[number];
-
-// ---------------------------------------------------------------------------
-// Tipos de mensaje
-// ---------------------------------------------------------------------------
-type Msg = {
-  role: 'user' | 'assistant';
-  content: string;
-  ts: number;
-};
-
-// ---------------------------------------------------------------------------
-// Utilidades
-// ---------------------------------------------------------------------------
 function randomId() {
   return Math.random().toString(36).slice(2);
 }
 
-function fmtTime(ts: number) {
-  return new Date(ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
 export default function TrainerPage() {
-  const [view, setView] = useState<'levels' | 'chat'>('levels');
-  const [activeLevel, setActiveLevel] = useState<Level | null>(null);
+  const [view, setView] = useState<'modes' | 'chat'>('modes');
+  const [mode, setMode] = useState<Mode | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => randomId());
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    });
-  };
+  const modeData = MODES.find(m => m.id === mode);
 
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-  async function startSimulation(level: Level) {
-    // Reset thread en el server
+  async function startMode(m: Mode) {
+    setMode(m);
+    setMessages([]);
+    setView('chat');
+    setLoading(true);
+
     await fetch('/api/trainer/chat', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId }),
     });
 
-    setActiveLevel(level);
-    setMessages([]);
-    setView('chat');
-
-    // Mensaje inicial automático: le pedimos al assistant que arranque como el prospecto
-    setLoading(true);
-    try {
-      const res = await fetch('/api/trainer/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          message: `nivel ${level.n}`,
-          level,
-        }),
-      });
-      const data = await res.json();
-      if (data.response) {
-        setMessages([{ role: 'assistant', content: data.response, ts: Date.now() }]);
-      }
-    } catch {
-      setMessages([{ role: 'assistant', content: '⚠️ Error al conectar con el servidor. Verificá OPENAI_API_KEY y CAC_ASSISTANT_ID en .env.local', ts: Date.now() }]);
-    } finally {
-      setLoading(false);
+    const res = await fetch('/api/trainer/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: 'INICIO SIMULACIÓN', mode: m }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (data.response) {
+      setMessages([{ role: 'assistant', content: data.response }]);
     }
+    setTimeout(() => inputRef.current?.focus(), 100);
   }
 
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading || !activeLevel) return;
-
-    const userMsg: Msg = { role: 'user', content: text, ts: Date.now() };
-    setMessages((prev) => [...prev, userMsg]);
+    if (!text || loading || !mode) return;
     setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/trainer/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message: text, level: activeLevel }),
-      });
-      const data = await res.json();
-      if (data.response) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.response, ts: Date.now() }]);
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: `⚠️ ${data.error ?? 'Error'}`, ts: Date.now() }]);
-      }
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠️ Error de red', ts: Date.now() }]);
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
+    const res = await fetch('/api/trainer/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: text, mode }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (data.response) {
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Vista: selector de niveles
-  // ---------------------------------------------------------------------------
-  if (view === 'levels') {
+  function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  // ── Selector de modos ──────────────────────────────────────────────
+  if (view === 'modes') {
     return (
-      <div className="min-h-screen bg-[#030303]">
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          {/* Header */}
-          <div className="mb-8 text-center">
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.32em] text-[#f5d27a]">
-              CAC TRAINER
-            </p>
-            <h1 className="font-serif text-3xl font-bold text-[#f5f1e8] md:text-4xl">
-              Simulador de Campo
-            </h1>
-            <p className="mt-3 text-sm text-[#b6ad9e]">
-              Elegí un nivel y practicá con un prospecto real de base fría de WhatsApp.
-            </p>
-          </div>
+      <div className="mx-auto max-w-3xl px-2 py-8 space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
+          <p className="text-brand-muted">Elegí el tipo de prospección para practicar</p>
+        </div>
 
-          {/* Grid de niveles */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {LEVELS.map((level) => (
-              <button
-                key={level.n}
-                onClick={() => startSimulation(level)}
-                className="group relative overflow-hidden rounded-[18px] border border-[rgba(214,164,58,0.22)] bg-gradient-to-b from-[rgba(255,255,255,0.05)] to-[rgba(255,255,255,0.018)] p-5 text-left shadow-[0_20px_50px_rgba(0,0,0,0.45)] transition-all duration-200 hover:border-[rgba(214,164,58,0.5)] hover:shadow-[0_0_30px_rgba(214,164,58,0.15)]"
-              >
-                {/* Número grande de fondo */}
-                <span className="absolute right-4 top-2 font-serif text-6xl font-bold text-white/[0.04] select-none">
-                  {level.n}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {MODES.map(m => (
+            <button
+              key={m.id}
+              onClick={() => startMode(m.id)}
+              className={`group flex flex-col items-center gap-4 rounded-2xl border p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.99] ${m.border} ${m.bg} hover:${m.activeBg}`}
+            >
+              <span className="text-5xl">{m.emoji}</span>
+              <div className="space-y-1 text-center">
+                <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-bold tracking-wider ${m.badge}`}>
+                  {m.label}
                 </span>
+                <p className="mt-2 text-xs leading-relaxed text-brand-muted">{m.desc}</p>
+              </div>
+              <span className={`mt-auto w-full rounded-lg py-2 text-center text-sm font-semibold text-white transition ${m.btn}`}>
+                Practicar
+              </span>
+            </button>
+          ))}
+        </div>
 
-                {/* Tag */}
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TAG_COLORS[level.tag]}`}>
-                  {TAG_ICON[level.tag]}
-                  {level.tag}
-                </span>
-
-                {/* Nombre */}
-                <h3 className="mt-3 font-serif text-base font-bold text-[#f5f1e8] transition group-hover:text-[#f5d27a]">
-                  Nivel {level.n} — {level.name}
-                </h3>
-
-                {/* Dificultad */}
-                <div className="mt-2 flex gap-0.5">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1 flex-1 rounded-full transition ${
-                        i < level.diff
-                          ? level.diff <= 3
-                            ? 'bg-emerald-400'
-                            : level.diff <= 5
-                            ? 'bg-amber-400'
-                            : level.diff <= 7
-                            ? 'bg-orange-400'
-                            : 'bg-red-500'
-                          : 'bg-white/10'
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                {/* Descripción */}
-                <p className="mt-3 text-xs leading-relaxed text-[#b6ad9e]">{level.desc}</p>
-
-                {/* CTA */}
-                <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#d6a43a] opacity-0 transition group-hover:opacity-100">
-                  Iniciar simulación <Send className="h-3 w-3" />
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="rounded-lg border border-[rgba(212,175,55,0.1)] bg-[#0d0d0d] p-4 text-xs text-brand-muted space-y-1">
+          <p><span className="text-brand-gold font-semibold">evaluame</span> → pedile feedback al prospecto sobre cómo venís</p>
+          <p><span className="text-brand-gold font-semibold">EVOLUCIÓN</span> → pedile un escenario más desafiante</p>
         </div>
       </div>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Vista: chat
-  // ---------------------------------------------------------------------------
+  // ── Chat ───────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-col bg-[#030303]">
-      {/* Header del chat */}
-      <header className="flex items-center gap-3 border-b border-[rgba(214,164,58,0.15)] bg-gradient-to-b from-[#0d0c08] to-[#09090b] px-4 py-3">
+    <div className="flex h-[calc(100vh-4rem)] flex-col">
+      {/* Header */}
+      <div className={`flex items-center gap-3 border-b border-[rgba(212,175,55,0.12)] px-4 py-3 ${modeData?.bg ?? ''}`}>
         <button
-          onClick={() => setView('levels')}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#b6ad9e] hover:bg-[rgba(214,164,58,0.1)] hover:text-[#d6a43a]"
+          onClick={() => setView('modes')}
+          className="rounded-md p-1.5 text-brand-muted hover:bg-[#1a1a1a] hover:text-brand-text"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-
-        {/* Avatar prospecto */}
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#1a1410] to-[#2a1f0a] ring-1 ring-[rgba(214,164,58,0.3)] text-sm font-bold text-[#d6a43a]">
-          ?
+        <span className="text-xl">{modeData?.emoji}</span>
+        <div>
+          <span className={`text-xs font-bold tracking-wider ${modeData?.badge?.split(' ')[0] ?? 'text-brand-gold'}`}>
+            {modeData?.label}
+          </span>
+          <p className="text-[11px] text-brand-muted">CAC TRAINER · Simulación activa</p>
         </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="font-serif text-sm font-bold text-[#f5f1e8]">
-              Nivel {activeLevel?.n} — {activeLevel?.name}
-            </h2>
-            <span className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider sm:inline-flex items-center gap-1 ${TAG_COLORS[activeLevel?.tag ?? 'BÁSICO']}`}>
-              {activeLevel?.tag}
-            </span>
-          </div>
-          <p className="truncate text-[11px] text-[#b6ad9e]">Prospecto de base fría — WhatsApp</p>
-        </div>
-
         <button
-          onClick={() => activeLevel && startSimulation(activeLevel)}
-          className="flex items-center gap-1.5 rounded-full border border-[rgba(214,164,58,0.2)] px-3 py-1.5 text-xs text-[#b6ad9e] hover:border-[rgba(214,164,58,0.5)] hover:text-[#d6a43a]"
-          title="Reiniciar simulación"
+          onClick={() => mode && startMode(mode)}
+          className="ml-auto flex items-center gap-1.5 rounded-md border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs text-brand-muted hover:border-brand-gold/40 hover:text-brand-text"
         >
-          <RotateCcw className="h-3 w-3" />
-          <span className="hidden sm:inline">Reiniciar</span>
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reiniciar
         </button>
-      </header>
-
-      {/* Mensajes */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4"
-        style={{
-          background: 'radial-gradient(ellipse at top, rgba(214,164,58,0.04) 0%, transparent 60%), #030303',
-        }}
-      >
-        <div className="mx-auto flex max-w-2xl flex-col gap-2">
-          {/* Hint inicial */}
-          {messages.length === 0 && !loading && (
-            <div className="py-8 text-center text-xs text-[#b6ad9e]/50">
-              Iniciando simulación…
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {/* Avatar prospecto */}
-              {msg.role === 'assistant' && (
-                <div className="mb-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#1a1410] to-[#2a1f0a] ring-1 ring-[rgba(214,164,58,0.25)] text-[10px] font-bold text-[#d6a43a]">
-                  ?
-                </div>
-              )}
-
-              <div className={`max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
-                <div
-                  className={`rounded-2xl px-3 py-2 shadow ${
-                    msg.role === 'user'
-                      ? 'rounded-br-md bg-gradient-to-br from-[#d6a43a] to-[#b8891e] text-black'
-                      : 'rounded-bl-md bg-[#16161a] text-[#f5f1e8]'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                    {msg.content}
-                  </p>
-                </div>
-                <span className={`mt-0.5 text-[10px] text-[#b6ad9e]/50 ${msg.role === 'user' ? 'text-right' : ''}`}>
-                  {fmtTime(msg.ts)}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          {/* Typing indicator */}
-          {loading && (
-            <div className="flex items-end gap-2 justify-start">
-              <div className="mb-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#1a1410] to-[#2a1f0a] ring-1 ring-[rgba(214,164,58,0.25)] text-[10px] font-bold text-[#d6a43a]">
-                ?
-              </div>
-              <div className="rounded-2xl rounded-bl-md bg-[#16161a] px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#b6ad9e]/60 [animation-delay:0ms]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#b6ad9e]/60 [animation-delay:150ms]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#b6ad9e]/60 [animation-delay:300ms]" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Hint */}
-      <div className="border-t border-[rgba(214,164,58,0.08)] bg-[#030303] px-4 py-1.5 text-center text-[10px] text-[#b6ad9e]/40">
-        <span className="text-[#f5d27a]/60">evaluame</span> → feedback ·{' '}
-        <span className="text-[#f5d27a]/60">EVOLUCIÓN</span> → drill avanzado
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" style={{ background: '#080808' }}>
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === 'user'
+                  ? 'rounded-br-sm bg-brand-gold text-black'
+                  : 'rounded-bl-sm bg-[#1a1a1a] text-brand-text border border-[rgba(212,175,55,0.08)]'
+              }`}
+            >
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-bl-sm bg-[#1a1a1a] border border-[rgba(212,175,55,0.08)] px-4 py-3">
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    className="h-2 w-2 rounded-full bg-brand-muted"
+                    style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div className="border-t border-[rgba(214,164,58,0.12)] bg-[#09090b] px-3 py-2.5">
-        <div className="mx-auto flex max-w-2xl items-end gap-2">
+      <div className="border-t border-[rgba(212,175,55,0.12)] bg-[#0a0a0a] px-4 py-3">
+        <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void sendMessage();
-              }
-            }}
-            placeholder="Escribí tu mensaje al prospecto…"
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onKey}
             rows={1}
+            placeholder="Escribí tu mensaje..."
             disabled={loading}
-            className="max-h-32 flex-1 resize-none rounded-2xl border border-[rgba(214,164,58,0.18)] bg-[#0a0a0a] px-4 py-2.5 text-sm text-[#f5f1e8] placeholder:text-[#b6ad9e]/50 focus:border-[#d6a43a] focus:outline-none disabled:opacity-50"
+            className="flex-1 resize-none rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#111] px-4 py-2.5 text-sm text-brand-text placeholder:text-brand-muted focus:border-brand-gold focus:outline-none disabled:opacity-50"
+            style={{ maxHeight: '120px' }}
+            onInput={e => {
+              const t = e.currentTarget;
+              t.style.height = 'auto';
+              t.style.height = Math.min(t.scrollHeight, 120) + 'px';
+            }}
           />
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#d6a43a] to-[#b8891e] text-black shadow-md shadow-[#d6a43a]/20 transition hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold text-black transition hover:bg-brand-gold/90 disabled:opacity-40"
           >
             <Send className="h-4 w-4" />
           </button>
         </div>
+        <p className="mt-1.5 text-center text-[10px] text-brand-muted">
+          <span className="text-brand-gold">evaluame</span> · feedback instantáneo &nbsp;|&nbsp; <span className="text-brand-gold">EVOLUCIÓN</span> · subir dificultad
+        </p>
       </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-6px); }
+        }
+      `}</style>
     </div>
   );
 }

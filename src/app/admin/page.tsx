@@ -12,6 +12,8 @@ import {
   MessageSquare,
   HelpCircle,
   ShieldCheck,
+  ClipboardList,
+  Brain,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +28,18 @@ const sections = [
   { href: '/admin/resources', label: 'Recursos', desc: 'Subir PDFs, plantillas, etc.', icon: FolderOpen },
   { href: '/admin/community', label: 'Comunidad', desc: 'Moderar posts y comentarios.', icon: MessageSquare },
   { href: '/admin/audit', label: 'Auditoría', desc: 'Historial de acciones admin.', icon: ShieldCheck },
+  {
+    href: '/admin/setters-tareas',
+    label: 'Tareas setters',
+    desc: 'Formulario de propuesta para el ejercicio del 9/6/2026.',
+    icon: ClipboardList,
+  },
+  {
+    href: '/admin/trainer',
+    label: 'Cerebro del Trainer',
+    desc: 'Instrucciones, reglas y material para la IA del entrenamiento.',
+    icon: Brain,
+  },
 ];
 
 function buildDailyBuckets(rows: { created_at: string }[], days = 30) {
