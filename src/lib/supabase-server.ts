@@ -41,7 +41,7 @@ export function createSupabaseServerClient() {
 export function createSupabaseAdminClient() {
   if (!env.supabase.serviceRoleKey) {
     throw new Error(
-      '[supabase-admin] SUPABASE_SERVICE_ROLE_KEY no está configurada en .env.local'
+      '[supabase-admin] SUPABASE_SERVICE_ROLE_KEY no está configurada (Vercel env vars)'
     );
   }
   return createClient<Database>(env.supabase.url, env.supabase.serviceRoleKey, {
