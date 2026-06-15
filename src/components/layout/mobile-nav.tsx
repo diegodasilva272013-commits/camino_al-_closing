@@ -40,11 +40,14 @@ function NavLink({
   );
 }
 
-export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
+export function MobileNav({ isAdmin = false, role = 'student' }: { isAdmin?: boolean; role?: string }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const entries = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
+  const base = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
+  const entries = base.filter((entry) =>
+    isNavGroup(entry) && entry.roles ? entry.roles.includes(role) : true
+  );
 
   useEffect(() => { setMounted(true); }, []);
 

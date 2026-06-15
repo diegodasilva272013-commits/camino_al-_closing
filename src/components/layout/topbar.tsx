@@ -15,7 +15,7 @@ function getInitials(name: string | null | undefined, email: string): string {
   return initials || 'CC';
 }
 
-export async function Topbar({ isAdmin = false }: { isAdmin?: boolean }) {
+export async function Topbar({ isAdmin = false, role = 'student' }: { isAdmin?: boolean; role?: string }) {
   let user: Awaited<ReturnType<ReturnType<typeof createSupabaseServerClient>['auth']['getUser']>>['data']['user'] = null;
   let unread = 0;
   let items: NotificationItem[] = [];
@@ -54,7 +54,7 @@ export async function Topbar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a]/90 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-8">
-      <MobileNav isAdmin={isAdmin} />
+      <MobileNav isAdmin={isAdmin} role={role} />
 
       {/* Marca en móvil (cuando el sidebar está oculto) */}
       <Link href="/dashboard" className="flex min-w-0 items-center gap-2 lg:hidden">

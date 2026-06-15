@@ -14,12 +14,12 @@ export default async function ClassesPage() {
 
   const { data: profileRaw } = await supabase
     .from('profiles')
-    .select('role, content_unlocked')
+    .select('role')
     .eq('id', user?.id ?? '')
     .maybeSingle();
-  const profile = profileRaw as { content_unlocked: boolean; role: string } | null;
+  const profile = profileRaw as { role: string } | null;
 
-  if (!profile?.content_unlocked && profile?.role !== 'admin') {
+  if (profile?.role === 'setter') {
     return <ContentLocked section="Las clases" />;
   }
 

@@ -4,7 +4,7 @@
  * Más adelante se pueden regenerar con `supabase gen types typescript`.
  */
 
-export type Role = 'student' | 'mentor' | 'admin';
+export type Role = 'student' | 'mentor' | 'admin' | 'setter';
 
 export type EventType =
   | 'live_class'

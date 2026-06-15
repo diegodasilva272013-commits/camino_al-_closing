@@ -5,8 +5,9 @@ export type CurrentUserContext = {
   email: string | null;
   fullName: string | null;
   avatarUrl: string | null;
-  role: 'student' | 'mentor' | 'admin';
+  role: 'student' | 'mentor' | 'admin' | 'setter';
   isAdmin: boolean;
+  isSetter: boolean;
 };
 
 /**
@@ -29,7 +30,8 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
     const role = ((profile as { role?: string } | null)?.role ?? 'student') as
       | 'student'
       | 'mentor'
-      | 'admin';
+      | 'admin'
+      | 'setter';
 
     return {
       userId: user.id,
@@ -38,6 +40,7 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
       avatarUrl: (profile as any)?.avatar_url ?? null,
       role,
       isAdmin: role === 'admin',
+      isSetter: role === 'setter',
     };
   } catch {
     return null;

@@ -88,7 +88,7 @@ export async function registerAction(
         .eq('id', code.id),
       adminClient
         .from('profiles')
-        .update({ access_code })
+        .update({ access_code, role: 'setter' })
         .eq('id', data.user.id),
     ]);
   }

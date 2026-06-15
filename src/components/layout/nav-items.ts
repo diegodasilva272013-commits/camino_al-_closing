@@ -29,6 +29,7 @@ export type NavGroup = {
   groupLabel: string;
   icon: LucideIcon;
   items: NavItem[];
+  roles?: string[];
 };
 
 export type NavEntry = NavItem | NavGroup;
@@ -50,6 +51,7 @@ export const PRIVATE_NAV: NavEntry[] = [
   {
     groupLabel: 'Setter',
     icon: Target,
+    roles: ['setter', 'admin'],
     items: [
       { label: 'Entrenamiento', href: '/trainer',          icon: Swords },
       { label: 'Mis Leads',     href: '/leads',            icon: Users2 },
