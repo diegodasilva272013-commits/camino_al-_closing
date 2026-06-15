@@ -297,8 +297,15 @@ on storage.objects for delete
 using (bucket_id = 'community' and public.is_admin(auth.uid()));
 
 -- =====================================================================
--- 10. Datos iniciales: desbloquear contenido para el admin
+-- 10. Datos iniciales
 -- =====================================================================
+
+-- Código de invitación por defecto para setters
+insert into public.invite_codes (code, label, max_uses, is_active)
+values ('CLOSING2025', 'Código general setters', 100, true)
+on conflict (code) do nothing;
+
+-- Desbloquear contenido para el admin
 update public.profiles
   set content_unlocked = true
   where role = 'admin';
