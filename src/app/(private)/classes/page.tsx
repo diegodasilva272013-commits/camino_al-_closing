@@ -20,7 +20,7 @@ export default async function ClassesPage() {
   const profile = profileRaw as { role: string } | null;
 
   if (profile?.role === 'setter') {
-    return <ContentLocked section="Las clases" />;
+    return <ContentLocked section="El módulo de Clases" />;
   }
 
   const { data: coursesRaw } = await supabase

@@ -23,7 +23,7 @@ export default async function ResourcesPage({
   const profile = profileRaw as { role: string } | null;
 
   if (profile?.role === 'setter') {
-    return <ContentLocked section="Los recursos" />;
+    return <ContentLocked section="El módulo de Recursos" />;
   }
 
   const activeCat = searchParams.cat ?? null;

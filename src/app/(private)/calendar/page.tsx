@@ -41,7 +41,7 @@ export default async function CalendarPage() {
   const profile = profileRaw as { role: string } | null;
 
   if (profile?.role === 'setter') {
-    return <ContentLocked section="El calendario" />;
+    return <ContentLocked section="El módulo de Calendario" />;
   }
 
   const now = new Date().toISOString();
