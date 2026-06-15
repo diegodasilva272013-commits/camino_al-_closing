@@ -39,6 +39,8 @@ export type Database = {
           longest_streak: number;
           last_active_date: string | null;
           onboarding_completed: string[];
+          content_unlocked: boolean;
+          access_code: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -61,6 +63,8 @@ export type Database = {
           longest_streak?: number;
           last_active_date?: string | null;
           onboarding_completed?: string[];
+          content_unlocked?: boolean;
+          access_code?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -731,6 +735,28 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['daily_reports']['Insert']>;
+        Relationships: [];
+      };
+      invite_codes: {
+        Row: {
+          id: string;
+          code: string;
+          label: string | null;
+          max_uses: number;
+          used_count: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          label?: string | null;
+          max_uses?: number;
+          used_count?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['invite_codes']['Insert']>;
         Relationships: [];
       };
       opening_messages: {

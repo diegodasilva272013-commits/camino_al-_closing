@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { PlayCircle, CheckCircle2, Lock } from 'lucide-react';
+import { ContentLocked } from '@/components/ui/content-locked';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,17 @@ export default async function ClassesPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { data: profileRaw } = await supabase
+    .from('profiles')
+    .select('role, content_unlocked')
+    .eq('id', user?.id ?? '')
+    .maybeSingle();
+  const profile = profileRaw as { content_unlocked: boolean; role: string } | null;
+
+  if (!profile?.content_unlocked && profile?.role !== 'admin') {
+    return <ContentLocked section="Las clases" />;
+  }
 
   const { data: coursesRaw } = await supabase
     .from('courses')

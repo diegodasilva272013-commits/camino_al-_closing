@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import type { AuthActionState } from './types';
 
 function getOrigin(): string {
@@ -38,15 +38,31 @@ export async function registerAction(
   _prev: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const full_name = String(formData.get('full_name') ?? '').trim();
-  const email = String(formData.get('email') ?? '').trim();
-  const password = String(formData.get('password') ?? '');
+  const full_name   = String(formData.get('full_name')   ?? '').trim();
+  const email       = String(formData.get('email')       ?? '').trim();
+  const password    = String(formData.get('password')    ?? '');
+  const access_code = String(formData.get('access_code') ?? '').trim().toUpperCase();
 
-  if (!full_name || !email || !password) {
+  if (!full_name || !email || !password || !access_code) {
     return { error: 'Todos los campos son obligatorios.' };
   }
   if (password.length < 6) {
     return { error: 'La contraseña debe tener al menos 6 caracteres.' };
+  }
+
+  // Validar código de acceso
+  const adminClient = createSupabaseAdminClient();
+  const { data: code } = await adminClient
+    .from('invite_codes')
+    .select('id, used_count, max_uses, is_active')
+    .eq('code', access_code)
+    .maybeSingle();
+
+  if (!code || !code.is_active) {
+    return { error: 'Código de acceso inválido.' };
+  }
+  if (code.used_count >= code.max_uses) {
+    return { error: 'Este código ya alcanzó su límite de usos.' };
   }
 
   const supabase = createSupabaseServerClient();
@@ -63,10 +79,24 @@ export async function registerAction(
     return { error: traduceError(error.message) };
   }
 
+  // Incrementar used_count y guardar access_code en el perfil
+  if (data.user) {
+    await Promise.all([
+      adminClient
+        .from('invite_codes')
+        .update({ used_count: code.used_count + 1 })
+        .eq('id', code.id),
+      adminClient
+        .from('profiles')
+        .update({ access_code })
+        .eq('id', data.user.id),
+    ]);
+  }
+
   // Si email confirmation está desactivado, Supabase devuelve sesión activa.
   if (data.session) {
     revalidatePath('/', 'layout');
-    redirect('/dashboard');
+    redirect('/onboarding');
   }
 
   return {

@@ -3,6 +3,7 @@ import { ExternalLink, Calendar as CalIcon, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { EVENT_TYPES, type EventType } from '@/constants/categories';
+import { ContentLocked } from '@/components/ui/content-locked';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,18 @@ function badgeFor(type: EventType): string {
 
 export default async function CalendarPage() {
   const supabase = createSupabaseServerClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profileRaw } = await supabase
+    .from('profiles')
+    .select('role, content_unlocked')
+    .eq('id', user?.id ?? '')
+    .maybeSingle();
+  const profile = profileRaw as { content_unlocked: boolean; role: string } | null;
+
+  if (!profile?.content_unlocked && profile?.role !== 'admin') {
+    return <ContentLocked section="El calendario" />;
+  }
 
   const now = new Date().toISOString();
   const { data: upcoming } = await supabase

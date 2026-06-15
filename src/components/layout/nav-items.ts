@@ -14,6 +14,7 @@ import {
   BarChart2,
   MessageCircle,
   Target,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -38,7 +39,6 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 export const PRIVATE_NAV: NavEntry[] = [
   { label: 'Dashboard',     href: '/dashboard',  icon: LayoutDashboard },
-  { label: 'Entrenamiento', href: '/trainer',     icon: Swords },
   { label: 'Clases',        href: '/classes',     icon: GraduationCap },
   { label: 'Comunidad',     href: '/community',   icon: Users },
   { label: 'Ranking',       href: '/leaderboard', icon: Trophy },
@@ -51,9 +51,11 @@ export const PRIVATE_NAV: NavEntry[] = [
     groupLabel: 'Setter',
     icon: Target,
     items: [
-      { label: 'Mis Leads',       href: '/leads',           icon: Users2 },
-      { label: 'Reporte Diario',  href: '/reporte-diario',  icon: BarChart2 },
-      { label: 'Aperturas',       href: '/aperturas',       icon: MessageCircle },
+      { label: 'Entrenamiento', href: '/trainer',          icon: Swords },
+      { label: 'Mis Leads',     href: '/leads',            icon: Users2 },
+      { label: 'Reporte Diario',href: '/reporte-diario',   icon: BarChart2 },
+      { label: 'Aperturas',     href: '/aperturas',        icon: MessageCircle },
+      { label: 'Mi Evolución',  href: '/setter-evolucion', icon: TrendingUp },
     ],
   },
 ];

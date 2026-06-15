@@ -3,6 +3,7 @@ import { Download, ExternalLink, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { RESOURCE_CATEGORIES } from '@/constants/categories';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { ContentLocked } from '@/components/ui/content-locked';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,19 @@ export default async function ResourcesPage({
   searchParams: { cat?: string };
 }) {
   const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: profileRaw } = await supabase
+    .from('profiles')
+    .select('role, content_unlocked')
+    .eq('id', user?.id ?? '')
+    .maybeSingle();
+  const profile = profileRaw as { content_unlocked: boolean; role: string } | null;
+
+  if (!profile?.content_unlocked && profile?.role !== 'admin') {
+    return <ContentLocked section="Los recursos" />;
+  }
+
   const activeCat = searchParams.cat ?? null;
 
   let query = supabase

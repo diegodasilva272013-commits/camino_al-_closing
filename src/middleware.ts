@@ -60,6 +60,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/reporte-diario') ||
     pathname.startsWith('/aperturas') ||
     pathname.startsWith('/trainer') ||
+    pathname.startsWith('/setter-evolucion') ||
+    pathname.startsWith('/onboarding') ||
     pathname.startsWith('/admin');
 
   if (!user && isPrivateRoute) {
@@ -67,6 +69,17 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Redirigir a onboarding si no completó la presentación
+  if (user && isPrivateRoute && pathname !== '/onboarding') {
+    const onboardingDone = user.user_metadata?.onboarding_done === true;
+    if (!onboardingDone) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   if (user && isAuthRoute) {
