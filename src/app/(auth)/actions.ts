@@ -88,7 +88,7 @@ export async function registerAction(
         .eq('id', code.id),
       adminClient
         .from('profiles')
-        .update({ access_code })
+        .update({ access_code, content_unlocked: true })
         .eq('id', data.user.id),
     ]);
   }
