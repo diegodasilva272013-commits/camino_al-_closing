@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { cn } from '@/lib/utils';
 
@@ -52,9 +52,9 @@ export default function AdminReportesPage() {
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
+        eyebrow="Admin · Reportes"
         title="Reportes Diarios"
         description={`${reports.length} reportes`}
-        icon={<FileText className="h-5 w-5 text-brand-gold" />}
       />
 
       <div className="mt-6 flex justify-end">

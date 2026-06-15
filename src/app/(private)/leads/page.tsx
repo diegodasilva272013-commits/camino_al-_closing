@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users2, RefreshCw, ChevronDown, Check, X } from 'lucide-react';
+import { Users2, RefreshCw, Check, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { LeadStatusBadge } from './_components/LeadStatusBadge';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
@@ -81,9 +81,9 @@ export default function LeadsPage() {
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
+        eyebrow="Setter · Leads"
         title="Mis Leads"
         description={`${open.length} activos · ${closed.length} cerrados`}
-        icon={<Users2 className="h-5 w-5 text-brand-gold" />}
       />
 
       <div className="mt-6 flex items-center justify-between">

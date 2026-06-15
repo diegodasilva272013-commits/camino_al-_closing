@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import { ACTIVITY_TYPES } from '@/constants/leads';
+import type { Database } from '@/types/database';
+
+type LeadUpdate = Database['public']['Tables']['leads']['Update'];
 
 export const dynamic = 'force-dynamic';
 
@@ -37,13 +40,11 @@ export async function PATCH(
       }
     }
 
-    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    const activityType: string[] = [];
+    const updates: LeadUpdate = { updated_at: new Date().toISOString() };
 
     if (body.current_status !== undefined && body.current_status !== current.current_status) {
       updates.current_status = body.current_status;
       updates.last_action_at = new Date().toISOString();
-      activityType.push(ACTIVITY_TYPES.STATUS_CHANGE);
 
       await admin.from('lead_activities').insert({
         lead_id: params.id,

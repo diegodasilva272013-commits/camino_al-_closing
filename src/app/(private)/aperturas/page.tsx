@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageCircle, Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight, MessageCircle } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { cn } from '@/lib/utils';
 
@@ -98,9 +98,9 @@ export default function AperturasPage() {
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
+        eyebrow="Setter · Aperturas"
         title="Mensajes de Apertura"
         description={`${activeCount}/5 activos`}
-        icon={<MessageCircle className="h-5 w-5 text-brand-gold" />}
       />
 
       <div className="mt-6 max-w-3xl">

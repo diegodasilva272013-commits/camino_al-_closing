@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Users2, RefreshCw, UserPlus, Filter, X } from 'lucide-react';
+import { Upload, RefreshCw, UserPlus, Filter, X } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { LeadStatusBadge } from '@/app/(private)/leads/_components/LeadStatusBadge';
 import { LEAD_STATUSES, STATUS_LABELS } from '@/constants/leads';
@@ -63,11 +63,9 @@ export default function AdminLeadsPage() {
     if (filterStatus) params.set('status', filterStatus);
     if (filterUser)   params.set('user_id', filterUser);
 
-    const [lr, ur] = await Promise.all([
-      fetch(`/api/admin/leads?${params}`).then((r) => r.json()),
-      fetch('/api/admin/leads/assign').then(() => []).catch(() => []),
-    ]);
-    setLeads(Array.isArray(lr) ? lr : []);
+    const res = await fetch(`/api/admin/leads?${params}`);
+    const data = await res.json();
+    setLeads(Array.isArray(data) ? data : []);
     setLoading(false);
   }
 
@@ -149,9 +147,9 @@ export default function AdminLeadsPage() {
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
+        eyebrow="Admin · Leads"
         title="Gestión de Leads"
         description={`${leads.length} leads · ${unassigned} sin asignar`}
-        icon={<Users2 className="h-5 w-5 text-brand-gold" />}
       />
 
       {/* Actions bar */}

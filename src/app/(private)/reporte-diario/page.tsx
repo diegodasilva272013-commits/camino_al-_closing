@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart2, Zap, Copy, Check, RefreshCw } from 'lucide-react';
+import { Zap, Copy, Check, RefreshCw, BarChart2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { cn } from '@/lib/utils';
 
@@ -101,9 +101,9 @@ export default function ReporteDiarioPage() {
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
+        eyebrow="Setter · Reporte"
         title="Reporte Diario"
         description={todayFmt}
-        icon={<BarChart2 className="h-5 w-5 text-brand-gold" />}
       />
 
       <div className="mt-6 max-w-4xl">
