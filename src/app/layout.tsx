@@ -106,12 +106,16 @@ export default function RootLayout({
               (function(){
                 var s=document.getElementById('cac-splash');
                 if(!s)return;
-                var v=s.querySelector('video');
                 var done=false;
                 function hide(){if(done)return;done=true;s.classList.add('cac-hide');setTimeout(function(){s.remove();},600);}
-                if(v){v.addEventListener('ended',hide);v.addEventListener('error',hide);v.play&&v.play().catch(function(){});}
-                setTimeout(hide,8000);
-                s.addEventListener('click',hide);
+                try{
+                  if(sessionStorage.getItem('cac:splash')){hide();return;}
+                }catch(e){}
+                var v=s.querySelector('video');
+                function finish(){try{sessionStorage.setItem('cac:splash','1');}catch(e){}hide();}
+                if(v){v.addEventListener('ended',finish);v.addEventListener('error',finish);v.play&&v.play().catch(function(){finish();});}
+                setTimeout(finish,8000);
+                s.addEventListener('click',finish);
               })();
             `,
           }}
