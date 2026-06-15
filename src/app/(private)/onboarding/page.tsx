@@ -68,13 +68,19 @@ export default function OnboardingPage() {
     if (photo) fd.append('photo', photo);
     if (audioFile) fd.append('audio', audioFile);
 
-    const res = await fetch('/api/onboarding', { method: 'POST', body: fd });
-    if (res.ok) {
-      router.push('/dashboard');
-      router.refresh();
-    } else {
-      const d = await res.json();
-      setError(d.error ?? 'Error al guardar. Intentá de nuevo.');
+    try {
+      const res = await fetch('/api/onboarding', { method: 'POST', body: fd });
+      if (res.ok) {
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        let msg = 'Error al guardar. Intentá de nuevo.';
+        try { const d = await res.json(); msg = d.error ?? msg; } catch {}
+        setError(msg);
+        setSubmitting(false);
+      }
+    } catch {
+      setError('Error de red. Revisá tu conexión e intentá de nuevo.');
       setSubmitting(false);
     }
   }

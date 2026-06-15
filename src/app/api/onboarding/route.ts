@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
       .update({ onboarding_completed: ['intro_post'] })
       .eq('id', user.id);
 
-    // Mark in auth metadata (for middleware check)
-    await supabase.auth.updateUser({
-      data: { onboarding_done: true },
+    // Mark in auth metadata via admin client (más confiable en Route Handlers)
+    await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: { onboarding_done: true },
     });
 
     return NextResponse.json({ ok: true });
