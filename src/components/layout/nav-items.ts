@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Target,
   TrendingUp,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -58,6 +59,7 @@ export const PRIVATE_NAV: NavEntry[] = [
       { label: 'Reporte Diario',href: '/reporte-diario',   icon: BarChart2 },
       { label: 'Aperturas',     href: '/aperturas',        icon: MessageCircle },
       { label: 'Mi Evolución',  href: '/setter-evolucion', icon: TrendingUp },
+      { label: 'Recursos CAC',  href: '/setter-recursos',  icon: BookOpen },
     ],
   },
 ];

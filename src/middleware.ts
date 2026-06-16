@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/aperturas') ||
     pathname.startsWith('/trainer') ||
     pathname.startsWith('/setter-evolucion') ||
+    pathname.startsWith('/setter-recursos') ||
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/admin');
 
