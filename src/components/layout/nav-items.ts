@@ -59,7 +59,8 @@ export const PRIVATE_NAV: NavEntry[] = [
       { label: 'Reporte Diario',href: '/reporte-diario',   icon: BarChart2 },
       { label: 'Aperturas',     href: '/aperturas',        icon: MessageCircle },
       { label: 'Mi Evolución',  href: '/setter-evolucion', icon: TrendingUp },
-      { label: 'Recursos CAC',  href: '/setter-recursos',  icon: BookOpen },
+      { label: 'Agendar con Diego', href: '/setter-calendario', icon: Calendar },
+      { label: 'Recursos CAC',     href: '/setter-recursos',   icon: BookOpen },
     ],
   },
 ];
