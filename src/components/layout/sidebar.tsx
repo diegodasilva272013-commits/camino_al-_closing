@@ -31,9 +31,12 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 export function Sidebar({ isAdmin = false, role = 'student' }: { isAdmin?: boolean; role?: string }) {
   const pathname = usePathname();
   const base = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
-  const entries = base.filter((entry) =>
-    isNavGroup(entry) && entry.roles ? entry.roles.includes(role) : true
-  );
+  // El admin ve todo el menú sin restricciones, sin importar el rol de los grupos.
+  const entries = isAdmin
+    ? base
+    : base.filter((entry) =>
+        isNavGroup(entry) && entry.roles ? entry.roles.includes(role) : true
+      );
 
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-[rgba(212,175,55,0.12)] lg:bg-[#0a0a0a]">

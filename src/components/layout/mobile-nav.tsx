@@ -45,9 +45,12 @@ export function MobileNav({ isAdmin = false, role = 'student' }: { isAdmin?: boo
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const base = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
-  const entries = base.filter((entry) =>
-    isNavGroup(entry) && entry.roles ? entry.roles.includes(role) : true
-  );
+  // El admin ve todo el menú sin restricciones, sin importar el rol de los grupos.
+  const entries = isAdmin
+    ? base
+    : base.filter((entry) =>
+        isNavGroup(entry) && entry.roles ? entry.roles.includes(role) : true
+      );
 
   useEffect(() => { setMounted(true); }, []);
 
