@@ -617,6 +617,7 @@ export type Database = {
           first_name: string;
           last_name: string | null;
           phone: string;
+          email: string | null;
           country: string | null;
           source: string | null;
           assigned_to_user_id: string | null;
@@ -639,6 +640,7 @@ export type Database = {
           first_name: string;
           last_name?: string | null;
           phone: string;
+          email?: string | null;
           country?: string | null;
           source?: string | null;
           assigned_to_user_id?: string | null;

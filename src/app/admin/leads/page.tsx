@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, RefreshCw, UserPlus, Filter, X } from 'lucide-react';
+import Link from 'next/link';
+import { Upload, RefreshCw, UserPlus, Filter, X, FileSpreadsheet } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { LeadStatusBadge } from '@/app/(private)/leads/_components/LeadStatusBadge';
 import { LEAD_STATUSES, STATUS_LABELS } from '@/constants/leads';
@@ -12,6 +13,7 @@ type Lead = {
   first_name: string;
   last_name: string | null;
   phone: string;
+  email: string | null;
   country: string | null;
   source: string | null;
   current_status: string;
@@ -161,6 +163,13 @@ export default function AdminLeadsPage() {
           <Upload className="h-4 w-4" />
           Importar CSV
         </button>
+        <Link
+          href="/admin/importar-leads"
+          className="flex items-center gap-2 rounded-lg border border-emerald-700/40 bg-emerald-900/15 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-900/25 transition"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Importar Excel
+        </Link>
         <button
           onClick={() => { setAssignOpen(true); setAssignResult(''); }}
           className="flex items-center gap-2 rounded-lg border border-blue-700/40 bg-blue-900/20 px-4 py-2 text-sm text-blue-300 hover:bg-blue-900/30 transition"
@@ -203,20 +212,21 @@ export default function AdminLeadsPage() {
           <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="border-b border-[rgba(212,175,55,0.08)] text-left">
-                {['Nombre', 'Teléfono', 'País', 'Fuente', 'Estado', 'Seguim.', 'Asignado a', 'Asignado', 'Lote'].map((h) => (
+                {['Nombre', 'Teléfono', 'Email', 'País', 'Fuente', 'Estado', 'Seguim.', 'Asignado a', 'Asignado', 'Lote'].map((h) => (
                   <th key={h} className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/50">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[rgba(212,175,55,0.05)]">
               {leads.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-brand-muted">No hay leads todavía.</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-brand-muted">No hay leads todavía.</td></tr>
               ) : leads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-[rgba(212,175,55,0.02)] transition">
                   <td className="px-4 py-3 font-medium text-brand-text whitespace-nowrap">
                     {lead.first_name} {lead.last_name ?? ''}
                   </td>
                   <td className="px-4 py-3 text-brand-muted font-mono text-xs">{lead.phone}</td>
+                  <td className="px-4 py-3 text-xs text-brand-muted">{lead.email ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{lead.country ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{lead.source ?? '—'}</td>
                   <td className="px-4 py-3"><LeadStatusBadge status={lead.current_status} /></td>

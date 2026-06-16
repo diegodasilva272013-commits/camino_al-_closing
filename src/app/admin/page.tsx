@@ -17,6 +17,7 @@ import {
   Users2,
   BarChart2,
   FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ const sections = [
     icon: Brain,
   },
   { href: '/admin/leads', label: 'Leads — Gestión', desc: 'Importar CSV y asignar leads a setters.', icon: Users2 },
+  { href: '/admin/importar-leads', label: 'Leads — Importar Excel', desc: 'Subir .xlsx por setter, con asignación automática.', icon: FileSpreadsheet },
   { href: '/admin/leads-dashboard', label: 'Leads — Dashboard', desc: 'Métricas globales y ranking de setters.', icon: BarChart2 },
   { href: '/admin/reportes', label: 'Reportes Diarios', desc: 'Ver reportes de jornada por usuario y fecha.', icon: FileText },
 ];
