@@ -136,6 +136,10 @@ export function MobileNav({ isAdmin = false, role = 'student' }: { isAdmin?: boo
                 );
               })}
             </nav>
+
+            <p className="mt-2 border-t border-[rgba(212,175,55,0.08)] pt-2 text-[10px] text-red-400">
+              DEBUG role={role} isAdmin={String(isAdmin)}
+            </p>
           </div>
         </div>,
         document.body

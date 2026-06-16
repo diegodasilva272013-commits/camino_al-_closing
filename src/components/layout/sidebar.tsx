@@ -77,6 +77,9 @@ export function Sidebar({ isAdmin = false, role = 'student' }: { isAdmin?: boole
         <p className="mt-1 text-xs text-brand-muted/80">
           Foco. Disciplina. Cierre.
         </p>
+        <p className="mt-2 text-[10px] text-red-400">
+          DEBUG role={role} isAdmin={String(isAdmin)}
+        </p>
       </div>
     </aside>
   );
