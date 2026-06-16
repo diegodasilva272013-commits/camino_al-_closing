@@ -23,6 +23,8 @@ const STATUS_ALIASES: Record<string, LeadStatus> = {
   pendiente: 'NO_CONTACTADO',
   contactado: 'CONTACTADO',
   'no contactado': 'NO_CONTACTADO',
+  'sin contactado': 'NO_CONTACTADO',
+  'sin contactar': 'NO_CONTACTADO',
   contesto: 'RESPONDIO',
   'contestó': 'RESPONDIO',
   respondio: 'RESPONDIO',

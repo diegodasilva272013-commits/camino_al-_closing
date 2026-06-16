@@ -57,6 +57,42 @@ function pick(row: Record<string, any>, keys: string[], fuzzyIncludes: string[] 
   return '';
 }
 
+const HEADER_KEYWORDS = [
+  'nombre',
+  'apellido',
+  'celular',
+  'telefono',
+  'whatsapp',
+  'email',
+  'correo',
+  'mail',
+  'estado',
+  'seguimiento',
+  'observaciones',
+  'status',
+  'tel',
+  'cel',
+];
+
+function findHeaderRowIndex(rows: any[][]): number {
+  let bestIdx = 0;
+  let bestScore = 0;
+  const limit = Math.min(rows.length, 10);
+  for (let i = 0; i < limit; i++) {
+    const row = rows[i] ?? [];
+    let score = 0;
+    for (const cell of row) {
+      const norm = normalizeKey(String(cell ?? ''));
+      if (norm && HEADER_KEYWORDS.some((k) => norm.includes(k))) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
+  }
+  return bestScore >= 2 ? bestIdx : 0;
+}
+
 function followUpFields(row: Record<string, any>): string {
   const parts: string[] = [];
   for (let i = 1; i <= 6; i++) {
@@ -77,8 +113,24 @@ function parseLeadsExcel(file: File): Promise<ParsedSheet[]> {
         const workbook = XLSX.read(buffer, { type: 'array' });
         const sheets: ParsedSheet[] = workbook.SheetNames.map((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
-          const headers = json.length ? Object.keys(json[0]) : [];
+          const raw = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
+          if (!raw.length) return { name: sheetName, rows: [], headers: [], rawRowCount: 0 };
+
+          const headerIdx = findHeaderRowIndex(raw);
+          const headerRow = raw[headerIdx] ?? [];
+          const headers = headerRow.map((h) => String(h ?? '').trim());
+          const dataRows = raw.slice(headerIdx + 1);
+
+          const json: Record<string, any>[] = dataRows
+            .filter((r) => (r ?? []).some((c) => String(c ?? '').trim() !== ''))
+            .map((r) => {
+              const obj: Record<string, any> = {};
+              headers.forEach((h, i) => {
+                obj[h || `col_${i}`] = r[i] ?? '';
+              });
+              return obj;
+            });
+
           const rows: ParsedRow[] = json
             .map((row) => ({
               first_name: pick(
