@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { RefreshCw, TrendingUp, Users2, Target, Calendar } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { cn } from '@/lib/utils';
@@ -132,7 +133,7 @@ export default function LeadsDashboardPage() {
               <table className="w-full min-w-[700px] text-sm">
                 <thead>
                   <tr className="border-b border-[rgba(212,175,55,0.08)]">
-                    {['#', 'Usuario', 'Leads', 'Resp.', 'Interés %', 'Resp. %', 'Reun. prop.', 'Reun. agend.', 'Pendientes'].map((h) => (
+                    {['#', 'Usuario', 'Leads', 'Resp.', 'Interés %', 'Resp. %', 'Reun. prop.', 'Reun. agend.', 'Pendientes', ''].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-brand-gold/50">
                         {h}
                       </th>
@@ -141,7 +142,7 @@ export default function LeadsDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-[rgba(212,175,55,0.05)]">
                   {ranking.length === 0 ? (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-brand-muted">Sin datos.</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-brand-muted">Sin datos.</td></tr>
                   ) : ranking.map((u, i) => (
                     <tr key={u.id} className="hover:bg-[rgba(212,175,55,0.02)] transition">
                       <td className="px-4 py-3 text-brand-gold font-bold">#{i + 1}</td>
@@ -165,6 +166,14 @@ export default function LeadsDashboardPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-brand-muted">{u.pending}</td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/leads?user_id=${u.id}`}
+                          className="text-xs text-brand-gold/80 hover:text-brand-gold underline"
+                        >
+                          Ver leads
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

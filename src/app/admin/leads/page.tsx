@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Upload, RefreshCw, UserPlus, Filter, X, FileSpreadsheet } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { LeadStatusBadge } from '@/app/(private)/leads/_components/LeadStatusBadge';
@@ -39,11 +40,12 @@ function parseCSV(text: string) {
 }
 
 export default function AdminLeadsPage() {
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterUser, setFilterUser] = useState('');
+  const [filterUser, setFilterUser] = useState(searchParams.get('user_id') ?? '');
 
   // Import modal
   const [importOpen, setImportOpen] = useState(false);
@@ -196,6 +198,26 @@ export default function AdminLeadsPage() {
           </select>
           {filterStatus && (
             <button onClick={() => setFilterStatus('')} className="text-brand-muted hover:text-brand-text">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-brand-muted" />
+          <select
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+            className="rounded-lg border border-zinc-800 bg-[#111] px-3 py-1.5 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/30"
+          >
+            <option value="">Todos los setters</option>
+            <option value="unassigned">Sin asignar</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.full_name ?? u.email}</option>
+            ))}
+          </select>
+          {filterUser && (
+            <button onClick={() => setFilterUser('')} className="text-brand-muted hover:text-brand-text">
               <X className="h-3.5 w-3.5" />
             </button>
           )}

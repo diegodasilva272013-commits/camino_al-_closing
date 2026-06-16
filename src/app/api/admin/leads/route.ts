@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
       .select('*, assignee:profiles!leads_assigned_to_user_id_fkey(id, full_name, email)')
       .order('created_at', { ascending: false });
 
-    if (userId)  query = query.eq('assigned_to_user_id', userId);
+    if (userId === 'unassigned') query = query.is('assigned_to_user_id', null);
+    else if (userId) query = query.eq('assigned_to_user_id', userId);
     if (status)  query = query.eq('current_status', status);
     if (batchId) query = query.eq('batch_id', batchId);
     if (source)  query = query.eq('source', source);
