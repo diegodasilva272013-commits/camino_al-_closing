@@ -24,9 +24,33 @@ export default function OnboardingPage() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function handlePhoto(file: File) {
-    setPhoto(file);
-    const url = URL.createObjectURL(file);
+  async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.round(bitmap.width * scale);
+      const h = Math.round(bitmap.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', quality)
+      );
+      if (!blob || blob.size >= file.size) return file;
+      return new File([blob], 'foto-presentacion.jpg', { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  }
+
+  async function handlePhoto(file: File) {
+    const compressed = await compressImage(file);
+    setPhoto(compressed);
+    const url = URL.createObjectURL(compressed);
     setPhotoPreview(url);
   }
 
@@ -68,19 +92,31 @@ export default function OnboardingPage() {
     if (photo) fd.append('photo', photo);
     if (audioFile) fd.append('audio', audioFile);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45_000);
+
     try {
-      const res = await fetch('/api/onboarding', { method: 'POST', body: fd });
+      const res = await fetch('/api/onboarding', { method: 'POST', body: fd, signal: controller.signal });
+      clearTimeout(timeout);
       if (res.ok) {
         router.push('/dashboard');
         router.refresh();
+      } else if (res.status === 413) {
+        setError('El archivo es demasiado pesado. Probá con una foto o audio más liviano.');
+        setSubmitting(false);
       } else {
         let msg = 'Error al guardar. Intentá de nuevo.';
         try { const d = await res.json(); msg = d.error ?? msg; } catch {}
         setError(msg);
         setSubmitting(false);
       }
-    } catch {
-      setError('Error de red. Revisá tu conexión e intentá de nuevo.');
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === 'AbortError') {
+        setError('La subida está tardando demasiado. Probá con una foto o audio más liviano, o revisá tu conexión.');
+      } else {
+        setError('Error de red. Revisá tu conexión e intentá de nuevo.');
+      }
       setSubmitting(false);
     }
   }

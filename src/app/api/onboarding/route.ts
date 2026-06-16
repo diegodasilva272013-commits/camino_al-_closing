@@ -3,6 +3,7 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
       if (!uploadError) {
         const { data: urlData } = admin.storage.from('community').getPublicUrl(path);
         image_url = urlData.publicUrl;
+      } else {
+        console.error('[onboarding] photo upload failed:', uploadError.message);
       }
     }
 
@@ -54,6 +57,8 @@ export async function POST(req: NextRequest) {
         const { data: urlData } = admin.storage.from('community').getPublicUrl(path);
         media_url = urlData.publicUrl;
         media_type = 'audio';
+      } else {
+        console.error('[onboarding] audio upload failed:', uploadError.message);
       }
     }
 
