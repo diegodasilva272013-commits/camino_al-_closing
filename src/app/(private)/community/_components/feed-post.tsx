@@ -197,6 +197,7 @@ export function FeedPostCard({
   const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likes, setLikes] = useState(post.likes);
+  const [removed, setRemoved] = useState(false);
   const [, startLike] = useTransition();
 
   const ytId = extractYoutubeId(post.youtube_url);
@@ -205,6 +206,8 @@ export function FeedPostCard({
   ).slice(-5);
   const lastComment = post.comments[post.comments.length - 1] ?? null;
   const dot = categoryDotColor(post.category);
+
+  if (removed) return null;
 
   if (expanded) {
     return (
@@ -222,6 +225,7 @@ export function FeedPostCard({
           post={{ ...post, likes, liked_by_me: liked }}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
+          onDeleted={() => setRemoved(true)}
         />
       </div>
     );

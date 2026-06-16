@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -497,19 +498,24 @@ export function PostCard({
   post,
   currentUserId,
   isAdmin = false,
+  onDeleted,
 }: {
   post: FeedPost;
   currentUserId: string | null;
   isAdmin?: boolean;
+  onDeleted?: () => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isLiking, startLike] = useTransition();
   const [isDeleting, startDelete] = useTransition();
   const [isSaving, startSave] = useTransition();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
   const [content, setContent] = useState(post.content);
+  const [actionError, setActionError] = useState('');
 
   const ytId = extractYoutubeId(post.youtube_url);
   const authorName = post.author.full_name ?? 'Anónimo';
@@ -520,12 +526,22 @@ export function PostCard({
     startLike(() => toggleLikeAction(post.id));
   }
 
-  function onDelete() {
-    if (!confirm('¿Eliminar esta publicación?')) return;
-    startDelete(() => deletePostAction(post.id));
+  function onConfirmDelete() {
+    setActionError('');
+    startDelete(async () => {
+      const res = await deletePostAction(post.id);
+      if (res.error) {
+        setActionError(res.error);
+        setConfirmingDelete(false);
+        return;
+      }
+      onDeleted?.();
+      router.refresh();
+    });
   }
 
   function onStartEdit() {
+    setActionError('');
     setEditText(content);
     setEditing(true);
   }
@@ -533,12 +549,16 @@ export function PostCard({
   function onSaveEdit() {
     const next = editText.trim();
     if (!next) return;
+    setActionError('');
     startSave(async () => {
       const res = await updatePostAction(post.id, next);
-      if (!res.error) {
-        setContent(next);
-        setEditing(false);
+      if (res.error) {
+        setActionError(res.error);
+        return;
       }
+      setContent(next);
+      setEditing(false);
+      router.refresh();
     });
   }
 
@@ -583,7 +603,7 @@ export function PostCard({
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] shadow-lg">
+              <div className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] shadow-lg">
                 <button
                   type="button"
                   onClick={() => {
@@ -598,7 +618,8 @@ export function PostCard({
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
-                    onDelete();
+                    setActionError('');
+                    setConfirmingDelete(true);
                   }}
                   disabled={isDeleting}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-300 hover:bg-red-500/10"
@@ -610,6 +631,36 @@ export function PostCard({
           </div>
         )}
       </div>
+
+      {confirmingDelete && (
+        <div className="mx-3 mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 sm:mx-5">
+          <p className="text-xs text-red-200">¿Eliminar esta publicación? Esta acción no se puede deshacer.</p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onConfirmDelete}
+              disabled={isDeleting}
+              className="rounded-full bg-red-500/90 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {isDeleting ? 'Eliminando…' : 'Sí, eliminar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={isDeleting}
+              className="rounded-full border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs text-brand-muted hover:text-brand-text"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {actionError && (
+        <p className="mx-3 mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 sm:mx-5">
+          {actionError}
+        </p>
+      )}
 
       <div className="space-y-3 px-3 pb-4 sm:px-5">
         {post.title && (

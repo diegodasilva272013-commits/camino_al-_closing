@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 
@@ -214,22 +214,38 @@ async function isAdminUser(
   return (data as any)?.role === 'admin';
 }
 
-export async function deletePostAction(postId: string): Promise<void> {
+export async function deletePostAction(postId: string): Promise<PostActionState> {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: 'Debes iniciar sesión.' };
+
+  const { data: post } = await (supabase as any)
+    .from('community_posts')
+    .select('user_id')
+    .eq('id', postId)
+    .maybeSingle();
+  if (!post) return { error: 'La publicación no existe.' };
 
   const admin = await isAdminUser(supabase, user.id);
-  let query = (supabase as any)
+  if (post.user_id !== user.id && !admin) {
+    return { error: 'No tenés permiso para eliminar esta publicación.' };
+  }
+
+  // Usamos el cliente admin (service role) para la mutación: las policies de
+  // RLS solo permiten al dueño modificar su fila, así que un admin borrando
+  // el post de otra persona necesita bypassear RLS. La autorización ya se
+  // verificó arriba en código de aplicación.
+  const admin_client = createSupabaseAdminClient();
+  const { error } = await admin_client
     .from('community_posts')
     .update({ is_deleted: true })
     .eq('id', postId);
-  if (!admin) query = query.eq('user_id', user.id);
+  if (error) return { error: error.message };
 
-  await query;
   revalidatePath('/community');
+  return { ok: true };
 }
 
 export async function updatePostAction(
@@ -245,14 +261,23 @@ export async function updatePostAction(
   const trimmed = content.trim();
   if (!trimmed) return { error: 'El contenido no puede estar vacío.' };
 
+  const { data: post } = await (supabase as any)
+    .from('community_posts')
+    .select('user_id')
+    .eq('id', postId)
+    .maybeSingle();
+  if (!post) return { error: 'La publicación no existe.' };
+
   const admin = await isAdminUser(supabase, user.id);
-  let query = (supabase as any)
+  if (post.user_id !== user.id && !admin) {
+    return { error: 'No tenés permiso para editar esta publicación.' };
+  }
+
+  const admin_client = createSupabaseAdminClient();
+  const { error } = await admin_client
     .from('community_posts')
     .update({ content: trimmed })
     .eq('id', postId);
-  if (!admin) query = query.eq('user_id', user.id);
-
-  const { error } = await query;
   if (error) return { error: error.message };
 
   revalidatePath('/community');
