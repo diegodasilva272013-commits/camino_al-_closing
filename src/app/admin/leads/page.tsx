@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Upload, RefreshCw, UserPlus, Filter, X, FileSpreadsheet } from 'lucide-react';
@@ -40,6 +40,14 @@ function parseCSV(text: string) {
 }
 
 export default function AdminLeadsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLeadsPageInner />
+    </Suspense>
+  );
+}
+
+function AdminLeadsPageInner() {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
