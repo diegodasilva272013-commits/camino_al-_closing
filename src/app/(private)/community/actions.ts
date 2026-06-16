@@ -202,6 +202,18 @@ export async function createCommentAction(
   return { ok: true };
 }
 
+async function isAdminUser(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  return (data as any)?.role === 'admin';
+}
+
 export async function deletePostAction(postId: string): Promise<void> {
   const supabase = createSupabaseServerClient();
   const {
@@ -209,11 +221,40 @@ export async function deletePostAction(postId: string): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await (supabase as any)
+  const admin = await isAdminUser(supabase, user.id);
+  let query = (supabase as any)
     .from('community_posts')
     .update({ is_deleted: true })
-    .eq('id', postId)
-    .eq('user_id', user.id);
+    .eq('id', postId);
+  if (!admin) query = query.eq('user_id', user.id);
+
+  await query;
+  revalidatePath('/community');
+}
+
+export async function updatePostAction(
+  postId: string,
+  content: string
+): Promise<PostActionState> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: 'Debes iniciar sesión.' };
+
+  const trimmed = content.trim();
+  if (!trimmed) return { error: 'El contenido no puede estar vacío.' };
+
+  const admin = await isAdminUser(supabase, user.id);
+  let query = (supabase as any)
+    .from('community_posts')
+    .update({ content: trimmed })
+    .eq('id', postId);
+  if (!admin) query = query.eq('user_id', user.id);
+
+  const { error } = await query;
+  if (error) return { error: error.message };
 
   revalidatePath('/community');
+  return { ok: true };
 }

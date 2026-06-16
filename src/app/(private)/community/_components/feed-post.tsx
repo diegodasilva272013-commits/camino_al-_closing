@@ -90,14 +90,34 @@ function MediaThumbnail({
   url,
   type,
   ytId,
+  imageUrl,
+  hasAudio,
 }: {
   url: string | null;
   type: MediaKind | null;
   ytId: string | null;
+  imageUrl?: string | null;
+  hasAudio?: boolean;
 }) {
   // Thumbnail enmarcado, alineado con el bloque de texto
   const wrap =
     'relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-xl border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] shadow-[0_8px_24px_-16px_rgba(0,0,0,0.6)]';
+
+  // La foto de presentación tiene prioridad visual sobre el ícono de audio.
+  if (imageUrl) {
+    return (
+      <div className={wrap}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        {hasAudio && (
+          <div className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70">
+            <Volume2 className="h-3.5 w-3.5 text-brand-gold" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!type) return null;
   if (type === 'youtube' && ytId) {
     return (
@@ -168,9 +188,11 @@ function categoryDotColor(cat: string): string {
 export function FeedPostCard({
   post,
   currentUserId,
+  isAdmin = false,
 }: {
   post: FeedPost;
   currentUserId: string | null;
+  isAdmin?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(post.liked_by_me);
@@ -196,7 +218,11 @@ export function FeedPostCard({
             ← Volver al feed
           </button>
         </div>
-        <PostCard post={{ ...post, likes, liked_by_me: liked }} currentUserId={currentUserId} />
+        <PostCard
+          post={{ ...post, likes, liked_by_me: liked }}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+        />
       </div>
     );
   }
@@ -267,11 +293,13 @@ export function FeedPostCard({
               )}
             </div>
 
-            {(post.media_type || ytId) && (
+            {(post.image_url || post.media_type || ytId) && (
               <MediaThumbnail
                 url={post.media_url}
                 type={post.media_type}
                 ytId={ytId}
+                imageUrl={post.image_url}
+                hasAudio={post.media_type === 'audio'}
               />
             )}
           </div>

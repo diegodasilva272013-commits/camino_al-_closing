@@ -19,6 +19,7 @@ import {
   toggleLikeAction,
   createCommentAction,
   deletePostAction,
+  updatePostAction,
 } from '../actions';
 import { EmojiPicker, VoiceRecorder, GifPicker } from './comment-extras';
 import { LevelBadge } from '@/components/community/level-badge';
@@ -48,6 +49,7 @@ export type FeedPost = {
   category: string;
   title: string | null;
   content: string;
+  image_url: string | null;
   media_url: string | null;
   media_type: MediaKind | null;
   youtube_url: string | null;
@@ -137,6 +139,16 @@ function Avatar({
     );
   }
   return inner;
+}
+
+function ImageBlock({ url }: { url: string | null }) {
+  if (!url) return null;
+  return (
+    <div className="relative bg-black">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="Imagen" className="max-h-[600px] w-full object-contain" />
+    </div>
+  );
 }
 
 function MediaBlock({
@@ -484,18 +496,25 @@ function CommentItem({ c }: { c: FeedComment }) {
 export function PostCard({
   post,
   currentUserId,
+  isAdmin = false,
 }: {
   post: FeedPost;
   currentUserId: string | null;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLiking, startLike] = useTransition();
   const [isDeleting, startDelete] = useTransition();
+  const [isSaving, startSave] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(post.content);
+  const [content, setContent] = useState(post.content);
 
   const ytId = extractYoutubeId(post.youtube_url);
   const authorName = post.author.full_name ?? 'Anónimo';
   const isOwner = currentUserId === post.user_id;
+  const canManage = isOwner || isAdmin;
 
   function onLike() {
     startLike(() => toggleLikeAction(post.id));
@@ -504,6 +523,23 @@ export function PostCard({
   function onDelete() {
     if (!confirm('¿Eliminar esta publicación?')) return;
     startDelete(() => deletePostAction(post.id));
+  }
+
+  function onStartEdit() {
+    setEditText(content);
+    setEditing(true);
+  }
+
+  function onSaveEdit() {
+    const next = editText.trim();
+    if (!next) return;
+    startSave(async () => {
+      const res = await updatePostAction(post.id, next);
+      if (!res.error) {
+        setContent(next);
+        setEditing(false);
+      }
+    });
   }
 
   return (
@@ -536,7 +572,7 @@ export function PostCard({
             </p>
           </div>
         </div>
-        {isOwner && (
+        {canManage && (
           <div className="relative">
             <button
               type="button"
@@ -548,6 +584,16 @@ export function PostCard({
             </button>
             {menuOpen && (
               <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-md border border-[rgba(212,175,55,0.2)] bg-[#0a0a0a] shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onStartEdit();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-brand-text hover:bg-white/5"
+                >
+                  Editar
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -569,14 +615,44 @@ export function PostCard({
         {post.title && (
           <h3 className="text-lg font-semibold text-brand-text">{post.title}</h3>
         )}
-        {post.content && (
-          <Markdown
-            source={post.content}
-            className="text-sm leading-relaxed text-brand-text/90"
-          />
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg border border-[rgba(212,175,55,0.25)] bg-[#0a0a0a] px-3 py-2 text-sm text-brand-text focus:border-brand-gold focus:outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onSaveEdit}
+                disabled={isSaving || !editText.trim()}
+                className="rounded-full bg-gold-gradient px-3 py-1.5 text-xs font-semibold text-[#0a0a0a] disabled:opacity-50"
+              >
+                {isSaving ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                disabled={isSaving}
+                className="rounded-full border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs text-brand-muted hover:text-brand-text"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          content && (
+            <Markdown
+              source={content}
+              className="text-sm leading-relaxed text-brand-text/90"
+            />
+          )
         )}
       </div>
 
+      <ImageBlock url={post.image_url} />
       <MediaBlock url={post.media_url} type={post.media_type} ytId={ytId} />
 
       <div className="flex items-center gap-3 border-t border-[rgba(212,175,55,0.1)] px-3 py-3 text-xs text-brand-muted sm:gap-4 sm:px-5">

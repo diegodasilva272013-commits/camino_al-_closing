@@ -36,7 +36,7 @@ export default async function CommunityPage({
   let query = supabase
     .from('community_posts')
     .select(
-      'id, user_id, category, title, content, media_url, media_type, youtube_url, is_pinned, created_at, profiles(id, full_name, avatar_url, points), post_likes(user_id), community_comments(id, content, media_url, media_type, created_at, profiles(id, full_name, avatar_url, points))'
+      'id, user_id, category, title, content, image_url, media_url, media_type, youtube_url, is_pinned, created_at, profiles(id, full_name, avatar_url, points), post_likes(user_id), community_comments(id, content, media_url, media_type, created_at, profiles(id, full_name, avatar_url, points))'
     )
     .eq('is_deleted', false)
     .order('is_pinned', { ascending: false })
@@ -122,6 +122,7 @@ export default async function CommunityPage({
       category: p.category,
       title: p.title,
       content: p.content,
+      image_url: p.image_url ?? null,
       media_url: p.media_url,
       media_type: p.media_type as MediaKind | null,
       youtube_url: p.youtube_url,
@@ -231,7 +232,12 @@ export default async function CommunityPage({
               </div>
             ) : (
               posts.map((p) => (
-                <FeedPostCard key={p.id} post={p} currentUserId={user?.id ?? null} />
+                <FeedPostCard
+                  key={p.id}
+                  post={p}
+                  currentUserId={user?.id ?? null}
+                  isAdmin={isAdmin}
+                />
               ))
             )}
           </div>
