@@ -17,6 +17,8 @@ type ParsedRow = {
 type ParsedSheet = {
   name: string;
   rows: ParsedRow[];
+  headers: string[];
+  rawRowCount: number;
 };
 
 type ImportResult = {
@@ -25,12 +27,31 @@ type ImportResult = {
   perSheet: { sheet: string; matchedSetter: string | null; rows: number }[];
 };
 
-function pick(row: Record<string, any>, keys: string[]): string {
+function normalizeKey(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function pick(row: Record<string, any>, keys: string[], fuzzyIncludes: string[] = []): string {
+  const normKeys = keys.map(normalizeKey);
   for (const k of Object.keys(row)) {
-    const norm = k.trim().toLowerCase();
-    if (keys.includes(norm)) {
+    const norm = normalizeKey(k);
+    if (normKeys.includes(norm)) {
       const v = row[k];
-      if (v !== undefined && v !== null) return String(v).trim();
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+  }
+  if (fuzzyIncludes.length) {
+    for (const k of Object.keys(row)) {
+      const norm = normalizeKey(k);
+      if (fuzzyIncludes.some((f) => norm.includes(f))) {
+        const v = row[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+      }
     }
   }
   return '';
@@ -57,17 +78,30 @@ function parseLeadsExcel(file: File): Promise<ParsedSheet[]> {
         const sheets: ParsedSheet[] = workbook.SheetNames.map((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+          const headers = json.length ? Object.keys(json[0]) : [];
           const rows: ParsedRow[] = json
             .map((row) => ({
-              first_name: pick(row, ['nombre', 'first name', 'firstname', 'first_name']),
-              last_name: pick(row, ['apellido', 'last name', 'lastname', 'last_name']),
-              phone: pick(row, ['celular', 'telefono', 'teléfono', 'phone', 'tel', 'whatsapp']),
-              email: pick(row, ['email', 'correo', 'e-mail', 'mail']),
-              status: pick(row, ['estado', 'status']) || 'Pendiente',
+              first_name: pick(
+                row,
+                ['nombre', 'first name', 'firstname', 'first_name', 'nombre y apellido', 'nombre completo'],
+                ['nombre']
+              ),
+              last_name: pick(
+                row,
+                ['apellido', 'last name', 'lastname', 'last_name'],
+                ['apellido', 'paterno', 'materno']
+              ),
+              phone: pick(
+                row,
+                ['celular', 'telefono', 'teléfono', 'phone', 'tel', 'whatsapp', 'numero', 'número', 'nro celular'],
+                ['cel', 'tel', 'whatsapp', 'movil', 'móvil', 'phone', 'numero', 'número', 'nro']
+              ),
+              email: pick(row, ['email', 'correo', 'e-mail', 'mail'], ['mail', 'correo']),
+              status: pick(row, ['estado', 'status'], ['estado', 'status']) || 'Pendiente',
               notes: followUpFields(row),
             }))
             .filter((r) => r.phone);
-          return { name: sheetName, rows };
+          return { name: sheetName, rows, headers, rawRowCount: json.length };
         });
         resolve(sheets);
       } catch (err) {
@@ -180,11 +214,18 @@ export function UploadLeadsExcel() {
             </button>
           </div>
 
-          <div className="mt-3 space-y-1">
+          <div className="mt-3 space-y-1.5">
             {sheets.map((s) => (
-              <div key={s.name} className="flex items-center justify-between text-xs">
-                <span className="text-brand-muted">Hoja: <span className="text-brand-gold">{s.name}</span></span>
-                <span className="text-brand-muted">{s.rows.length} leads</span>
+              <div key={s.name} className="text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-brand-muted">Hoja: <span className="text-brand-gold">{s.name}</span></span>
+                  <span className="text-brand-muted">{s.rows.length} leads ({s.rawRowCount} filas)</span>
+                </div>
+                {s.rawRowCount > 0 && s.rows.length === 0 && (
+                  <p className="mt-0.5 text-[10px] text-orange-400/80">
+                    Columnas detectadas: {s.headers.join(', ') || '(sin encabezados)'}
+                  </p>
+                )}
               </div>
             ))}
           </div>
