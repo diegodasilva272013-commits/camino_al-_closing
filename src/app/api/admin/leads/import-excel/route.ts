@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
 
     const { data: setters } = await admin
       .from('profiles')
-      .select('id, full_name')
-      .eq('role', 'setter');
+      .select('id, full_name, role')
+      .in('role', ['setter', 'admin', 'mentor']);
 
     const setterByName = new Map<string, { id: string; full_name: string | null }>();
     for (const s of setters ?? []) {
@@ -90,11 +90,35 @@ export async function POST(req: NextRequest) {
 
     function matchSetter(sheetName: string) {
       const norm = normalizeName(sheetName);
+
+      // 1. Exact match
       if (setterByName.has(norm)) return setterByName.get(norm)!;
+
+      // 2. Substring match
       for (const [name, s] of setterByName) {
         if (name.includes(norm) || norm.includes(name)) return s;
       }
-      return null;
+
+      // 3. Word-token fuzzy match (handles different order + Excel 31-char truncation)
+      const sheetWords = norm.split(/\s+/).filter(Boolean);
+      let bestMatch: { s: { id: string; full_name: string | null }; score: number } | null = null;
+
+      for (const [name, s] of setterByName) {
+        const nameWords = name.split(/\s+/).filter(Boolean);
+        let matchCount = 0;
+        for (const sw of sheetWords) {
+          // prefix match: "barr" matches "barrientos" (handles Excel truncation)
+          if (nameWords.some((nw) => nw.startsWith(sw) || sw.startsWith(nw))) {
+            matchCount++;
+          }
+        }
+        const score = matchCount / sheetWords.length;
+        if (score >= 0.6 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { s, score };
+        }
+      }
+
+      return bestMatch?.s ?? null;
     }
 
     const batchId = `xlsx-${Date.now()}`;
