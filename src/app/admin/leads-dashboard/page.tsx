@@ -1,31 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { TrendingUp, Users2, Target, Calendar, WifiOff } from 'lucide-react';
-import { PageHeader } from '@/components/layout/page-header';
+import { TrendingUp, Users2, Target, Calendar, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  NO_CONTACTADO:       { label: 'Sin contactar',    color: 'bg-zinc-700/50 text-zinc-300' },
-  APERTURA_ENVIADA:    { label: 'Apertura env.',     color: 'bg-blue-900/40 text-blue-300' },
-  CONTACTADO:          { label: 'Contactado',        color: 'bg-sky-900/40 text-sky-300' },
-  RESPONDIO:           { label: 'Respondió',         color: 'bg-cyan-900/40 text-cyan-300' },
-  INTERES_DETECTADO:   { label: 'Interesado',        color: 'bg-yellow-900/40 text-yellow-300' },
-  INVITADO_AL_GRUPO:   { label: 'Inv. grupo',        color: 'bg-orange-900/40 text-orange-300' },
-  INGRESO_AL_GRUPO:    { label: 'Ing. grupo',        color: 'bg-amber-900/40 text-amber-300' },
-  ACTIVO_EN_GRUPO:     { label: 'Activo grupo',      color: 'bg-lime-900/40 text-lime-300' },
-  DIAGNOSTICO_INICIADO:{ label: 'Diagnóstico',       color: 'bg-emerald-900/40 text-emerald-300' },
-  DIAGNOSTICO_PROFUNDO:{ label: 'Diag. profundo',    color: 'bg-teal-900/40 text-teal-300' },
-  REUNION_PROPUESTA:   { label: 'Reun. propuesta',   color: 'bg-violet-900/40 text-violet-300' },
-  REUNION_AGENDADA:    { label: 'Reun. agendada',    color: 'bg-brand-gold/20 text-brand-gold' },
-  NO_CALIFICA:         { label: 'No califica',       color: 'bg-red-900/40 text-red-400' },
-  NO_RESPONDE:         { label: 'No responde',       color: 'bg-zinc-800/60 text-zinc-400' },
-  SEGUIMIENTO_FUTURO:  { label: 'Seg. futuro',       color: 'bg-indigo-900/40 text-indigo-300' },
+  NO_CONTACTADO:        { label: 'Sin contactar',   color: 'bg-zinc-700/50 text-zinc-300' },
+  APERTURA_ENVIADA:     { label: 'Apertura env.',    color: 'bg-blue-900/40 text-blue-300' },
+  CONTACTADO:           { label: 'Contactado',       color: 'bg-sky-900/40 text-sky-300' },
+  RESPONDIO:            { label: 'Respondió',        color: 'bg-cyan-900/40 text-cyan-300' },
+  INTERES_DETECTADO:    { label: 'Interesado',       color: 'bg-yellow-900/40 text-yellow-300' },
+  INVITADO_AL_GRUPO:    { label: 'Inv. grupo',       color: 'bg-orange-900/40 text-orange-300' },
+  INGRESO_AL_GRUPO:     { label: 'Ing. grupo',       color: 'bg-amber-900/40 text-amber-300' },
+  ACTIVO_EN_GRUPO:      { label: 'Activo grupo',     color: 'bg-lime-900/40 text-lime-300' },
+  DIAGNOSTICO_INICIADO: { label: 'Diagnóstico',      color: 'bg-emerald-900/40 text-emerald-300' },
+  DIAGNOSTICO_PROFUNDO: { label: 'Diag. profundo',   color: 'bg-teal-900/40 text-teal-300' },
+  REUNION_PROPUESTA:    { label: 'Reun. propuesta',  color: 'bg-violet-900/40 text-violet-300' },
+  REUNION_AGENDADA:     { label: 'Reun. agendada',   color: 'bg-yellow-900/40 text-yellow-200' },
+  NO_CALIFICA:          { label: 'No califica',      color: 'bg-red-900/40 text-red-400' },
+  NO_RESPONDE:          { label: 'No responde',      color: 'bg-zinc-800/60 text-zinc-400' },
+  SEGUIMIENTO_FUTURO:   { label: 'Seg. futuro',      color: 'bg-indigo-900/40 text-indigo-300' },
 };
 
-type SetterData = {
+type SetterRow = {
   id: string;
   name: string;
   total: number;
@@ -50,228 +48,206 @@ type GlobalMetrics = {
   noFit: number;
 };
 
-export default function LeadsDashboardPage() {
-  const [global, setGlobal]   = useState<GlobalMetrics | null>(null);
-  const [setters, setSetters] = useState<SetterData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [live, setLive]       = useState(false);
-  const [now, setNow]         = useState(0); // tick para re-render de timeAgo
-  const [today, setToday]     = useState(''); // evita hydration mismatch
-  const channelRef = useRef<ReturnType<ReturnType<typeof createSupabaseBrowserClient>['channel']> | null>(null);
+type MetricsData = {
+  global: GlobalMetrics;
+  ranking: SetterRow[];
+};
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+export default function LeadsDashboard() {
+  const [data, setData]         = useState<MetricsData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState('');
+
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
     try {
-      const res = await fetch('/api/admin/leads/metrics');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setGlobal(data?.global ?? null);
-      setSetters(data?.ranking ?? []);
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error('[leads-dashboard] fetchData error:', err);
+      const res  = await fetch('/api/admin/leads/metrics');
+      const json = await res.json();
+      if (json && json.global) {
+        setData(json);
+        setLastUpdate(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      }
+    } catch {
+      // silently ignore
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  // Fecha solo en cliente (evita hydration mismatch por timezone)
-  useEffect(() => {
-    setToday(new Date().toLocaleDateString('es-AR', {
-      weekday: 'long', day: 'numeric', month: 'long',
-    }));
-  }, []);
+  // carga inicial
+  useEffect(() => { load(); }, [load]);
 
-  // Carga inicial
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Supabase Realtime
+  // polling cada 10 segundos
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    const channel = supabase
-      .channel('leads-live-admin')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
-        fetchData(true);
-      })
-      .subscribe((status) => {
-        setLive(status === 'SUBSCRIBED');
-      });
-    channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchData]);
-
-  // Polling de respaldo cada 15 seg
-  useEffect(() => {
-    const id = setInterval(() => fetchData(true), 15_000);
+    const id = setInterval(() => load(), 10_000);
     return () => clearInterval(id);
-  }, [fetchData]);
+  }, [load]);
 
-  // Tick para actualizar "hace X seg"
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  function timeAgo() {
-    if (!lastUpdate) return '';
-    const diff = Math.round(((now || Date.now()) - lastUpdate.getTime()) / 1000);
-    if (diff < 10) return 'ahora mismo';
-    if (diff < 60) return `hace ${diff} seg`;
-    return `hace ${Math.round(diff / 60)} min`;
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
+      </div>
+    );
   }
+
+  if (!data) {
+    return (
+      <div className="p-8 text-center text-zinc-400">
+        No se pudieron cargar los datos.{' '}
+        <button onClick={() => load(true)} className="text-yellow-400 underline">Reintentar</button>
+      </div>
+    );
+  }
+
+  const g = data.global;
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <PageHeader
-          eyebrow="Admin · Dashboard"
-          title="Leads en tiempo real"
-          description={today}
-        />
-        <div className="flex items-center gap-3 shrink-0 mt-1">
-          {/* Indicador LIVE */}
-          <div className={cn(
-            'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border transition',
-            live
-              ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-400'
-              : 'border-zinc-700 bg-zinc-900 text-zinc-500'
-          )}>
-            {live
-              ? <><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"/></span> EN VIVO</>
-              : <><WifiOff className="h-3 w-3" /> Polling</>
-            }
-          </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-yellow-500/60">Admin · Dashboard</p>
+          <h1 className="text-2xl font-bold text-white mt-1">Leads en tiempo real</h1>
           {lastUpdate && (
-            <span className="text-[11px] text-brand-muted">{timeAgo()}</span>
+            <p className="text-xs text-zinc-500 mt-0.5">Última actualización: {lastUpdate} · auto-refresh 10s</p>
           )}
+        </div>
+        <button
+          onClick={() => load(true)}
+          disabled={refreshing}
+          className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-400 hover:bg-yellow-500/20 transition disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+          Actualizar
+        </button>
+      </div>
+
+      {/* Métricas globales */}
+      <div className="mb-8">
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-3">Total del equipo</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {([
+            { label: 'Total',        value: g.total,            icon: <Users2 className="h-4 w-4" />, hi: false },
+            { label: 'Asig. hoy',    value: g.assignedToday,    icon: <Calendar className="h-4 w-4" />, hi: false },
+            { label: 'Contactados',  value: g.contacted,        icon: null, hi: false },
+            { label: 'Respondieron', value: g.responded,        icon: null, hi: false },
+            { label: 'Interesados',  value: g.interested,       icon: null, hi: true },
+            { label: 'Reun. prop.',  value: g.meetingProposed,  icon: null, hi: true },
+            { label: 'Reun. agend.', value: g.meetingScheduled, icon: <Target className="h-4 w-4" />, hi: true },
+            { label: 'No califica',  value: g.noFit,            icon: null, hi: false },
+          ] as const).map((m) => (
+            <div key={m.label} className={cn(
+              'rounded-xl border p-3 text-center',
+              m.hi
+                ? 'border-yellow-500/30 bg-yellow-500/5'
+                : 'border-white/5 bg-zinc-900/60'
+            )}>
+              {m.icon && <div className={cn('flex justify-center mb-1', m.hi ? 'text-yellow-500/50' : 'text-zinc-600')}>{m.icon}</div>}
+              <p className={cn('text-2xl font-bold', m.hi ? 'text-yellow-400' : 'text-white')}>{m.value}</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">{m.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {loading && !global ? (
-        <div className="mt-20 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
-        </div>
-      ) : global ? (
-        <>
-          {/* Métricas globales */}
-          <div className="mt-6">
-            <p className="mb-3 text-[10px] uppercase tracking-widest text-brand-gold/50">Métricas globales</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-              {[
-                { label: 'Total', value: global.total, icon: <Users2 className="h-4 w-4" /> },
-                { label: 'Hoy', value: global.assignedToday, icon: <Calendar className="h-4 w-4" /> },
-                { label: 'Contactados', value: global.contacted },
-                { label: 'Respondieron', value: global.responded },
-                { label: 'Interesados', value: global.interested, accent: true },
-                { label: 'Reun. prop.', value: global.meetingProposed, accent: true },
-                { label: 'Reun. agend.', value: global.meetingScheduled, accent: true, icon: <Target className="h-4 w-4" /> },
-                { label: 'No califica', value: global.noFit },
-              ].map((m) => (
-                <div key={m.label} className={cn(
-                  'rounded-xl border p-3 text-center',
-                  m.accent ? 'border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)]' : 'border-[rgba(212,175,55,0.08)] bg-[#0d0d0d]'
-                )}>
-                  {m.icon && <div className="flex justify-center mb-1 text-brand-gold/40">{m.icon}</div>}
-                  <p className={cn('text-xl font-bold', m.accent ? 'text-brand-gold' : 'text-brand-text')}>{m.value}</p>
-                  <p className="text-[10px] text-brand-muted mt-0.5">{m.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Por setter */}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5" /> Por setter
+        </p>
 
-          {/* Por setter */}
-          <div className="mt-8">
-            <p className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-widest text-brand-gold/50">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Estado por setter — actualización automática
-            </p>
-            <div className="space-y-3">
-              {setters.length === 0 && (
-                <p className="text-sm text-brand-muted">Sin setters con leads asignados.</p>
-              )}
-              {setters.map((s, i) => (
-                <div key={s.id} className="rounded-2xl border border-[rgba(212,175,55,0.1)] bg-[#0d0d0d] p-5">
-                  {/* Header setter */}
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 text-[11px] font-bold text-brand-gold">
-                        #{i + 1}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-brand-text">{s.name}</p>
-                        <p className="text-[11px] text-brand-muted">
-                          {s.total} leads · {s.responseRate}% respuesta · {s.interestRate}% interés
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {s.meetingScheduled > 0 && (
-                        <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2.5 py-1 text-xs font-bold text-brand-gold">
-                          {s.meetingScheduled} reun. agendada{s.meetingScheduled !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                      <Link
-                        href={`/admin/leads?user_id=${s.id}`}
-                        className="text-xs text-brand-gold/70 hover:text-brand-gold underline transition"
-                      >
-                        Ver todos →
-                      </Link>
-                    </div>
+        {data.ranking.length === 0 && (
+          <p className="text-zinc-500 text-sm">Sin setters con leads asignados aún.</p>
+        )}
+
+        <div className="space-y-3">
+          {data.ranking.map((s, i) => (
+            <div key={s.id} className="rounded-2xl border border-white/5 bg-zinc-900/60 p-5">
+
+              {/* Nombre y stats */}
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-yellow-500/30 text-[11px] font-bold text-yellow-400">
+                    #{i + 1}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-white">{s.name}</p>
+                    <p className="text-[11px] text-zinc-400">
+                      {s.total} leads · {s.responseRate}% respuesta · {s.interestRate}% interés
+                    </p>
                   </div>
-
-                  {/* Barra de progreso visual */}
-                  {s.total > 0 && (
-                    <div className="mt-3 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden flex">
-                      {[
-                        { key: 'REUNION_AGENDADA', color: 'bg-brand-gold' },
-                        { key: 'REUNION_PROPUESTA', color: 'bg-violet-500' },
-                        { key: 'DIAGNOSTICO_INICIADO', color: 'bg-emerald-500' },
-                        { key: 'INTERES_DETECTADO', color: 'bg-yellow-500' },
-                        { key: 'RESPONDIO', color: 'bg-cyan-500' },
-                        { key: 'CONTACTADO', color: 'bg-sky-600' },
-                        { key: 'NO_RESPONDE', color: 'bg-zinc-600' },
-                        { key: 'NO_CONTACTADO', color: 'bg-zinc-700' },
-                      ].map(({ key, color }) => {
-                        const pct = ((s.byStatus[key] ?? 0) / s.total) * 100;
-                        return pct > 0 ? (
-                          <div key={key} className={cn(color)} style={{ width: `${pct}%` }} title={`${STATUS_LABELS[key]?.label}: ${s.byStatus[key]}`} />
-                        ) : null;
-                      })}
-                    </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {s.meetingScheduled > 0 && (
+                    <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-400">
+                      {s.meetingScheduled} reunión{s.meetingScheduled !== 1 ? 'es' : ''} agendada{s.meetingScheduled !== 1 ? 's' : ''}
+                    </span>
                   )}
-
-                  {/* Grid de estados */}
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {Object.entries(s.byStatus)
-                      .filter(([, v]) => v > 0)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([status, count]) => {
-                        const meta = STATUS_LABELS[status];
-                        return (
-                          <Link
-                            key={status}
-                            href={`/admin/leads?user_id=${s.id}`}
-                            title={meta?.label ?? status}
-                            className={cn(
-                              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition hover:opacity-80',
-                              meta?.color ?? 'bg-zinc-800 text-zinc-400'
-                            )}
-                          >
-                            <span className="font-bold">{count}</span>
-                            <span className="opacity-80">{meta?.label ?? status}</span>
-                          </Link>
-                        );
-                      })}
-                  </div>
+                  <Link
+                    href={`/admin/leads?user_id=${s.id}`}
+                    className="text-xs text-yellow-400/60 hover:text-yellow-400 underline"
+                  >
+                    Ver leads →
+                  </Link>
                 </div>
-              ))}
+              </div>
+
+              {/* Barra de progreso */}
+              {s.total > 0 && (
+                <div className="mt-3 h-2 w-full rounded-full bg-zinc-800 overflow-hidden flex">
+                  {[
+                    { k: 'REUNION_AGENDADA',    c: 'bg-yellow-400' },
+                    { k: 'REUNION_PROPUESTA',   c: 'bg-violet-500' },
+                    { k: 'DIAGNOSTICO_INICIADO',c: 'bg-emerald-500' },
+                    { k: 'INTERES_DETECTADO',   c: 'bg-yellow-600' },
+                    { k: 'RESPONDIO',           c: 'bg-cyan-500' },
+                    { k: 'CONTACTADO',          c: 'bg-sky-700' },
+                    { k: 'NO_RESPONDE',         c: 'bg-zinc-600' },
+                    { k: 'NO_CONTACTADO',       c: 'bg-zinc-700' },
+                  ].map(({ k, c }) => {
+                    const pct = ((s.byStatus[k] ?? 0) / s.total) * 100;
+                    return pct > 0 ? (
+                      <div
+                        key={k}
+                        className={c}
+                        style={{ width: `${pct}%` }}
+                        title={`${STATUS_LABELS[k]?.label ?? k}: ${s.byStatus[k]}`}
+                      />
+                    ) : null;
+                  })}
+                </div>
+              )}
+
+              {/* Chips de estado */}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {Object.entries(s.byStatus)
+                  .filter(([, v]) => v > 0)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([status, count]) => {
+                    const meta = STATUS_LABELS[status];
+                    return (
+                      <span
+                        key={status}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium',
+                          meta?.color ?? 'bg-zinc-800 text-zinc-400'
+                        )}
+                      >
+                        <span className="font-bold">{count}</span>
+                        <span className="opacity-75">{meta?.label ?? status}</span>
+                      </span>
+                    );
+                  })}
+              </div>
+
             </div>
-          </div>
-        </>
-      ) : (
-        <div className="mt-16 text-center text-brand-muted">Sin datos disponibles.</div>
-      )}
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
