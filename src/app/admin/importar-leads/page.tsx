@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { UploadLeadsExcel } from './_components/UploadLeadsExcel';
 import { ReasignarSinSetter } from './_components/ReasignarSinSetter';
+import { LimpiarDuplicados } from './_components/LimpiarDuplicados';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,10 @@ export default function ImportarLeadsPage() {
       </Link>
 
       <div className="mt-6 max-w-2xl">
-        <UploadLeadsExcel />
+        <LimpiarDuplicados />
+        <div className="mt-6">
+          <UploadLeadsExcel />
+        </div>
         <ReasignarSinSetter />
       </div>
     </div>

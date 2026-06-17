@@ -166,8 +166,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ninguna fila tenía teléfono válido.' }, { status: 400 });
     }
 
+    // Deduplicar dentro del batch (mismo teléfono en 2 hojas del Excel → guardar solo el primero)
+    const seenInBatch = new Set<string>();
+    const insertsDeduped = inserts.filter((r) => {
+      if (seenInBatch.has(r.phone)) return false;
+      seenInBatch.add(r.phone);
+      return true;
+    });
+
     // Deduplicación: buscar teléfonos existentes con su asignación actual
-    const incomingPhones = inserts.map((r) => r.phone);
+    const incomingPhones = insertsDeduped.map((r) => r.phone);
     const PHONE_CHUNK = 500;
     // phone → { assigned: boolean }
     const existingMap = new Map<string, { assigned: boolean }>();
@@ -183,13 +191,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Leads nuevos → insertar
-    const newInserts = inserts.filter((r) => !existingMap.has(r.phone));
+    const newInserts = insertsDeduped.filter((r) => !existingMap.has(r.phone));
     // Leads ya existentes pero SIN asignar y que ahora tienen setter → actualizar
-    const toReassign = inserts.filter((r) => {
+    const toReassign = insertsDeduped.filter((r) => {
       const ex = existingMap.get(r.phone);
       return ex && !ex.assigned && r.assigned_to_user_id;
     });
-    const skipped = inserts.length - newInserts.length - toReassign.length;
+    const skipped = insertsDeduped.length - newInserts.length - toReassign.length;
 
     // Actualizar asignación de leads que estaban sin setter
     let reassigned = 0;
