@@ -61,6 +61,7 @@ export const PRIVATE_NAV: NavEntry[] = [
       { label: 'Mi Evolución',  href: '/setter-evolucion', icon: TrendingUp },
       { label: 'Agendar con Diego', href: '/setter-calendario', icon: Calendar },
       { label: 'Recursos CAC',     href: '/setter-recursos',   icon: BookOpen },
+      { label: 'Evolución del equipo', href: '/admin/evolucion', icon: TrendingUp, adminOnly: true },
     ],
   },
 ];

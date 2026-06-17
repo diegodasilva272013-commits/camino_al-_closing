@@ -19,6 +19,7 @@ import {
   BarChart2,
   FileText,
   FileSpreadsheet,
+  TrendingUp,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,7 @@ const sections = [
   { href: '/admin/importar-leads', label: 'Leads — Importar Excel', desc: 'Subir .xlsx por setter, con asignación automática.', icon: FileSpreadsheet },
   { href: '/admin/leads-dashboard', label: 'Leads — Dashboard', desc: 'Métricas globales y ranking de setters.', icon: BarChart2 },
   { href: '/admin/reportes', label: 'Reportes Diarios', desc: 'Ver reportes de jornada por usuario y fecha.', icon: FileText },
+  { href: '/admin/evolucion', label: 'Evolución CAC', desc: 'Seguimiento de capacidades, patrones e intervenciones por setter.', icon: TrendingUp },
 ];
 
 function buildDailyBuckets(rows: { created_at: string }[], days = 30) {

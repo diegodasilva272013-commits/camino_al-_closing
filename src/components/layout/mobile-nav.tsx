@@ -122,14 +122,16 @@ export function MobileNav({ isAdmin = false, role = 'student', newSignupsToday =
                       <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/60">
                         {entry.groupLabel}
                       </p>
-                      {entry.items.map((item) => (
-                        <NavLink
-                          key={item.href}
-                          item={item}
-                          pathname={pathname}
-                          onClose={() => setOpen(false)}
-                        />
-                      ))}
+                      {entry.items
+                        .filter((item) => (item.adminOnly ? isAdmin : true))
+                        .map((item) => (
+                          <NavLink
+                            key={item.href}
+                            item={item}
+                            pathname={pathname}
+                            onClose={() => setOpen(false)}
+                          />
+                        ))}
                     </div>
                   );
                 }
@@ -145,9 +147,6 @@ export function MobileNav({ isAdmin = false, role = 'student', newSignupsToday =
               })}
             </nav>
 
-            <p className="mt-2 border-t border-[rgba(212,175,55,0.08)] pt-2 text-[10px] text-red-400">
-              DEBUG role={role} isAdmin={String(isAdmin)}
-            </p>
           </div>
         </div>,
         document.body

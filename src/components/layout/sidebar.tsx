@@ -65,9 +65,11 @@ export function Sidebar({ isAdmin = false, role = 'student', newSignupsToday = 0
                 <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/60">
                   {entry.groupLabel}
                 </p>
-                {entry.items.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} />
-                ))}
+                {entry.items
+                  .filter((item) => (item.adminOnly ? isAdmin : true))
+                  .map((item) => (
+                    <NavLink key={item.href} item={item} pathname={pathname} />
+                  ))}
               </div>
             );
           }
@@ -81,9 +83,6 @@ export function Sidebar({ isAdmin = false, role = 'student', newSignupsToday = 0
         </p>
         <p className="mt-1 text-xs text-brand-muted/80">
           Foco. Disciplina. Cierre.
-        </p>
-        <p className="mt-2 text-[10px] text-red-400">
-          DEBUG role={role} isAdmin={String(isAdmin)}
         </p>
       </div>
     </aside>
