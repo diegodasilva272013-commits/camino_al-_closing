@@ -166,16 +166,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ninguna fila tenía teléfono válido.' }, { status: 400 });
     }
 
+    // Deduplicación: filtrar teléfonos que ya existen en la BD
+    const incomingPhones = inserts.map((r) => r.phone);
+    const PHONE_CHUNK = 500;
+    const existingPhones = new Set<string>();
+    for (let i = 0; i < incomingPhones.length; i += PHONE_CHUNK) {
+      const chunk = incomingPhones.slice(i, i + PHONE_CHUNK);
+      const { data: existing } = await admin
+        .from('leads')
+        .select('phone')
+        .in('phone', chunk);
+      for (const row of existing ?? []) existingPhones.add(row.phone);
+    }
+    const newInserts = inserts.filter((r) => !existingPhones.has(r.phone));
+    const skipped = inserts.length - newInserts.length;
+
+    if (!newInserts.length) {
+      return NextResponse.json({
+        imported: 0,
+        skipped,
+        batch_id: batchId,
+        perSheet,
+        message: `Todos los leads ya existían (${skipped} duplicados omitidos).`,
+      });
+    }
+
     const CHUNK = 500;
     let imported = 0;
-    for (let i = 0; i < inserts.length; i += CHUNK) {
-      const chunk = inserts.slice(i, i + CHUNK);
+    for (let i = 0; i < newInserts.length; i += CHUNK) {
+      const chunk = newInserts.slice(i, i + CHUNK);
       const { data, error } = await admin.from('leads').insert(chunk).select('id');
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       imported += data?.length ?? 0;
     }
 
-    return NextResponse.json({ imported, batch_id: batchId, perSheet });
+    return NextResponse.json({ imported, skipped, batch_id: batchId, perSheet });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

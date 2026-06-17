@@ -23,8 +23,10 @@ type ParsedSheet = {
 
 type ImportResult = {
   imported: number;
+  skipped?: number;
   batch_id: string;
   perSheet: { sheet: string; matchedSetter: string | null; rows: number }[];
+  message?: string;
 };
 
 function normalizeKey(s: string): string {
@@ -302,6 +304,14 @@ export function UploadLeadsExcel() {
           <p className="text-sm font-semibold text-emerald-400">
             ✅ {result.imported} leads importados · Lote {result.batch_id}
           </p>
+          {(result.skipped ?? 0) > 0 && (
+            <p className="mt-1 text-xs text-zinc-400">
+              {result.skipped} duplicados omitidos (teléfono ya existía en la BD)
+            </p>
+          )}
+          {result.message && (
+            <p className="mt-1 text-xs text-amber-400">{result.message}</p>
+          )}
           <div className="mt-3 space-y-1.5">
             {result.perSheet.map((s) => (
               <div key={s.sheet} className="flex items-center justify-between text-xs">
