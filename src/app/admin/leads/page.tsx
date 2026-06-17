@@ -69,6 +69,23 @@ function AdminLeadsPageInner() {
   const [assigning, setAssigning] = useState(false);
   const [assignResult, setAssignResult] = useState('');
 
+  // Inline status edit
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function patchLead(id: string, body: Record<string, unknown>) {
+    setSaving(id);
+    const res = await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setLeads((prev) => prev.map((l) => l.id === id ? { ...l, ...updated } : l));
+    }
+    setSaving(null);
+  }
+
   async function load() {
     setLoading(true);
     const params = new URLSearchParams();
@@ -259,7 +276,12 @@ function AdminLeadsPageInner() {
                   <td className="px-4 py-3 text-xs text-brand-muted">{lead.email ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{lead.country ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{lead.source ?? '—'}</td>
-                  <td className="px-4 py-3"><LeadStatusBadge status={lead.current_status} /></td>
+                  <td className="px-4 py-3">
+                    <LeadStatusBadge
+                      status={lead.current_status}
+                      onChange={saving === lead.id ? undefined : (s) => patchLead(lead.id, { current_status: s })}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-xs text-brand-muted text-center">{lead.follow_up_count}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">
                     {lead.assignee?.full_name ?? lead.assignee?.email ?? (
