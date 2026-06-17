@@ -209,7 +209,7 @@ export default function LeadsDashboard() {
                     { k: 'NO_RESPONDE',         c: 'bg-zinc-600' },
                     { k: 'NO_CONTACTADO',       c: 'bg-zinc-700' },
                   ].map(({ k, c }) => {
-                    const pct = ((s.byStatus[k] ?? 0) / s.total) * 100;
+                    const pct = (((s.byStatus ?? {})[k] ?? 0) / s.total) * 100;
                     return pct > 0 ? (
                       <div
                         key={k}
@@ -224,7 +224,7 @@ export default function LeadsDashboard() {
 
               {/* Chips de estado */}
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {Object.entries(s.byStatus)
+                {Object.entries(s.byStatus ?? {})
                   .filter(([, v]) => v > 0)
                   .sort(([, a], [, b]) => b - a)
                   .map(([status, count]) => {
