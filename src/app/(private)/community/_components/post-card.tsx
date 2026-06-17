@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -216,6 +216,17 @@ function MediaBlock({
   return null;
 }
 
+type MentionUser = { id: string; full_name: string };
+
+function renderWithMentions(text: string): React.ReactNode {
+  const parts = text.split(/(@\[[^\]]+\])/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^@\[([^\]]+)\]$/);
+    if (match) return <span key={i} className="font-semibold text-brand-gold">@{match[1]}</span>;
+    return part;
+  });
+}
+
 function CommentComposer({ postId }: { postId: string }) {
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -226,6 +237,44 @@ function CommentComposer({ postId }: { postId: string }) {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchMentions = useCallback((q: string) => {
+    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current);
+    mentionTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/community/mention-search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setMentionResults(Array.isArray(data) ? data : []);
+        setMentionOpen(Array.isArray(data) && data.length > 0);
+      } catch { setMentionResults([]); }
+    }, 200);
+  }, []);
+
+  function handleTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setText(val);
+    const lastWord = val.split(/\s/).at(-1) ?? '';
+    if (lastWord.startsWith('@') && lastWord.length > 1) {
+      fetchMentions(lastWord.slice(1));
+    } else {
+      setMentionOpen(false);
+      setMentionResults([]);
+    }
+  }
+
+  function selectMention(user: MentionUser) {
+    const newText = text.replace(/@[^\s]*$/, `@[${user.full_name}] `);
+    setText(newText);
+    setMentionOpen(false);
+    setMentionResults([]);
+    inputRef.current?.focus();
+  }
+
+  useEffect(() => () => { if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current); }, []);
 
   function pickFile(accept: string) {
     if (fileRef.current) {
@@ -403,14 +452,32 @@ function CommentComposer({ postId }: { postId: string }) {
           <VoiceRecorder onChange={(f) => handleFile(f)} />
         </div>
 
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Escribe un comentario…"
-          className="flex-1 rounded-full border border-[rgba(212,175,55,0.18)] bg-[#0c0c0c] px-4 py-2 text-sm text-brand-text placeholder:text-brand-muted/60 focus:border-brand-gold focus:outline-none"
-        />
+        <div className="relative flex-1">
+          {mentionOpen && mentionResults.length > 0 && (
+            <div className="absolute bottom-full left-0 z-50 mb-1 w-56 overflow-hidden rounded-xl border border-[rgba(212,175,55,0.25)] bg-[#111] shadow-xl">
+              {mentionResults.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); selectMention(u); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand-text hover:bg-[rgba(212,175,55,0.08)]"
+                >
+                  <span className="text-brand-gold">@</span>
+                  {u.full_name}
+                </button>
+              ))}
+            </div>
+          )}
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={handleTextChange}
+            onBlur={() => setTimeout(() => setMentionOpen(false), 150)}
+            placeholder="Escribe un comentario… (@nombre para mencionar)"
+            className="w-full rounded-full border border-[rgba(212,175,55,0.18)] bg-[#0c0c0c] px-4 py-2 text-sm text-brand-text placeholder:text-brand-muted/60 focus:border-brand-gold focus:outline-none"
+          />
+        </div>
         <button
           type="submit"
           disabled={isPending || (!text.trim() && !file && !gif)}
@@ -457,7 +524,7 @@ function CommentItem({ c }: { c: FeedComment }) {
         </div>
         {hasContent && (
           <p className="mt-1 whitespace-pre-wrap text-sm text-brand-text/90">
-            {c.content}
+            {renderWithMentions(c.content!)}
           </p>
         )}
         {c.media_url && c.media_type === 'image' && (

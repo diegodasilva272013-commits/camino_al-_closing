@@ -198,6 +198,41 @@ export async function createCommentAction(
   });
   if (error) return { error: error.message };
 
+  // Enviar notificaciones a usuarios mencionados con @[Nombre]
+  if (content) {
+    const mentionRegex = /@\[([^\]]+)\]/g;
+    const mentioned: string[] = [];
+    let m;
+    while ((m = mentionRegex.exec(content)) !== null) mentioned.push(m[1]);
+
+    if (mentioned.length > 0) {
+      const admin = createSupabaseAdminClient();
+      const { data: actor } = await admin.from('profiles').select('full_name').eq('id', user.id).single();
+      const actorName = (actor as any)?.full_name ?? 'Alguien';
+      const bodyText = content.replace(/@\[([^\]]+)\]/g, '@$1').slice(0, 120);
+
+      await Promise.all(
+        [...new Set(mentioned)].map(async (name) => {
+          const { data: target } = await admin
+            .from('profiles')
+            .select('id')
+            .ilike('full_name', name)
+            .maybeSingle();
+          if (target && (target as any).id !== user.id) {
+            await admin.from('notifications').insert({
+              user_id: (target as any).id,
+              actor_id: user.id,
+              type: 'comment_reply',
+              title: `${actorName} te mencionó en un comentario`,
+              body: bodyText,
+              link: '/community',
+            });
+          }
+        })
+      );
+    }
+  }
+
   revalidatePath('/community');
   return { ok: true };
 }
