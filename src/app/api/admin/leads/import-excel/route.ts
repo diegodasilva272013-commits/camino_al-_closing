@@ -166,29 +166,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ninguna fila tenía teléfono válido.' }, { status: 400 });
     }
 
-    // Deduplicación: filtrar teléfonos que ya existen en la BD
+    // Deduplicación: buscar teléfonos existentes con su asignación actual
     const incomingPhones = inserts.map((r) => r.phone);
     const PHONE_CHUNK = 500;
-    const existingPhones = new Set<string>();
+    // phone → { assigned: boolean }
+    const existingMap = new Map<string, { assigned: boolean }>();
     for (let i = 0; i < incomingPhones.length; i += PHONE_CHUNK) {
       const chunk = incomingPhones.slice(i, i + PHONE_CHUNK);
       const { data: existing } = await admin
         .from('leads')
-        .select('phone')
+        .select('phone, assigned_to_user_id')
         .in('phone', chunk);
-      for (const row of existing ?? []) existingPhones.add(row.phone);
+      for (const row of existing ?? []) {
+        existingMap.set(row.phone, { assigned: !!row.assigned_to_user_id });
+      }
     }
-    const newInserts = inserts.filter((r) => !existingPhones.has(r.phone));
-    const skipped = inserts.length - newInserts.length;
 
-    if (!newInserts.length) {
-      return NextResponse.json({
-        imported: 0,
-        skipped,
-        batch_id: batchId,
-        perSheet,
-        message: `Todos los leads ya existían (${skipped} duplicados omitidos).`,
-      });
+    // Leads nuevos → insertar
+    const newInserts = inserts.filter((r) => !existingMap.has(r.phone));
+    // Leads ya existentes pero SIN asignar y que ahora tienen setter → actualizar
+    const toReassign = inserts.filter((r) => {
+      const ex = existingMap.get(r.phone);
+      return ex && !ex.assigned && r.assigned_to_user_id;
+    });
+    const skipped = inserts.length - newInserts.length - toReassign.length;
+
+    // Actualizar asignación de leads que estaban sin setter
+    let reassigned = 0;
+    for (const r of toReassign) {
+      await admin
+        .from('leads')
+        .update({ assigned_to_user_id: r.assigned_to_user_id, assigned_at: r.assigned_at })
+        .eq('phone', r.phone);
+      reassigned++;
     }
 
     const CHUNK = 500;
@@ -200,7 +210,18 @@ export async function POST(req: NextRequest) {
       imported += data?.length ?? 0;
     }
 
-    return NextResponse.json({ imported, skipped, batch_id: batchId, perSheet });
+    const messageParts: string[] = [];
+    if (skipped > 0) messageParts.push(`${skipped} ya asignados (omitidos)`);
+    if (reassigned > 0) messageParts.push(`${reassigned} sin asignar → ahora asignados`);
+
+    return NextResponse.json({
+      imported,
+      skipped,
+      reassigned,
+      batch_id: batchId,
+      perSheet,
+      message: messageParts.length ? messageParts.join(' · ') : undefined,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

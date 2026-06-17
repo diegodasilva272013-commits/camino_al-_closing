@@ -24,6 +24,7 @@ type ParsedSheet = {
 type ImportResult = {
   imported: number;
   skipped?: number;
+  reassigned?: number;
   batch_id: string;
   perSheet: { sheet: string; matchedSetter: string | null; rows: number }[];
   message?: string;
@@ -304,9 +305,14 @@ export function UploadLeadsExcel() {
           <p className="text-sm font-semibold text-emerald-400">
             ✅ {result.imported} leads importados · Lote {result.batch_id}
           </p>
+          {(result.reassigned ?? 0) > 0 && (
+            <p className="mt-1 text-xs text-emerald-400/80">
+              {result.reassigned} leads sin asignar → ahora asignados al setter correcto
+            </p>
+          )}
           {(result.skipped ?? 0) > 0 && (
             <p className="mt-1 text-xs text-zinc-400">
-              {result.skipped} duplicados omitidos (teléfono ya existía en la BD)
+              {result.skipped} ya asignados (omitidos)
             </p>
           )}
           {result.message && (
