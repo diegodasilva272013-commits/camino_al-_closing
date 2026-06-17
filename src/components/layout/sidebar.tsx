@@ -7,7 +7,7 @@ import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { PRIVATE_NAV, ADMIN_NAV, isNavGroup, type NavItem } from './nav-items';
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLink({ item, pathname, badge }: { item: NavItem; pathname: string; badge?: number }) {
   const Icon = item.icon;
   const active =
     pathname === item.href ||
@@ -23,12 +23,17 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
       )}
     >
       <Icon className="h-4 w-4" />
-      <span>{item.label}</span>
+      <span className="flex-1">{item.label}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-bold text-black">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
 
-export function Sidebar({ isAdmin = false, role = 'student' }: { isAdmin?: boolean; role?: string }) {
+export function Sidebar({ isAdmin = false, role = 'student', newSignupsToday = 0 }: { isAdmin?: boolean; role?: string; newSignupsToday?: number }) {
   const pathname = usePathname();
   const base = isAdmin ? [...PRIVATE_NAV, ...ADMIN_NAV] : PRIVATE_NAV;
   // El admin ve todo el menú sin restricciones, sin importar el rol de los grupos.
@@ -66,7 +71,7 @@ export function Sidebar({ isAdmin = false, role = 'student' }: { isAdmin?: boole
               </div>
             );
           }
-          return <NavLink key={entry.href} item={entry} pathname={pathname} />;
+          return <NavLink key={entry.href} item={entry} pathname={pathname} badge={entry.href === '/admin' ? newSignupsToday : undefined} />;
         })}
       </nav>
 

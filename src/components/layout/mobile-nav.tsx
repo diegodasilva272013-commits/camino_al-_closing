@@ -14,10 +14,12 @@ function NavLink({
   item,
   pathname,
   onClose,
+  badge,
 }: {
   item: NavItem;
   pathname: string;
   onClose: () => void;
+  badge?: number;
 }) {
   const Icon = item.icon;
   const active =
@@ -35,12 +37,17 @@ function NavLink({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{item.label}</span>
+      <span className="flex-1 truncate">{item.label}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-bold text-black">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
 
-export function MobileNav({ isAdmin = false, role = 'student' }: { isAdmin?: boolean; role?: string }) {
+export function MobileNav({ isAdmin = false, role = 'student', newSignupsToday = 0 }: { isAdmin?: boolean; role?: string; newSignupsToday?: number }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -132,6 +139,7 @@ export function MobileNav({ isAdmin = false, role = 'student' }: { isAdmin?: boo
                     item={entry}
                     pathname={pathname}
                     onClose={() => setOpen(false)}
+                    badge={entry.href === '/admin' ? newSignupsToday : undefined}
                   />
                 );
               })}

@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { AdminChartsRow } from './_components/admin-charts';
 import {
+  UserCheck,
   Users,
   BookOpen,
   Layers,
@@ -23,6 +24,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 const sections = [
+  { href: '/admin/registros', label: 'Registros', desc: 'Ver quién se registró y cuándo.', icon: UserCheck },
   { href: '/admin/users', label: 'Usuarios', desc: 'Cambiar roles, ajustar puntos.', icon: Users },
   { href: '/admin/courses', label: 'Cursos', desc: 'Crear, publicar y editar cursos.', icon: BookOpen },
   { href: '/admin/modules', label: 'Módulos', desc: 'Estructura por curso.', icon: Layers },
