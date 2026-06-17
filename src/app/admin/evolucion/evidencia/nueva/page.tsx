@@ -1,12 +1,26 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { createEvidenciaAction } from '../../actions';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
+    >
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+      {pending ? 'Guardando…' : 'Guardar y etiquetar comportamientos →'}
+    </button>
+  );
+}
 
 const TIPOS = [
   { value: 'conversacion', label: 'Conversación' },
@@ -19,7 +33,7 @@ const TIPOS = [
 function NuevaEvidenciaForm() {
   const searchParams = useSearchParams();
   const persona_id = searchParams.get('persona_id') ?? '';
-  const [state, action, pending] = useActionState(createEvidenciaAction, null);
+  const [state, action] = useFormState(createEvidenciaAction, null);
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
@@ -99,14 +113,7 @@ function NuevaEvidenciaForm() {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
-        >
-          {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {pending ? 'Guardando…' : 'Guardar y etiquetar comportamientos →'}
-        </button>
+        <SubmitButton />
       </form>
     </div>
   );

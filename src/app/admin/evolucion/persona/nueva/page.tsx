@@ -1,13 +1,27 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { createPersonaAction } from '../../actions';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
+    >
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+      {pending ? 'Guardando…' : 'Crear persona'}
+    </button>
+  );
+}
+
 export default function NuevaPersonaPage() {
-  const [state, action, pending] = useActionState(createPersonaAction, null);
+  const [state, action] = useFormState(createPersonaAction, null);
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
@@ -93,14 +107,7 @@ export default function NuevaPersonaPage() {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
-        >
-          {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {pending ? 'Guardando…' : 'Crear persona'}
-        </button>
+        <SubmitButton />
       </form>
     </div>
   );

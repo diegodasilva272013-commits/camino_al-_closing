@@ -1,10 +1,24 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { createIntervencionAction } from '../../actions';
 import { ArrowLeft, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
+    >
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+      {pending ? 'Guardando…' : 'Registrar intervención'}
+    </button>
+  );
+}
 
 const TIPOS = [
   { value: 'roleplay',      label: 'Roleplay', desc: 'Práctica de conversación en vivo' },
@@ -21,7 +35,7 @@ export function IntervencionClient({
   patron: any;
   persona: any;
 }) {
-  const [state, action, pending] = useActionState(createIntervencionAction, null);
+  const [state, action] = useFormState(createIntervencionAction, null);
 
   const tendencia = patron.tendencia ?? 'estable';
 
@@ -118,14 +132,7 @@ export function IntervencionClient({
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold/20 border border-brand-gold/30 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold/30 transition disabled:opacity-50"
-        >
-          {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {pending ? 'Guardando…' : 'Registrar intervención'}
-        </button>
+        <SubmitButton />
       </form>
     </div>
   );
