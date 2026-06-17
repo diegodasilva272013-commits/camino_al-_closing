@@ -17,7 +17,7 @@ export async function GET() {
     const todayStart = `${today}T00:00:00.000Z`;
 
     const [{ data: leads }, { data: users }] = await Promise.all([
-      admin.from('leads').select('current_status, assigned_to_user_id, assigned_at, is_closed'),
+      admin.from('leads').select('current_status, assigned_to_user_id, assigned_at, is_closed').limit(50000),
       admin.from('profiles').select('id, full_name, email').in('role', ['setter', 'mentor']),
     ]);
 
