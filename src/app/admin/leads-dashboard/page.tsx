@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { TrendingUp, Users2, Target, Calendar, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, Users2, Target, Calendar, WifiOff } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { cn } from '@/lib/utils';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
@@ -56,20 +56,31 @@ export default function LeadsDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [live, setLive]       = useState(false);
-  const [tick, setTick]       = useState(0);
+  const [now, setNow]         = useState(0); // tick para re-render de timeAgo
+  const [today, setToday]     = useState(''); // evita hydration mismatch
   const channelRef = useRef<ReturnType<ReturnType<typeof createSupabaseBrowserClient>['channel']> | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/admin/leads/metrics');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setGlobal(data?.global ?? null);
       setSetters(data?.ranking ?? []);
       setLastUpdate(new Date());
+    } catch (err) {
+      console.error('[leads-dashboard] fetchData error:', err);
     } finally {
       if (!silent) setLoading(false);
     }
+  }, []);
+
+  // Fecha solo en cliente (evita hydration mismatch por timezone)
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('es-AR', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    }));
   }, []);
 
   // Carga inicial
@@ -81,7 +92,7 @@ export default function LeadsDashboardPage() {
     const channel = supabase
       .channel('leads-live-admin')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
-        fetchData(true); // silent refresh on any leads change
+        fetchData(true);
       })
       .subscribe((status) => {
         setLive(status === 'SUBSCRIBED');
@@ -96,23 +107,19 @@ export default function LeadsDashboardPage() {
     return () => clearInterval(id);
   }, [fetchData]);
 
-  // Tick para "hace X seg"
+  // Tick para actualizar "hace X seg"
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 5000);
+    const id = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(id);
   }, []);
 
   function timeAgo() {
     if (!lastUpdate) return '';
-    const diff = Math.round((Date.now() - lastUpdate.getTime()) / 1000);
+    const diff = Math.round(((now || Date.now()) - lastUpdate.getTime()) / 1000);
     if (diff < 10) return 'ahora mismo';
     if (diff < 60) return `hace ${diff} seg`;
     return `hace ${Math.round(diff / 60)} min`;
   }
-
-  const today = new Date().toLocaleDateString('es-AR', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  });
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
