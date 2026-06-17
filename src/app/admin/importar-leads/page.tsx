@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { UploadLeadsExcel } from './_components/UploadLeadsExcel';
+import { ReasignarSinSetter } from './_components/ReasignarSinSetter';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export default function ImportarLeadsPage() {
 
       <div className="mt-6 max-w-2xl">
         <UploadLeadsExcel />
+        <ReasignarSinSetter />
       </div>
     </div>
   );
