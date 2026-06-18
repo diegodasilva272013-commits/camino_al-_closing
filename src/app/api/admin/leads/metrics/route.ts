@@ -77,6 +77,14 @@ export async function GET() {
       }
     }
 
+    // Incluir IDs asignados que no tienen perfil en la tabla (usuario eliminado o desincronizado)
+    for (const uid of assignedIds) {
+      if (!profileMap.has(uid)) {
+        const key = `__noprofile_${uid}`;
+        grouped.set(key, { id: uid, name: `(sin perfil) ${uid.slice(0, 8)}`, ids: [uid] });
+      }
+    }
+
     const ranking = Array.from(grouped.values()).map((g) => {
       // Suma leads de TODAS las cuentas del mismo nombre
       const userLeads = all.filter((l) => l.assigned_to_user_id && g.ids.includes(l.assigned_to_user_id));
