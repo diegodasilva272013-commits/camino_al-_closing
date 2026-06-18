@@ -61,18 +61,18 @@ async function saveToDb(sessionDbId: string, message: string, reply: string) {
     const admin = createSupabaseAdminClient();
     const isEval = /evaluame/i.test(message);
 
-    await admin.from('trainer_messages').insert([
+    await (admin as any).from('trainer_messages').insert([
       { session_id: sessionDbId, role: 'user', content: message, is_evaluation: false },
       { session_id: sessionDbId, role: 'assistant', content: reply, is_evaluation: isEval },
     ]);
 
-    const { data: sess } = await admin
+    const { data: sess } = await (admin as any)
       .from('trainer_sessions')
       .select('message_count, evaluations_count')
       .eq('id', sessionDbId)
       .single();
 
-    await admin.from('trainer_sessions').update({
+    await (admin as any).from('trainer_sessions').update({
       message_count: (sess?.message_count ?? 0) + 2,
       ...(isEval
         ? { evaluations_count: (sess?.evaluations_count ?? 0) + 1, last_evaluation: reply }

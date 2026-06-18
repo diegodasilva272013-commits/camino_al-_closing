@@ -10,7 +10,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const admin = createSupabaseAdminClient();
-    const { data, error } = await admin
+    const { data, error } = await (admin as any)
       .from('trainer_sessions')
       .select('id, scenario_id, scenario_name, scenario_group, scenario_tag, difficulty, mode, started_at, ended_at, message_count, evaluations_count, last_evaluation, status')
       .eq('user_id', user.id)
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { scenario_id, scenario_name, scenario_group, scenario_tag, difficulty, mode } = await req.json();
 
     const admin = createSupabaseAdminClient();
-    const { data, error } = await admin
+    const { data, error } = await (admin as any)
       .from('trainer_sessions')
       .insert({ user_id: user.id, scenario_id, scenario_name, scenario_group, scenario_tag, difficulty, mode, status: 'active' })
       .select('id')

@@ -13,7 +13,7 @@ export async function GET() {
     const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
     if (profile?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-    const { data, error } = await admin
+    const { data, error } = await (admin as any)
       .from('trainer_sessions')
       .select('*, profiles!trainer_sessions_user_id_fkey(full_name, email)')
       .order('started_at', { ascending: false })
