@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Phone, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  RefreshCw, Phone, MessageCircle, ChevronDown, ChevronUp,
+  Search, X, ArrowUpDown, ArrowUp, ArrowDown,
+} from 'lucide-react';
 import { LeadStatusBadge } from './_components/LeadStatusBadge';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
@@ -24,6 +27,13 @@ type Lead = {
 };
 
 type OpeningMessage = { id: string; name: string; message: string };
+type SortKey = 'name' | 'status' | 'followups' | 'updated';
+type SortDir = 'asc' | 'desc';
+
+const STATUS_ORDER: Record<string, number> = {
+  NO_CONTACTADO: 0, CONTACTADO: 1, EN_CONVERSACION: 2,
+  REUNION_AGENDADA: 3, NO_CALIFICA: 4, SIN_RESPUESTA: 5,
+};
 
 export default function LeadsPage() {
   const [leads, setLeads]       = useState<Lead[]>([]);
@@ -32,7 +42,13 @@ export default function LeadsPage() {
   const [saving, setSaving]     = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [noteEdit, setNoteEdit] = useState<{ id: string; value: string } | null>(null);
+
+  // Filters & sort
+  const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterClosed, setFilterClosed] = useState<'all' | 'open' | 'closed'>('open');
+  const [sortKey, setSortKey]         = useState<SortKey>('updated');
+  const [sortDir, setSortDir]         = useState<SortDir>('desc');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,20 +87,89 @@ export default function LeadsPage() {
     setSaving(null);
   }
 
-  const visible = leads.filter((l) => !filterStatus || l.current_status === filterStatus);
-  const open    = leads.filter((l) => !l.is_closed);
-  const closed  = leads.filter((l) => l.is_closed);
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  }
 
-  const statusCounts = leads.reduce<Record<string, number>>((acc, l) => {
-    acc[l.current_status] = (acc[l.current_status] ?? 0) + 1;
-    return acc;
-  }, {});
+  const visible = useMemo(() => {
+    let result = leads;
+
+    // closed filter
+    if (filterClosed === 'open')   result = result.filter(l => !l.is_closed);
+    if (filterClosed === 'closed') result = result.filter(l => l.is_closed);
+
+    // status filter
+    if (filterStatus) result = result.filter(l => l.current_status === filterStatus);
+
+    // search
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(l =>
+        `${l.first_name} ${l.last_name ?? ''}`.toLowerCase().includes(q) ||
+        l.phone.includes(q) ||
+        (l.notes ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // sort
+    result = [...result].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') {
+        const na = `${a.first_name} ${a.last_name ?? ''}`.toLowerCase();
+        const nb = `${b.first_name} ${b.last_name ?? ''}`.toLowerCase();
+        cmp = na.localeCompare(nb, 'es');
+      } else if (sortKey === 'status') {
+        cmp = (STATUS_ORDER[a.current_status] ?? 99) - (STATUS_ORDER[b.current_status] ?? 99);
+      } else if (sortKey === 'followups') {
+        cmp = a.follow_up_count - b.follow_up_count;
+      } else {
+        cmp = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [leads, search, filterStatus, filterClosed, sortKey, sortDir]);
+
+  const open   = leads.filter(l => !l.is_closed);
+  const closed = leads.filter(l => l.is_closed);
+
+  const statusCounts = useMemo(() => {
+    const base = filterClosed === 'open' ? open : filterClosed === 'closed' ? closed : leads;
+    return base.reduce<Record<string, number>>((acc, l) => {
+      acc[l.current_status] = (acc[l.current_status] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [leads, filterClosed]);
+
+  function SortBtn({ k, label }: { k: SortKey; label: string }) {
+    const active = sortKey === k;
+    return (
+      <button
+        onClick={() => toggleSort(k)}
+        className={cn(
+          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap border transition',
+          active
+            ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400'
+            : 'border-white/8 text-zinc-500 hover:text-zinc-300'
+        )}
+      >
+        {label}
+        {active
+          ? sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+          : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+      </button>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] pb-24">
 
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#080808]/95 backdrop-blur border-b border-white/5 px-4 py-3">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-[#080808]/95 backdrop-blur border-b border-white/5 px-4 pt-3 pb-2 space-y-2">
+
+        {/* Title + refresh */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-yellow-500/60">Mis Leads</p>
@@ -93,8 +178,7 @@ export default function LeadsPage() {
             </p>
           </div>
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={load} disabled={loading}
             className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
@@ -102,59 +186,100 @@ export default function LeadsPage() {
           </button>
         </div>
 
-        {/* Filtro por estado */}
-        <div className="mt-2 overflow-x-auto">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500 pointer-events-none" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, teléfono o nota..."
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-9 pr-9 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-yellow-500/30"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="h-3.5 w-3.5 text-zinc-500" />
+            </button>
+          )}
+        </div>
+
+        {/* Active / Cerrados */}
+        <div className="flex gap-1.5">
+          {([['open', 'Activos'], ['closed', 'Cerrados'], ['all', 'Todos']] as const).map(([v, l]) => (
+            <button key={v} onClick={() => { setFilterClosed(v); setFilterStatus(''); }}
+              className={cn(
+                'rounded-full px-3 py-1 text-[11px] font-semibold border transition',
+                filterClosed === v
+                  ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400'
+                  : 'border-white/10 text-zinc-500'
+              )}>
+              {l} ({v === 'open' ? open.length : v === 'closed' ? closed.length : leads.length})
+            </button>
+          ))}
+        </div>
+
+        {/* Status pills */}
+        <div className="overflow-x-auto">
           <div className="flex gap-1.5 pb-1 min-w-max">
             <button
               onClick={() => setFilterStatus('')}
               className={cn(
                 'rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
-                !filterStatus
-                  ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400'
-                  : 'border-white/10 text-zinc-500'
-              )}
-            >
-              Todos ({leads.length})
+                !filterStatus ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400' : 'border-white/10 text-zinc-500'
+              )}>
+              Todos ({Object.values(statusCounts).reduce((a, b) => a + b, 0)})
             </button>
-            {Object.entries(statusCounts)
-              .sort(([, a], [, b]) => b - a)
-              .map(([status, count]) => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(filterStatus === status ? '' : status)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
-                    filterStatus === status
-                      ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400'
-                      : 'border-white/10 text-zinc-500'
-                  )}
-                >
-                  {STATUS_LABELS[status as LeadStatus] ?? status} ({count})
-                </button>
-              ))}
+            {Object.entries(statusCounts).sort(([,a],[,b]) => b - a).map(([status, count]) => (
+              <button key={status} onClick={() => setFilterStatus(filterStatus === status ? '' : status)}
+                className={cn(
+                  'rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
+                  filterStatus === status ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400' : 'border-white/10 text-zinc-500'
+                )}>
+                {STATUS_LABELS[status as LeadStatus] ?? status} ({count})
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Sort row */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <span className="text-[10px] text-zinc-600 shrink-0 mr-0.5">Ordenar:</span>
+          <SortBtn k="name" label="Nombre" />
+          <SortBtn k="status" label="Estado" />
+          <SortBtn k="followups" label="Seguim." />
+          <SortBtn k="updated" label="Última acción" />
+        </div>
+
+        {/* Result count */}
+        {(search || filterStatus) && (
+          <p className="text-[11px] text-zinc-500 pb-1">
+            {visible.length} resultado{visible.length !== 1 ? 's' : ''}
+            {search && ` para "${search}"`}
+            {filterStatus && ` · ${STATUS_LABELS[filterStatus as LeadStatus] ?? filterStatus}`}
+          </p>
+        )}
       </div>
 
-      {/* Loading */}
+      {/* List */}
       {loading ? (
         <div className="flex justify-center pt-20">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 pt-24 text-center px-8">
-          <p className="text-zinc-400">No tenés leads{filterStatus ? ' con ese estado' : ' asignados'} todavía.</p>
-          {filterStatus && (
-            <button onClick={() => setFilterStatus('')} className="text-xs text-yellow-400 underline">
-              Ver todos
-            </button>
-          )}
+          <p className="text-zinc-400">
+            {search ? `Sin resultados para "${search}"` : 'No hay leads con ese filtro.'}
+          </p>
+          <button onClick={() => { setSearch(''); setFilterStatus(''); }}
+            className="text-xs text-yellow-400 underline">
+            Limpiar filtros
+          </button>
         </div>
       ) : (
         <div className="px-3 pt-3 space-y-2">
           {visible.map((lead) => {
             const isExpanded = expanded === lead.id;
             const isSaving   = saving === lead.id;
+            const fullName   = `${lead.first_name} ${lead.last_name ?? ''}`.trim();
 
             return (
               <div
@@ -165,20 +290,20 @@ export default function LeadsPage() {
                   isExpanded && 'border-yellow-500/20'
                 )}
               >
-                {/* Fila principal — siempre visible */}
+                {/* Main row */}
                 <div
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer active:bg-white/5"
                   onClick={() => setExpanded(isExpanded ? null : lead.id)}
                 >
-                  {/* Nombre + estado */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-white text-sm truncate">
-                      {lead.first_name} {lead.last_name ?? ''}
+                      {search
+                        ? highlightMatch(fullName, search)
+                        : fullName}
                     </p>
                     <p className="text-[11px] text-zinc-500 font-mono mt-0.5">{lead.phone}</p>
                   </div>
 
-                  {/* Badge estado */}
                   <div onClick={(e) => e.stopPropagation()}>
                     <LeadStatusBadge
                       status={lead.current_status}
@@ -186,35 +311,30 @@ export default function LeadsPage() {
                     />
                   </div>
 
-                  {/* Chevron */}
-                  {isExpanded
-                    ? <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" />
-                    : <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />
-                  }
+                  <div className="flex items-center gap-1 text-zinc-600 shrink-0 text-[10px]">
+                    <span>{lead.follow_up_count}/{lead.max_follow_ups}</span>
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </div>
                 </div>
 
-                {/* Panel expandido */}
+                {/* Expanded panel */}
                 {isExpanded && (
                   <div className="border-t border-white/5 px-4 py-4 space-y-4">
 
-                    {/* Acciones rápidas */}
                     {!lead.is_closed && (
                       <div className="flex gap-2 flex-wrap">
                         <a
                           href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-xs text-emerald-400 active:bg-emerald-900/40"
                         >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          WhatsApp
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                         </a>
                         <a
                           href={`tel:${lead.phone}`}
-                          className="flex items-center gap-1.5 rounded-lg border border-sky-700/40 bg-sky-900/20 px-3 py-1.5 text-xs text-sky-400 active:bg-sky-900/40"
+                          className="flex items-center gap-1.5 rounded-lg border border-sky-700/40 bg-sky-900/20 px-3 py-1.5 text-xs text-sky-400"
                         >
-                          <Phone className="h-3.5 w-3.5" />
-                          Llamar
+                          <Phone className="h-3.5 w-3.5" /> Llamar
                         </a>
                         <button
                           onClick={() => patchLead(lead.id, { current_status: 'REUNION_AGENDADA' })}
@@ -239,13 +359,7 @@ export default function LeadsPage() {
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1">
                           {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={cn(
-                                'h-2 w-2 rounded-full',
-                                i < lead.follow_up_count ? 'bg-yellow-400' : 'bg-zinc-700'
-                              )}
-                            />
+                            <div key={i} className={cn('h-2 w-2 rounded-full', i < lead.follow_up_count ? 'bg-yellow-400' : 'bg-zinc-700')} />
                           ))}
                         </div>
                         <span className="text-xs text-zinc-400">{lead.follow_up_count}/{lead.max_follow_ups}</span>
@@ -271,9 +385,7 @@ export default function LeadsPage() {
                           className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none"
                         >
                           <option value="">Sin apertura seleccionada</option>
-                          {openings.map((o) => (
-                            <option key={o.id} value={o.name}>{o.name}</option>
-                          ))}
+                          {openings.map((o) => <option key={o.id} value={o.name}>{o.name}</option>)}
                         </select>
                       </div>
                     )}
@@ -286,8 +398,7 @@ export default function LeadsPage() {
                           <textarea
                             value={noteEdit.value}
                             onChange={(e) => setNoteEdit({ id: lead.id, value: e.target.value })}
-                            rows={3}
-                            autoFocus
+                            rows={3} autoFocus
                             className="w-full rounded-lg border border-yellow-500/30 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none resize-none"
                           />
                           <div className="flex gap-2">
@@ -297,10 +408,8 @@ export default function LeadsPage() {
                             >
                               Guardar
                             </button>
-                            <button
-                              onClick={() => setNoteEdit(null)}
-                              className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-400"
-                            >
+                            <button onClick={() => setNoteEdit(null)}
+                              className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-400">
                               Cancelar
                             </button>
                           </div>
@@ -315,6 +424,12 @@ export default function LeadsPage() {
                       )}
                     </div>
 
+                    {/* Última acción */}
+                    {lead.last_action_at && (
+                      <p className="text-[10px] text-zinc-600">
+                        Última acción: {new Date(lead.last_action_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -323,5 +438,19 @@ export default function LeadsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Highlight matching text in search results
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-500/30 text-yellow-300 rounded-sm">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
   );
 }
