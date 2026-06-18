@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Send, RotateCcw, ChevronLeft, History, MessageSquare, Star, Clock, ChevronRight, X } from 'lucide-react';
+import { Send, RotateCcw, ChevronLeft, History, MessageSquare, Star, Clock, ChevronRight, X, Trophy, Flame, Zap, Target } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -215,9 +215,144 @@ function HistorialView() {
   );
 }
 
+// ── Ranking ────────────────────────────────────────────────────────
+type RankRow = {
+  user_id: string; name: string; total_sessions: number; total_xp: number;
+  week_sessions: number; week_xp: number; streak: number; max_difficulty: number;
+  groups: Record<string, number>; is_me: boolean;
+};
+
+function RankingView() {
+  const [data, setData] = useState<{ rows: RankRow[]; weekly_winner: RankRow | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/trainer/ranking')
+      .then(r => r.json())
+      .then(d => { if (d.rows) setData(d); setLoading(false); });
+  }, []);
+
+  if (loading) return (
+    <div className="flex h-40 items-center justify-center">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+    </div>
+  );
+
+  if (!data || !data.rows.length) return (
+    <div className="py-16 text-center">
+      <Trophy className="h-10 w-10 text-brand-muted/40 mx-auto mb-3" />
+      <p className="text-sm text-brand-muted">El ranking aparece cuando los setters empiecen a entrenar.</p>
+    </div>
+  );
+
+  const me = data.rows.find(r => r.is_me);
+  const myRank = data.rows.findIndex(r => r.is_me) + 1;
+
+  return (
+    <div className="space-y-6">
+      {/* Filosofía */}
+      <div className="rounded-xl border border-[rgba(212,175,55,0.15)] bg-[rgba(212,175,55,0.03)] px-5 py-4">
+        <p className="text-xs uppercase tracking-widest text-brand-gold/60 mb-2">Por qué entrenamos</p>
+        <p className="text-sm text-brand-muted leading-relaxed">
+          Este ranking no mide ventas ni resultados. Mide <span className="text-brand-text font-medium">compromiso con el entrenamiento</span>.
+          Quién invierte tiempo en desarrollar criterio. La práctica construye habilidad. La habilidad construye criterio.
+        </p>
+      </div>
+
+      {/* Ganador semanal */}
+      {data.weekly_winner && data.weekly_winner.week_sessions > 0 && (
+        <div className="rounded-xl border border-brand-gold/40 bg-[rgba(212,175,55,0.06)] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-brand-gold/60 mb-2 flex items-center gap-1.5">
+            <Trophy className="h-3 w-3" /> Sesión de aceleración CAC esta semana
+          </p>
+          <p className="text-lg font-bold text-brand-gold">{data.weekly_winner.name}</p>
+          <p className="text-xs text-brand-muted mt-0.5">
+            {data.weekly_winner.week_sessions} sesiones esta semana · {data.weekly_winner.week_xp} XP
+          </p>
+        </div>
+      )}
+
+      {/* Mi posición */}
+      {me && (
+        <div className="rounded-xl border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-brand-muted mb-3">Tu posición</p>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-center">
+              <p className="text-3xl font-black text-brand-gold">#{myRank}</p>
+              <p className="text-[10px] text-brand-muted">ranking</p>
+            </div>
+            <div className="h-10 w-px bg-[rgba(212,175,55,0.15)]" />
+            {[
+              { icon: <Zap className="h-3.5 w-3.5" />, label: 'XP total', value: me.total_xp },
+              { icon: <Target className="h-3.5 w-3.5" />, label: 'Sesiones', value: me.total_sessions },
+              { icon: <Flame className="h-3.5 w-3.5" />, label: `Racha${me.streak !== 1 ? '' : ''} (días)`, value: me.streak },
+              { icon: <Star className="h-3.5 w-3.5" />, label: 'Max dif.', value: `${me.max_difficulty}/10` },
+            ].map(s => (
+              <div key={s.label} className="text-center min-w-[60px]">
+                <div className="flex justify-center mb-0.5 text-brand-gold/50">{s.icon}</div>
+                <p className="text-xl font-bold text-brand-text">{s.value}</p>
+                <p className="text-[10px] text-brand-muted">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tabla */}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-brand-muted mb-3">Tabla de entrenamiento</p>
+        <div className="space-y-2">
+          {data.rows.map((r, i) => (
+            <div key={r.user_id}
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                r.is_me
+                  ? 'border-brand-gold/40 bg-[rgba(212,175,55,0.06)]'
+                  : 'border-[rgba(212,175,55,0.08)] bg-[#0d0d0d]'
+              }`}>
+              {/* Rank */}
+              <span className={`w-7 shrink-0 text-center text-sm font-black ${
+                i === 0 ? 'text-brand-gold' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-brand-muted'
+              }`}>
+                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+              </span>
+
+              {/* Nombre */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold truncate ${r.is_me ? 'text-brand-gold' : 'text-brand-text'}`}>
+                  {r.name} {r.is_me && <span className="text-[10px] font-normal text-brand-muted">(vos)</span>}
+                </p>
+                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-brand-muted">
+                  <span>{r.total_sessions} sesiones</span>
+                  <span>·</span>
+                  <span>Dif. max {r.max_difficulty}/10</span>
+                  {r.streak > 1 && <span className="flex items-center gap-0.5 text-orange-400"><Flame className="h-3 w-3" />{r.streak}d</span>}
+                </div>
+              </div>
+
+              {/* XP esta semana */}
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-brand-gold">{r.week_xp} <span className="text-[10px] font-normal">XP semana</span></p>
+                <p className="text-[11px] text-brand-muted">{r.total_xp} XP total</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-lg border border-[rgba(212,175,55,0.08)] bg-[#0d0d0d] px-4 py-3 text-xs text-brand-muted space-y-1">
+          <p className="font-semibold text-brand-text text-[11px]">¿Cómo se calculan los puntos?</p>
+          <p>· Cada sesión: dificultad × 5 XP <span className="text-brand-muted/60">(ej: nivel 6 = 30 XP)</span></p>
+          <p>· Pediste evaluación: +5 XP <span className="text-brand-muted/60">(entrenamiento consciente)</span></p>
+          <p>· Sesión completa (+8 mensajes): +5 XP</p>
+          <p className="pt-1 text-brand-muted/60">El ranking semanal se resetea cada lunes. El ganador de la semana recibe una Sesión de Aceleración CAC.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────
 export default function TrainerPage() {
-  const [view, setView] = useState<'selector' | 'historial' | 'chat'>('selector');
+  const [view, setView] = useState<'selector' | 'historial' | 'ranking' | 'chat'>('selector');
   const [scenario, setScenario] = useState<typeof SCENARIOS[0] | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -303,28 +438,33 @@ export default function TrainerPage() {
   }
 
   // ── Selector ──────────────────────────────────────────────────────
-  if (view === 'selector' || view === 'historial') {
+  if (view === 'selector' || view === 'historial' || view === 'ranking') {
     return (
       <div className="mx-auto max-w-5xl space-y-6 px-2 py-8">
         {/* Header con tabs */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
             <p className="text-sm text-brand-muted mt-1">Practicá como en campo real. Todo queda registrado.</p>
           </div>
           <div className="flex rounded-lg border border-[rgba(212,175,55,0.15)] bg-[#0d0d0d] p-1">
             <button onClick={() => setView('selector')}
-              className={`rounded-md px-4 py-2 text-sm font-medium transition ${view === 'selector' ? 'bg-brand-gold text-black' : 'text-brand-muted hover:text-brand-text'}`}>
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${view === 'selector' ? 'bg-brand-gold text-black' : 'text-brand-muted hover:text-brand-text'}`}>
               Escenarios
             </button>
+            <button onClick={() => setView('ranking')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition ${view === 'ranking' ? 'bg-brand-gold text-black' : 'text-brand-muted hover:text-brand-text'}`}>
+              <Trophy className="h-3.5 w-3.5" /> Ranking
+            </button>
             <button onClick={() => setView('historial')}
-              className={`flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition ${view === 'historial' ? 'bg-brand-gold text-black' : 'text-brand-muted hover:text-brand-text'}`}>
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition ${view === 'historial' ? 'bg-brand-gold text-black' : 'text-brand-muted hover:text-brand-text'}`}>
               <History className="h-3.5 w-3.5" /> Mi historial
             </button>
           </div>
         </div>
 
-        {view === 'historial' ? <HistorialView /> : (
+        {view === 'ranking'   ? <RankingView /> :
+         view === 'historial' ? <HistorialView /> : (
           <>
             {GROUPS.map(g => {
               const meta = GROUP_META[g];
