@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, RotateCcw, ChevronLeft, Settings, X, Brain, Upload, FileText, Trash2, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Send, RotateCcw, ChevronLeft } from 'lucide-react';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
-type BrainData = { base_prompt: string; rules: string; mode_fria: string; mode_tibia: string; mode_caliente: string };
-type TrainerFile = { id: string; name: string; size_bytes: number | null; created_at: string };
 
 // ── Escenarios ─────────────────────────────────────────────────────
 const SCENARIOS = [
@@ -33,165 +31,6 @@ const GROUP_META = {
 
 function randomId() { return Math.random().toString(36).slice(2); }
 
-// ── Panel Cerebro (drawer) ─────────────────────────────────────────
-function BrainPanel({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'instrucciones'|'archivos'>('instrucciones');
-  const [brain, setBrain] = useState<BrainData>({ base_prompt:'', rules:'', mode_fria:'', mode_tibia:'', mode_caliente:'' });
-  const [files, setFiles] = useState<TrainerFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [status, setStatus] = useState<{type:'ok'|'err'; msg:string}|null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/admin/trainer/brain').then(r => r.json()),
-      fetch('/api/admin/trainer/files').then(r => r.json()),
-    ]).then(([b, f]) => {
-      if (b && !b.error) setBrain(b);
-      if (Array.isArray(f)) setFiles(f);
-      setLoading(false);
-    });
-  }, []);
-
-  async function save() {
-    setSaving(true); setStatus(null);
-    const res = await fetch('/api/admin/trainer/brain', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(brain) });
-    const d = await res.json();
-    setSaving(false);
-    setStatus(d.ok ? {type:'ok', msg:'Guardado'} : {type:'err', msg: d.error});
-    if (d.ok) setTimeout(() => setStatus(null), 2500);
-  }
-
-  async function upload(fileList: FileList | File[]) {
-    const arr = Array.from(fileList);
-    if (!arr.length) return;
-    setUploading(true); setStatus(null);
-    const results = await Promise.all(arr.map(async file => {
-      const fd = new FormData(); fd.append('file', file);
-      const res = await fetch('/api/admin/trainer/files', { method:'POST', body: fd });
-      return res.json();
-    }));
-    setUploading(false);
-    const errors = results.filter(r => r.error);
-    const added = results.filter(r => !r.error);
-    if (added.length) setFiles(p => [...added, ...p]);
-    if (errors.length) setStatus({type:'err', msg: errors.map((e:any)=>e.error).join(', ')});
-    else setStatus({type:'ok', msg: arr.length === 1 ? `"${arr[0].name}" subido` : `${arr.length} archivos subidos`});
-    setTimeout(()=>setStatus(null), 3000);
-  }
-
-  async function deleteFile(id: string, name: string) {
-    if (!confirm(`¿Eliminar "${name}"?`)) return;
-    await fetch(`/api/admin/trainer/files/${id}`, { method:'DELETE' });
-    setFiles(p => p.filter(f => f.id !== id));
-  }
-
-  const field = (label: string, key: keyof BrainData, placeholder: string, accent='border-[rgba(212,175,55,0.2)] focus:border-brand-gold', bg='bg-[#111]', rows=5) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-brand-gold">{label}</label>
-      <textarea rows={rows} value={brain[key]} onChange={e => setBrain(p=>({...p,[key]:e.target.value}))} placeholder={placeholder}
-        className={`w-full resize-y rounded-lg border ${accent} ${bg} p-3 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none`} />
-    </div>
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative flex h-full w-full max-w-xl flex-col border-l border-[rgba(212,175,55,0.15)] bg-[#090909] shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center gap-3 border-b border-[rgba(212,175,55,0.12)] px-5 py-4">
-          <Brain className="h-5 w-5 text-brand-gold shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-brand-text">Cerebro del Trainer</p>
-            <p className="text-xs text-brand-muted">Instrucciones y material que usa la IA</p>
-          </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-brand-muted hover:bg-[#1a1a1a] hover:text-brand-text">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-[rgba(212,175,55,0.1)] px-5 pt-3">
-          {(['instrucciones','archivos'] as const).map(t => (
-            <button key={t} onClick={()=>setTab(t)}
-              className={`pb-2.5 mr-4 text-sm font-medium border-b-2 transition ${tab===t ? 'border-brand-gold text-brand-gold' : 'border-transparent text-brand-muted hover:text-brand-text'}`}>
-              {t === 'instrucciones' ? 'Instrucciones' : 'Material subido'}
-            </button>
-          ))}
-        </div>
-
-        {/* Status */}
-        {status && (
-          <div className={`mx-5 mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${status.type==='ok' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
-            {status.type==='ok' ? <CheckCircle className="h-3.5 w-3.5 shrink-0"/> : <AlertCircle className="h-3.5 w-3.5 shrink-0"/>}
-            {status.msg}
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {loading ? (
-            <div className="flex h-40 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-brand-gold"/></div>
-          ) : tab === 'instrucciones' ? (
-            <>
-              {field('Instrucciones base — cómo actúa el prospecto', 'base_prompt',
-                'Ej: Sos un prospecto argentino de 25-40 años. Tenés dudas sobre invertir en formación. Respondés por WhatsApp de forma informal...', undefined, undefined, 6)}
-              {field('Reglas generales del entrenamiento', 'rules',
-                'Ej: Nunca aceptes el primer intento del setter. Siempre pedí más información antes de mostrar interés real...')}
-              <p className="text-[10px] uppercase tracking-widest text-brand-muted pt-1">Por modo</p>
-              {field('🧊 Prospección Fría', 'mode_fria',
-                'Ej: El prospecto nunca escuchó de CAC. Es escéptico desde el inicio...', 'border-sky-500/20 focus:border-sky-400', 'bg-[#0a0f15]')}
-              {field('🌡️ Prospección Tibia', 'mode_tibia',
-                'Ej: Vio algo de CAC en redes. Tiene curiosidad pero también dudas...', 'border-amber-500/20 focus:border-amber-400', 'bg-[#130f00]')}
-              {field('🔥 Prospección Caliente', 'mode_caliente',
-                'Ej: Ya quiere entrar pero tiene objeciones de precio o tiempo...', 'border-red-500/20 focus:border-red-400', 'bg-[#150000]')}
-              <button onClick={save} disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-gold py-2.5 text-sm font-semibold text-black hover:bg-brand-gold/90 disabled:opacity-60">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}
-                {saving ? 'Guardando...' : 'Guardar cerebro'}
-              </button>
-            </>
-          ) : (
-            <>
-              <div onDrop={e=>{e.preventDefault(); if(e.dataTransfer.files.length) upload(e.dataTransfer.files);}} onDragOver={e=>e.preventDefault()}
-                onClick={()=>fileRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] p-8 text-center hover:border-brand-gold/40 hover:bg-[#111] transition">
-                {uploading ? <Loader2 className="h-7 w-7 animate-spin text-brand-gold"/> : <Upload className="h-7 w-7 text-brand-muted"/>}
-                <div>
-                  <p className="text-sm font-medium text-brand-text">{uploading ? 'Procesando...' : 'Arrastrá o hacé clic'}</p>
-                  <p className="text-xs text-brand-muted mt-0.5">PDF, TXT o MD · podés seleccionar varios a la vez</p>
-                </div>
-                <input ref={fileRef} type="file" accept=".pdf,.txt,.md" multiple className="hidden"
-                  onChange={e=>{if(e.target.files?.length) upload(e.target.files); e.target.value='';}} />
-              </div>
-              {files.length === 0 ? (
-                <p className="text-center text-sm text-brand-muted py-4">No hay archivos subidos todavía</p>
-              ) : (
-                <div className="space-y-2">
-                  {files.map(f => (
-                    <div key={f.id} className="flex items-center gap-3 rounded-lg border border-[rgba(212,175,55,0.1)] bg-[#0d0d0d] px-4 py-3">
-                      <FileText className="h-4 w-4 shrink-0 text-brand-gold"/>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm text-brand-text">{f.name}</p>
-                        <p className="text-xs text-brand-muted">{f.size_bytes ? `${Math.round(f.size_bytes/1024)} KB` : ''} · {new Date(f.created_at).toLocaleDateString('es-AR')}</p>
-                      </div>
-                      <button onClick={()=>deleteFile(f.id, f.name)} className="rounded-md p-1.5 text-brand-muted hover:bg-red-500/10 hover:text-red-400">
-                        <Trash2 className="h-4 w-4"/>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Página principal ───────────────────────────────────────────────
 export default function TrainerPage() {
   const [view, setView] = useState<'selector'|'chat'>('selector');
@@ -199,7 +38,6 @@ export default function TrainerPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [brainOpen, setBrainOpen] = useState(false);
   const [sessionId] = useState(() => randomId());
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -240,17 +78,10 @@ export default function TrainerPage() {
   if (view === 'selector') {
     return (
       <>
-        {brainOpen && <BrainPanel onClose={()=>setBrainOpen(false)}/>}
         <div className="mx-auto max-w-5xl space-y-8 px-2 py-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
-              <p className="text-sm text-brand-muted mt-1">Elegí el escenario y practicá como en campo real</p>
-            </div>
-            <button onClick={()=>setBrainOpen(true)}
-              className="flex items-center gap-2 rounded-lg border border-[rgba(212,175,55,0.3)] bg-[#111] px-3 py-2 text-xs text-brand-gold hover:bg-[#1a1a1a] transition shrink-0">
-              <Settings className="h-3.5 w-3.5"/> Configurar cerebro
-            </button>
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-brand-gold">CAC TRAINER</h1>
+            <p className="text-sm text-brand-muted mt-1">Elegí el escenario y practicá como en campo real</p>
           </div>
 
           {GROUPS.map(g => {
@@ -296,7 +127,6 @@ export default function TrainerPage() {
 
   return (
     <>
-      {brainOpen && <BrainPanel onClose={()=>setBrainOpen(false)}/>}
       <div className="flex h-[calc(100vh-4rem)] flex-col">
         <div className="flex items-center gap-3 border-b border-[rgba(212,175,55,0.12)] bg-[#0a0a0a] px-4 py-3">
           <button onClick={()=>setView('selector')} className="rounded-md p-1.5 text-brand-muted hover:bg-[#1a1a1a] hover:text-brand-text">
@@ -308,9 +138,6 @@ export default function TrainerPage() {
             <p className="text-sm font-semibold text-brand-text">{scenario?.name}</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={()=>setBrainOpen(true)} className="rounded-md p-1.5 text-brand-muted hover:bg-[#1a1a1a] hover:text-brand-gold" title="Configurar cerebro">
-              <Settings className="h-4 w-4"/>
-            </button>
             <button onClick={()=>scenario&&startScenario(scenario)}
               className="flex items-center gap-1.5 rounded-md border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs text-brand-muted hover:border-brand-gold/40 hover:text-brand-text">
               <RotateCcw className="h-3.5 w-3.5"/> Reiniciar
