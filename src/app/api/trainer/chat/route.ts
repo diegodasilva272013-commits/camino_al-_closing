@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 type Mode = 'fria' | 'tibia' | 'caliente';
@@ -12,27 +14,15 @@ const sessions = new Map<string, History>();
 async function loadBrain(mode: Mode) {
   try {
     const supabase = createSupabaseAdminClient();
-
     const [{ data: brain }, { data: files }] = await Promise.all([
       supabase.from('trainer_brain').select('*').eq('id', 1).maybeSingle(),
       supabase.from('trainer_files').select('content_text').order('created_at'),
     ]);
-
     const modePrompt = brain
       ? (mode === 'fria' ? brain.mode_fria : mode === 'tibia' ? brain.mode_tibia : brain.mode_caliente)
       : '';
-
-    const filesText = (files ?? [])
-      .map((f: { content_text: string }) => f.content_text)
-      .filter(Boolean)
-      .join('\n\n---\n\n');
-
-    return {
-      basePrompt: brain?.base_prompt ?? '',
-      rules: brain?.rules ?? '',
-      modePrompt,
-      filesText,
-    };
+    const filesText = (files ?? []).map((f: { content_text: string }) => f.content_text).filter(Boolean).join('\n\n---\n\n');
+    return { basePrompt: brain?.base_prompt ?? '', rules: brain?.rules ?? '', modePrompt, filesText };
   } catch {
     return { basePrompt: '', rules: '', modePrompt: '', filesText: '' };
   }
@@ -66,10 +56,38 @@ function buildSystemPrompt(mode: Mode, brain: Awaited<ReturnType<typeof loadBrai
   return parts.join('\n');
 }
 
+async function saveToDb(sessionDbId: string, message: string, reply: string) {
+  try {
+    const admin = createSupabaseAdminClient();
+    const isEval = /evaluame/i.test(message);
+
+    await admin.from('trainer_messages').insert([
+      { session_id: sessionDbId, role: 'user', content: message, is_evaluation: false },
+      { session_id: sessionDbId, role: 'assistant', content: reply, is_evaluation: isEval },
+    ]);
+
+    const { data: sess } = await admin
+      .from('trainer_sessions')
+      .select('message_count, evaluations_count')
+      .eq('id', sessionDbId)
+      .single();
+
+    await admin.from('trainer_sessions').update({
+      message_count: (sess?.message_count ?? 0) + 2,
+      ...(isEval
+        ? { evaluations_count: (sess?.evaluations_count ?? 0) + 1, last_evaluation: reply }
+        : {}),
+    }).eq('id', sessionDbId);
+  } catch {
+    /* best-effort — never crash the chat */
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, message, mode } = await req.json() as {
+    const { sessionId, sessionDbId, message, mode } = await req.json() as {
       sessionId: string;
+      sessionDbId?: string;
       message: string;
       mode: Mode;
     };
@@ -90,6 +108,8 @@ export async function POST(req: NextRequest) {
 
     const reply = completion.choices[0]?.message?.content ?? '';
     history.push({ role: 'assistant', content: reply });
+
+    if (sessionDbId) void saveToDb(sessionDbId, message, reply);
 
     return NextResponse.json({ response: reply });
   } catch (err: any) {

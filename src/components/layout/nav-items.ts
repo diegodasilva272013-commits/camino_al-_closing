@@ -67,6 +67,7 @@ export const PRIVATE_NAV: NavEntry[] = [
 ];
 
 export const ADMIN_NAV: NavItem[] = [
-  { label: 'Admin',             href: '/admin',             icon: Shield,    adminOnly: true },
-  { label: 'Leads en vivo',     href: '/admin/leads-dashboard', icon: BarChart2, adminOnly: true },
+  { label: 'Admin',             href: '/admin',                     icon: Shield,    adminOnly: true },
+  { label: 'Leads en vivo',     href: '/admin/leads-dashboard',     icon: BarChart2, adminOnly: true },
+  { label: 'Historial Trainer', href: '/admin/trainer/historial',   icon: Swords,    adminOnly: true },
 ];

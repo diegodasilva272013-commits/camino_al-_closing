@@ -1,4 +1,4 @@
--- Sistema de Evolución CAC V1
+-- Sistema de Evolución CAC V1e lo dije 
 
 -- TABLA: personas
 create table if not exists public.personas (
