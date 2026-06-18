@@ -50,15 +50,24 @@ export default function TrainerAdminPage() {
   async function saveBrain() {
     setSaving(true);
     setStatus(null);
-    const res = await fetch('/api/admin/trainer/brain', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(brain),
-    });
-    const data = await res.json();
-    setSaving(false);
-    setStatus(data.ok ? { type: 'ok', msg: 'Guardado correctamente' } : { type: 'err', msg: data.error });
-    if (data.ok) setTimeout(() => setStatus(null), 3000);
+    try {
+      const res = await fetch('/api/admin/trainer/brain', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(brain),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setStatus({ type: 'ok', msg: 'Guardado correctamente' });
+        setTimeout(() => setStatus(null), 3000);
+      } else {
+        setStatus({ type: 'err', msg: data.error ?? 'Error al guardar' });
+      }
+    } catch (e: any) {
+      setStatus({ type: 'err', msg: e?.message ?? 'Error de red' });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadFile(file: File) {

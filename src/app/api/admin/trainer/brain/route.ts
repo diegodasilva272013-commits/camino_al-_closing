@@ -24,7 +24,7 @@ export async function PUT(req: NextRequest) {
     const supabase = createSupabaseAdminClient();
     const { error } = await supabase
       .from('trainer_brain')
-      .upsert({ id: 1, base_prompt, rules, mode_fria, mode_tibia, mode_caliente, updated_at: new Date().toISOString() });
+      .upsert({ id: 1, base_prompt, rules, mode_fria, mode_tibia, mode_caliente });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
