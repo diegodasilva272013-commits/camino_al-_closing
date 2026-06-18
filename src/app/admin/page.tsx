@@ -20,6 +20,8 @@ import {
   FileText,
   FileSpreadsheet,
   TrendingUp,
+  Swords,
+  FileSearch,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +54,8 @@ const sections = [
   { href: '/admin/leads-dashboard', label: 'Leads — Dashboard', desc: 'Métricas globales y ranking de setters.', icon: BarChart2 },
   { href: '/admin/reportes', label: 'Reportes Diarios', desc: 'Ver reportes de jornada por usuario y fecha.', icon: FileText },
   { href: '/admin/evolucion', label: 'Evolución CAC', desc: 'Seguimiento de capacidades, patrones e intervenciones por setter.', icon: TrendingUp },
+  { href: '/admin/trainer/historial', label: 'Historial Trainer', desc: 'Sesiones de entrenamiento por setter con análisis IA.', icon: Swords },
+  { href: '/admin/conversaciones', label: 'Conversaciones', desc: 'Evolución por setter: capacidades, patrones y aprendizajes detectados por el Motor CAC.', icon: FileSearch },
 ];
 
 function buildDailyBuckets(rows: { created_at: string }[], days = 30) {
