@@ -16,6 +16,7 @@ import {
   Target,
   TrendingUp,
   BookOpen,
+  FileSearch,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -55,6 +56,7 @@ export const PRIVATE_NAV: NavEntry[] = [
     roles: ['setter', 'admin'],
     items: [
       { label: 'Entrenamiento', href: '/trainer',          icon: Swords },
+      { label: 'Mis Conversaciones', href: '/conversaciones', icon: FileSearch },
       { label: 'Mis Leads',     href: '/leads',            icon: Users2 },
       { label: 'Reporte Diario',href: '/reporte-diario',   icon: BarChart2 },
       { label: 'Aperturas',     href: '/aperturas',        icon: MessageCircle },
