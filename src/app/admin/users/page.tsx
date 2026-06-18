@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { adjustUserPointsAction } from '@/app/admin/actions';
 import { getLevel } from '@/lib/levels';
 import { RoleSelect } from './_role-select';
+import { DeleteUserButton } from './_delete-user-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,7 @@ export default async function AdminUsersPage() {
                     </p>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1">
                       <form action={adjustUserPointsAction.bind(null, u.id, 10)}>
                         <button className="rounded border border-[rgba(212,175,55,0.18)] bg-[#0d0d0d] px-2 py-1 text-[11px] text-brand-text hover:border-brand-gold hover:text-brand-gold">
                           +10
@@ -92,6 +93,10 @@ export default async function AdminUsersPage() {
                           -10
                         </button>
                       </form>
+                      <DeleteUserButton
+                        userId={u.id}
+                        userName={u.full_name ?? u.email ?? u.id}
+                      />
                     </div>
                   </td>
                 </tr>

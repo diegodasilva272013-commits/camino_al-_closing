@@ -16,10 +16,11 @@ export async function GET() {
     const today = new Date().toISOString().split('T')[0];
     const todayStart = `${today}T00:00:00.000Z`;
 
-    const [{ data: leads }, { data: users }] = await Promise.all([
-      admin.from('leads').select('current_status, assigned_to_user_id, assigned_at, is_closed').limit(50000),
-      admin.from('profiles').select('id, full_name, email').in('role', ['setter', 'mentor']),
-    ]);
+    // Traer todos los leads con su asignación
+    const { data: leads } = await admin
+      .from('leads')
+      .select('current_status, assigned_to_user_id, assigned_at, is_closed')
+      .limit(50000);
 
     const all = leads ?? [];
     const count = (status: string) => all.filter((l) => l.current_status === status).length;
@@ -47,20 +48,38 @@ export async function GET() {
       'NO_RESPONDE', 'SEGUIMIENTO_FUTURO',
     ] as const;
 
+    // Obtener solo los IDs de quienes tienen leads asignados (sin filtrar por rol)
+    const assignedIds = [...new Set(
+      all.map((l) => l.assigned_to_user_id).filter((id): id is string => !!id)
+    )];
+
+    // Traer perfiles de esos IDs (en chunks de 500 para no superar límites)
+    const profileMap = new Map<string, { id: string; full_name: string | null; email: string | null }>();
+    for (let i = 0; i < assignedIds.length; i += 500) {
+      const chunk = assignedIds.slice(i, i + 500);
+      const { data: chunk_profiles } = await admin
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', chunk);
+      for (const p of chunk_profiles ?? []) {
+        profileMap.set(p.id, p);
+      }
+    }
+
     // Agrupar múltiples cuentas del mismo setter por nombre (deduplica cuentas dobles)
     const grouped = new Map<string, { id: string; name: string; ids: string[] }>();
-    for (const u of users ?? []) {
-      const key = (u.full_name ?? u.email ?? u.id).trim().toLowerCase();
+    for (const [uid, u] of profileMap) {
+      const key = (u.full_name ?? u.email ?? uid).trim().toLowerCase();
       if (!grouped.has(key)) {
-        grouped.set(key, { id: u.id, name: u.full_name ?? u.email ?? u.id, ids: [u.id] });
+        grouped.set(key, { id: uid, name: u.full_name ?? u.email ?? uid, ids: [uid] });
       } else {
-        grouped.get(key)!.ids.push(u.id);
+        grouped.get(key)!.ids.push(uid);
       }
     }
 
     const ranking = Array.from(grouped.values()).map((g) => {
       // Suma leads de TODAS las cuentas del mismo nombre
-      const userLeads = all.filter((l) => g.ids.includes(l.assigned_to_user_id));
+      const userLeads = all.filter((l) => l.assigned_to_user_id && g.ids.includes(l.assigned_to_user_id));
       const total     = userLeads.length;
       const resp      = userLeads.filter((l) => l.current_status === 'RESPONDIO').length;
       const inter     = userLeads.filter((l) => ['INTERES_DETECTADO','INVITADO_AL_GRUPO','INGRESO_AL_GRUPO','ACTIVO_EN_GRUPO','DIAGNOSTICO_INICIADO','DIAGNOSTICO_PROFUNDO','REUNION_PROPUESTA','REUNION_AGENDADA'].includes(l.current_status)).length;

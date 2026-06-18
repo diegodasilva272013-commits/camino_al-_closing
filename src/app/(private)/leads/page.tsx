@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users2, RefreshCw, Check, X } from 'lucide-react';
-import { PageHeader } from '@/components/layout/page-header';
+import { RefreshCw, Phone, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { LeadStatusBadge } from './_components/LeadStatusBadge';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
@@ -27,11 +26,13 @@ type Lead = {
 type OpeningMessage = { id: string; name: string; message: string };
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads]       = useState<Lead[]>([]);
   const [openings, setOpenings] = useState<OpeningMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editNote, setEditNote] = useState<{ id: string; value: string } | null>(null);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [noteEdit, setNoteEdit] = useState<{ id: string; value: string } | null>(null);
+  const [filterStatus, setFilterStatus] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,7 +56,7 @@ export default function LeadsPage() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updated } : l)));
+      setLeads((prev) => prev.map((l) => l.id === id ? { ...l, ...updated } : l));
     }
     setSaving(null);
   }
@@ -65,231 +66,260 @@ export default function LeadsPage() {
     const res = await fetch(`/api/leads/${id}/followup`, { method: 'POST' });
     if (res.ok) {
       const updated = await res.json();
-      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updated } : l)));
+      setLeads((prev) => prev.map((l) => l.id === id ? { ...l, ...updated } : l));
     }
     setSaving(null);
   }
 
-  function fmtDate(d: string | null) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
-  }
+  const visible = leads.filter((l) => !filterStatus || l.current_status === filterStatus);
+  const open    = leads.filter((l) => !l.is_closed);
+  const closed  = leads.filter((l) => l.is_closed);
 
-  const open  = leads.filter((l) => !l.is_closed);
-  const closed = leads.filter((l) => l.is_closed);
+  const statusCounts = leads.reduce<Record<string, number>>((acc, l) => {
+    acc[l.current_status] = (acc[l.current_status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
-    <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
-      <PageHeader
-        eyebrow="Setter · Leads"
-        title="Mis Leads"
-        description={`${open.length} activos · ${closed.length} cerrados`}
-      />
+    <div className="min-h-screen bg-[#080808] pb-24">
 
-      <div className="mt-6 flex items-center justify-between">
-        <div className="flex gap-2 text-sm text-brand-muted">
-          <span>{leads.length} leads asignados</span>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-[#080808]/95 backdrop-blur border-b border-white/5 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-yellow-500/60">Mis Leads</p>
+            <p className="text-sm font-semibold text-white">
+              {open.length} activos · {closed.length} cerrados
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            Actualizar
+          </button>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-md border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs text-brand-muted hover:text-brand-gold transition"
-        >
-          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-          Actualizar
-        </button>
-      </div>
 
-      {loading ? (
-        <div className="mt-16 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
-        </div>
-      ) : leads.length === 0 ? (
-        <div className="mt-24 flex flex-col items-center gap-3 text-center">
-          <Users2 className="h-12 w-12 text-brand-gold/20" />
-          <p className="text-brand-muted">No tenés leads asignados todavía.</p>
-          <p className="text-xs text-brand-muted/60">El admin te asignará leads próximamente.</p>
-        </div>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-[rgba(212,175,55,0.12)] bg-[#0d0d0d]">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-[rgba(212,175,55,0.08)] text-left">
-                {['Nombre', 'Teléfono', 'País', 'Estado', 'Seguimiento', 'Apertura', 'Notas', 'Última Act.', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/50">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[rgba(212,175,55,0.05)]">
-              {leads.map((lead) => (
-                <tr
-                  key={lead.id}
+        {/* Filtro por estado */}
+        <div className="mt-2 overflow-x-auto">
+          <div className="flex gap-1.5 pb-1 min-w-max">
+            <button
+              onClick={() => setFilterStatus('')}
+              className={cn(
+                'rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
+                !filterStatus
+                  ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400'
+                  : 'border-white/10 text-zinc-500'
+              )}
+            >
+              Todos ({leads.length})
+            </button>
+            {Object.entries(statusCounts)
+              .sort(([, a], [, b]) => b - a)
+              .map(([status, count]) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(filterStatus === status ? '' : status)}
                   className={cn(
-                    'transition hover:bg-[rgba(212,175,55,0.03)]',
-                    lead.is_closed && 'opacity-50'
+                    'rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
+                    filterStatus === status
+                      ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-400'
+                      : 'border-white/10 text-zinc-500'
                   )}
                 >
-                  {/* Nombre */}
-                  <td className="px-4 py-3 font-medium text-brand-text whitespace-nowrap">
-                    {lead.first_name} {lead.last_name ?? ''}
-                  </td>
+                  {STATUS_LABELS[status as LeadStatus] ?? status} ({count})
+                </button>
+              ))}
+          </div>
+        </div>
+      </div>
 
-                  {/* Teléfono */}
-                  <td className="px-4 py-3 text-brand-muted font-mono text-xs whitespace-nowrap">
-                    {lead.phone}
-                  </td>
+      {/* Loading */}
+      {loading ? (
+        <div className="flex justify-center pt-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 pt-24 text-center px-8">
+          <p className="text-zinc-400">No tenés leads{filterStatus ? ' con ese estado' : ' asignados'} todavía.</p>
+          {filterStatus && (
+            <button onClick={() => setFilterStatus('')} className="text-xs text-yellow-400 underline">
+              Ver todos
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="px-3 pt-3 space-y-2">
+          {visible.map((lead) => {
+            const isExpanded = expanded === lead.id;
+            const isSaving   = saving === lead.id;
 
-                  {/* País */}
-                  <td className="px-4 py-3 text-brand-muted text-xs">
-                    {lead.country ?? '—'}
-                  </td>
+            return (
+              <div
+                key={lead.id}
+                className={cn(
+                  'rounded-2xl border bg-zinc-900/60 overflow-hidden transition',
+                  lead.is_closed ? 'border-white/5 opacity-60' : 'border-white/8',
+                  isExpanded && 'border-yellow-500/20'
+                )}
+              >
+                {/* Fila principal — siempre visible */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer active:bg-white/5"
+                  onClick={() => setExpanded(isExpanded ? null : lead.id)}
+                >
+                  {/* Nombre + estado */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-sm truncate">
+                      {lead.first_name} {lead.last_name ?? ''}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-mono mt-0.5">{lead.phone}</p>
+                  </div>
 
-                  {/* Estado */}
-                  <td className="px-4 py-3">
-                    {lead.is_closed ? (
-                      <LeadStatusBadge status={lead.current_status} />
-                    ) : (
-                      <LeadStatusBadge
-                        status={lead.current_status}
-                        onChange={(s) => patchLead(lead.id, { current_status: s })}
-                      />
-                    )}
-                  </td>
+                  {/* Badge estado */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <LeadStatusBadge
+                      status={lead.current_status}
+                      onChange={isSaving || lead.is_closed ? undefined : (s) => patchLead(lead.id, { current_status: s })}
+                    />
+                  </div>
 
-                  {/* Seguimiento */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              'h-1.5 w-1.5 rounded-full',
-                              i < lead.follow_up_count
-                                ? 'bg-brand-gold'
-                                : 'bg-zinc-700'
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-xs text-brand-muted">
-                        {lead.follow_up_count}/{lead.max_follow_ups}
-                      </span>
-                      {!lead.is_closed && lead.follow_up_count < lead.max_follow_ups && (
-                        <button
-                          onClick={() => followUp(lead.id)}
-                          disabled={saving === lead.id}
-                          className="rounded border border-[rgba(212,175,55,0.2)] px-1.5 py-0.5 text-[10px] text-brand-gold hover:bg-[rgba(212,175,55,0.1)] transition disabled:opacity-40"
+                  {/* Chevron */}
+                  {isExpanded
+                    ? <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" />
+                    : <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />
+                  }
+                </div>
+
+                {/* Panel expandido */}
+                {isExpanded && (
+                  <div className="border-t border-white/5 px-4 py-4 space-y-4">
+
+                    {/* Acciones rápidas */}
+                    {!lead.is_closed && (
+                      <div className="flex gap-2 flex-wrap">
+                        <a
+                          href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-xs text-emerald-400 active:bg-emerald-900/40"
                         >
-                          +1
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          WhatsApp
+                        </a>
+                        <a
+                          href={`tel:${lead.phone}`}
+                          className="flex items-center gap-1.5 rounded-lg border border-sky-700/40 bg-sky-900/20 px-3 py-1.5 text-xs text-sky-400 active:bg-sky-900/40"
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          Llamar
+                        </a>
+                        <button
+                          onClick={() => patchLead(lead.id, { current_status: 'REUNION_AGENDADA' })}
+                          disabled={isSaving}
+                          className="flex items-center gap-1.5 rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-1.5 text-xs text-yellow-400 disabled:opacity-40"
+                        >
+                          ✓ Reunión agendada
                         </button>
-                      )}
-                      {lead.follow_up_count >= lead.max_follow_ups && (
-                        <span className="text-[10px] text-orange-400">Máx.</span>
+                        <button
+                          onClick={() => patchLead(lead.id, { current_status: 'NO_CALIFICA', is_closed: true, closed_reason: 'No califica' })}
+                          disabled={isSaving}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-800/40 bg-red-900/20 px-3 py-1.5 text-xs text-red-400 disabled:opacity-40"
+                        >
+                          ✕ No califica
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Seguimiento */}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5">Seguimiento</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1">
+                          {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                'h-2 w-2 rounded-full',
+                                i < lead.follow_up_count ? 'bg-yellow-400' : 'bg-zinc-700'
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-zinc-400">{lead.follow_up_count}/{lead.max_follow_ups}</span>
+                        {!lead.is_closed && lead.follow_up_count < lead.max_follow_ups && (
+                          <button
+                            onClick={() => followUp(lead.id)}
+                            disabled={isSaving}
+                            className="rounded-lg border border-yellow-700/30 px-2.5 py-1 text-[11px] text-yellow-400 disabled:opacity-40"
+                          >
+                            +1 seguimiento
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Apertura */}
+                    {!lead.is_closed && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5">Mensaje de apertura</p>
+                        <select
+                          value={lead.opening_message_used ?? ''}
+                          onChange={(e) => patchLead(lead.id, { opening_message_used: e.target.value || null })}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none"
+                        >
+                          <option value="">Sin apertura seleccionada</option>
+                          {openings.map((o) => (
+                            <option key={o.id} value={o.name}>{o.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Nota */}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5">Nota</p>
+                      {noteEdit?.id === lead.id ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={noteEdit.value}
+                            onChange={(e) => setNoteEdit({ id: lead.id, value: e.target.value })}
+                            rows={3}
+                            autoFocus
+                            className="w-full rounded-lg border border-yellow-500/30 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { patchLead(lead.id, { notes: noteEdit.value }); setNoteEdit(null); }}
+                              className="rounded-lg bg-yellow-500/20 border border-yellow-500/40 px-4 py-1.5 text-xs text-yellow-400"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              onClick={() => setNoteEdit(null)}
+                              className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-400"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setNoteEdit({ id: lead.id, value: lead.notes ?? '' })}
+                          className="w-full text-left rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-400 min-h-[40px]"
+                        >
+                          {lead.notes || <span className="italic text-zinc-600">Tocar para agregar nota...</span>}
+                        </button>
                       )}
                     </div>
-                  </td>
 
-                  {/* Apertura */}
-                  <td className="px-4 py-3">
-                    {lead.is_closed ? (
-                      <span className="text-xs text-brand-muted">{lead.opening_message_used ?? '—'}</span>
-                    ) : (
-                      <select
-                        value={lead.opening_message_used ?? ''}
-                        onChange={(e) => patchLead(lead.id, { opening_message_used: e.target.value || null })}
-                        className="rounded border border-[rgba(212,175,55,0.15)] bg-[#111] px-2 py-1 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/40 max-w-[130px]"
-                      >
-                        <option value="">Sin apertura</option>
-                        {openings.map((o) => (
-                          <option key={o.id} value={o.name}>{o.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-
-                  {/* Notas */}
-                  <td className="px-4 py-3 max-w-[180px]">
-                    {editNote?.id === lead.id ? (
-                      <div className="flex items-start gap-1">
-                        <textarea
-                          value={editNote.value}
-                          onChange={(e) => setEditNote({ id: lead.id, value: e.target.value })}
-                          rows={2}
-                          className="w-full rounded border border-brand-gold/30 bg-[#111] px-2 py-1 text-xs text-brand-text focus:outline-none resize-none"
-                          autoFocus
-                        />
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() => {
-                              patchLead(lead.id, { notes: editNote.value });
-                              setEditNote(null);
-                            }}
-                            className="rounded bg-brand-gold/20 p-1 text-brand-gold hover:bg-brand-gold/30"
-                          >
-                            <Check className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => setEditNote(null)}
-                            className="rounded bg-zinc-800 p-1 text-brand-muted hover:text-brand-text"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setEditNote({ id: lead.id, value: lead.notes ?? '' })}
-                        className="w-full text-left text-xs text-brand-muted hover:text-brand-text transition truncate block max-w-[160px]"
-                        title={lead.notes ?? 'Agregar nota'}
-                      >
-                        {lead.notes ? (
-                          <span className="text-brand-muted/80">{lead.notes}</span>
-                        ) : (
-                          <span className="text-brand-muted/40 italic">+ nota</span>
-                        )}
-                      </button>
-                    )}
-                  </td>
-
-                  {/* Última acción */}
-                  <td className="px-4 py-3 text-xs text-brand-muted whitespace-nowrap">
-                    {fmtDate(lead.last_action_at ?? lead.updated_at)}
-                  </td>
-
-                  {/* Acciones */}
-                  <td className="px-4 py-3">
-                    {!lead.is_closed && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => patchLead(lead.id, {
-                            current_status: 'REUNION_AGENDADA',
-                          })}
-                          title="Reunión agendada"
-                          className="rounded border border-[rgba(212,175,55,0.2)] px-2 py-1 text-[10px] text-brand-gold hover:bg-[rgba(212,175,55,0.1)] transition whitespace-nowrap"
-                        >
-                          Reunión ✓
-                        </button>
-                        <button
-                          onClick={() => patchLead(lead.id, {
-                            current_status: 'NO_CALIFICA',
-                            is_closed: true,
-                            closed_reason: 'No califica',
-                          })}
-                          title="No califica — cerrar"
-                          className="rounded border border-red-800/40 px-2 py-1 text-[10px] text-red-400 hover:bg-red-900/20 transition whitespace-nowrap"
-                        >
-                          ✕ NC
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

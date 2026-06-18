@@ -1208,7 +1208,9 @@ function NewChatDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [creating, setCreating] = useState(false);
+  const [chatError, setChatError] = useState('');
+  const [, startTransition] = useTransition();
 
   // Buscar usuarios
   useEffect(() => {
@@ -1237,28 +1239,39 @@ function NewChatDialog({
   }
 
   async function handleCreate() {
+    setChatError('');
     if (mode === 'dm') {
       const userId = [...selected][0];
-      if (!userId) return alert('Seleccioná un usuario');
-      startTransition(async () => {
+      if (!userId) { setChatError('Seleccioná un usuario'); return; }
+      setCreating(true);
+      try {
         const res = await createDmAction(userId);
-        if ('error' in res && res.error) return alert(res.error);
+        if ('error' in res && res.error) { setChatError(res.error); return; }
         if ('id' in res && res.id) onCreated(res.id);
-      });
+      } catch (e: any) {
+        setChatError(e?.message ?? 'Error al crear el chat');
+      } finally {
+        setCreating(false);
+      }
       return;
     }
-    if (!name.trim()) return alert('El nombre es requerido');
-    if (selected.size === 0) return alert('Agregá al menos un miembro');
-    startTransition(async () => {
+    if (!name.trim()) { setChatError('El nombre es requerido'); return; }
+    if (selected.size === 0) { setChatError('Agregá al menos un miembro'); return; }
+    setCreating(true);
+    try {
       const res = await createGroupAction({
         type: mode,
         name: name.trim(),
         description: description.trim() || undefined,
         memberIds: [...selected],
       });
-      if ('error' in res && res.error) return alert(res.error);
+      if ('error' in res && res.error) { setChatError(res.error); return; }
       if ('id' in res && res.id) onCreated(res.id);
-    });
+    } catch (e: any) {
+      setChatError(e?.message ?? 'Error al crear el grupo');
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -1372,21 +1385,26 @@ function NewChatDialog({
         </div>
 
         {/* Acción */}
-        <div className="flex items-center justify-between gap-2 border-t border-[rgba(212,175,55,0.15)] bg-[#0a0a0a] px-4 py-3">
-          <span className="text-[11px] text-brand-muted">
-            {mode === 'dm'
-              ? selected.size > 0
-                ? '1 usuario seleccionado'
-                : 'Elegí 1 usuario'
-              : `${selected.size} ${selected.size === 1 ? 'miembro' : 'miembros'}`}
-          </span>
-          <button
-            onClick={handleCreate}
-            disabled={pending}
-            className="rounded-full bg-gradient-to-br from-brand-gold to-amber-600 px-4 py-1.5 text-xs font-semibold text-black shadow-md disabled:opacity-50"
-          >
-            {mode === 'dm' ? 'Iniciar chat' : 'Crear'}
-          </button>
+        <div className="border-t border-[rgba(212,175,55,0.15)] bg-[#0a0a0a] px-4 py-3 space-y-2">
+          {chatError && (
+            <p className="text-xs text-red-400 text-center">{chatError}</p>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-brand-muted">
+              {mode === 'dm'
+                ? selected.size > 0
+                  ? '1 usuario seleccionado'
+                  : 'Elegí 1 usuario'
+                : `${selected.size} ${selected.size === 1 ? 'miembro' : 'miembros'}`}
+            </span>
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="rounded-full bg-gradient-to-br from-brand-gold to-amber-600 px-4 py-1.5 text-xs font-semibold text-black shadow-md disabled:opacity-50"
+            >
+              {creating ? 'Creando...' : mode === 'dm' ? 'Iniciar chat' : 'Crear'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

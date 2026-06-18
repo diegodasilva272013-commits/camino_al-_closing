@@ -1,8 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sendPushToUser } from '@/lib/push';
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -155,6 +156,54 @@ export async function sendMessageAction(input: {
     .update({ last_read_at: new Date().toISOString() })
     .eq('conversation_id', input.conversationId)
     .eq('user_id', user.id);
+
+  // Notificar a los otros miembros (fire and forget — no bloqueamos la respuesta)
+  void (async () => {
+    try {
+      const admin = createSupabaseAdminClient();
+
+      // Nombre del remitente
+      const { data: sender } = await admin
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const senderName = (sender as any)?.full_name ?? 'Alguien';
+
+      // Otros miembros de la conversación
+      const { data: members } = await admin
+        .from('chat_members')
+        .select('user_id')
+        .eq('conversation_id', input.conversationId)
+        .neq('user_id', user.id);
+
+      const preview = content
+        ? content.slice(0, 80)
+        : input.mediaType === 'image'
+          ? '📷 Foto'
+          : input.mediaType === 'video'
+            ? '🎬 Video'
+            : input.mediaType === 'audio'
+              ? '🎤 Audio'
+              : input.mediaType === 'gif'
+                ? '🎞️ GIF'
+                : '📎 Archivo';
+
+      await Promise.all(
+        ((members as any[]) ?? []).map((m) =>
+          sendPushToUser(m.user_id, {
+            title: senderName,
+            body: preview,
+            url: `/chat?c=${input.conversationId}`,
+            tag: `chat-${input.conversationId}`,
+            icon: '/icon-192.png',
+          })
+        )
+      );
+    } catch {
+      // push es best-effort, no rompemos si falla
+    }
+  })();
 
   return { ok: true };
 }

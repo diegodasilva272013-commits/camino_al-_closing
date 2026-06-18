@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/current-user';
 import { logAdminAction } from '@/lib/audit';
 import { COMMUNITY_CATEGORIES, RESOURCE_CATEGORIES, EVENT_TYPES } from '@/constants/categories';
@@ -42,6 +42,23 @@ export async function updateUserRoleAction(
     metadata: { new_role: role },
   });
   revalidatePath('/admin/users');
+}
+
+export async function deleteUserAction(userId: string): Promise<{ error?: string }> {
+  const ctx = await requireAdmin();
+  if (!userId) return { error: 'ID requerido' };
+  if (userId === ctx.userId) return { error: 'No podés borrar tu propia cuenta' };
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) return { error: error.message };
+  await logAdminAction({
+    adminId: ctx.userId,
+    action: 'user.delete',
+    targetType: 'user',
+    targetId: userId,
+  });
+  revalidatePath('/admin/users');
+  return {};
 }
 
 export async function adjustUserPointsAction(

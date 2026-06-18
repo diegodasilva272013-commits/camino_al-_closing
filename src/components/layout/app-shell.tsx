@@ -2,6 +2,7 @@ import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { getCurrentUserContext } from '@/lib/current-user';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { PushAutoPrompt } from '@/components/push-auto-prompt';
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const ctx = await getCurrentUserContext();
@@ -29,6 +30,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <Topbar isAdmin={isAdmin} role={role} newSignupsToday={newSignupsToday} />
         <main className="flex-1 px-4 py-6 lg:px-10 lg:py-8">{children}</main>
       </div>
+      <PushAutoPrompt />
     </div>
   );
 }
