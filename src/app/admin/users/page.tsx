@@ -19,7 +19,7 @@ export default async function AdminUsersPage() {
     id: string;
     full_name: string | null;
     email: string | null;
-    role: 'student' | 'mentor' | 'admin';
+    role: 'student' | 'setter' | 'mentor' | 'admin';
     points: number;
     created_at: string;
     avatar_url: string | null;

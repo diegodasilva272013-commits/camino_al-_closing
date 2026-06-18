@@ -25,10 +25,10 @@ function bool(v: FormDataEntryValue | null): boolean {
 
 export async function updateUserRoleAction(
   userId: string,
-  role: 'student' | 'mentor' | 'admin'
+  role: 'student' | 'setter' | 'mentor' | 'admin'
 ): Promise<void> {
   const ctx = await requireAdmin();
-  if (!['student', 'mentor', 'admin'].includes(role)) return;
+  if (!['student', 'setter', 'mentor', 'admin'].includes(role)) return;
   const supabase = createSupabaseServerClient();
   await (supabase as any)
     .from('profiles')
