@@ -91,3 +91,46 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 
   return { sent, removed: toRemove.length };
 }
+
+/**
+ * Envía un push a múltiples usuarios en una sola query de suscripciones.
+ */
+export async function sendPushToMany(userIds: string[], payload: PushPayload) {
+  if (userIds.length === 0) return { sent: 0, removed: 0 };
+  ensureConfigured();
+  const admin = createSupabaseAdminClient();
+
+  const { data: subs, error } = await (admin as any)
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .in('user_id', userIds);
+
+  if (error || !subs || subs.length === 0) return { sent: 0, removed: 0 };
+
+  const body = JSON.stringify(payload);
+  let sent = 0;
+  const toRemove: string[] = [];
+
+  await Promise.all(
+    (subs as SubscriptionRow[]).map(async (s) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          body
+        );
+        sent++;
+      } catch (err: any) {
+        const code = err?.statusCode;
+        if (code === 404 || code === 410) toRemove.push(s.id);
+        // eslint-disable-next-line no-console
+        else console.warn('[push] error sending', code, err?.body ?? err?.message);
+      }
+    })
+  );
+
+  if (toRemove.length > 0) {
+    await (admin as any).from('push_subscriptions').delete().in('id', toRemove);
+  }
+
+  return { sent, removed: toRemove.length };
+}

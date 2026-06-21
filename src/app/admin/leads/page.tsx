@@ -77,7 +77,7 @@ function AdminLeadsPageInner() {
   const [dedupResult, setDedupResult] = useState('');
 
   async function runDedup() {
-    if (!confirm('¿Eliminar todos los leads duplicados (mismo teléfono)? Se conserva el más antiguo de cada uno.')) return;
+    if (!confirm('¿Eliminar leads duplicados? Se conserva el que tiene más actividad (seguimientos/notas). Esta acción no se puede deshacer.')) return;
     setDeduping(true);
     setDedupResult('');
     try {
@@ -161,7 +161,8 @@ function AdminLeadsPageInner() {
     });
     const data = await res.json();
     if (res.ok) {
-      setImportResult(`✅ ${data.imported} leads importados. Lote: ${data.batch_id}`);
+      const skipMsg = data.skipped > 0 ? ` · ${data.skipped} omitidos (ya existían)` : '';
+      setImportResult(`✅ ${data.imported} leads importados${skipMsg}. Lote: ${data.batch_id}`);
       setCsvRows([]);
       await load();
     } else {

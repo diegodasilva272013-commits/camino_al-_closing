@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   RefreshCw, Phone, MessageCircle, ChevronDown, ChevronUp,
-  Search, X, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, X, ArrowUpDown, ArrowUp, ArrowDown, Download,
 } from 'lucide-react';
 import { LeadStatusBadge } from './_components/LeadStatusBadge';
+import { ContactModal } from './_components/ContactModal';
+import { ConversationPanel } from './_components/ConversationPanel';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +33,21 @@ type SortKey = 'name' | 'status' | 'followups' | 'updated';
 type SortDir = 'asc' | 'desc';
 
 const STATUS_ORDER: Record<string, number> = {
-  NO_CONTACTADO: 0, CONTACTADO: 1, EN_CONVERSACION: 2,
-  REUNION_AGENDADA: 3, NO_CALIFICA: 4, SIN_RESPUESTA: 5,
+  NO_CONTACTADO:        0,
+  APERTURA_ENVIADA:     1,
+  CONTACTADO:           2,
+  NO_RESPONDE:          3,
+  RESPONDIO:            4,
+  INTERES_DETECTADO:    5,
+  INVITADO_AL_GRUPO:    6,
+  INGRESO_AL_GRUPO:     7,
+  ACTIVO_EN_GRUPO:      8,
+  DIAGNOSTICO_INICIADO: 9,
+  DIAGNOSTICO_PROFUNDO: 10,
+  REUNION_PROPUESTA:    11,
+  REUNION_AGENDADA:     12,
+  SEGUIMIENTO_FUTURO:   13,
+  NO_CALIFICA:          14,
 };
 
 export default function LeadsPage() {
@@ -42,6 +57,8 @@ export default function LeadsPage() {
   const [saving, setSaving]     = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [noteEdit, setNoteEdit] = useState<{ id: string; value: string } | null>(null);
+  const [contactLead, setContactLead] = useState<Lead | null>(null);
+  const [setterName, setSetterName]   = useState('');
 
   // Filters & sort
   const [search, setSearch]           = useState('');
@@ -62,6 +79,10 @@ export default function LeadsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch('/api/profile/me').then(r => r.json()).then(d => { if (d.full_name) setSetterName(d.full_name); }).catch(() => {});
+  }, []);
 
   async function patchLead(id: string, body: Record<string, unknown>) {
     setSaving(id);
@@ -177,13 +198,23 @@ export default function LeadsPage() {
               {open.length} activos · {closed.length} cerrados
             </p>
           </div>
-          <button
-            onClick={load} disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400"
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-            Actualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/leads/export"
+              download
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-900/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-900/20 transition"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar Excel
+            </a>
+            <button
+              onClick={load} disabled={loading}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+              Actualizar
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -323,12 +354,18 @@ export default function LeadsPage() {
 
                     {!lead.is_closed && (
                       <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => setContactLead(lead)}
+                          className="flex items-center gap-1.5 rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-1.5 text-xs font-bold text-yellow-400 active:bg-yellow-900/40"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> Contactar
+                        </button>
                         <a
                           href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-xs text-emerald-400 active:bg-emerald-900/40"
                         >
-                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp directo
                         </a>
                         <a
                           href={`tel:${lead.phone}`}
@@ -430,12 +467,33 @@ export default function LeadsPage() {
                         Última acción: {new Date(lead.last_action_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
+
+                    {/* Conversación de prospección */}
+                    <div className="pt-1 border-t border-zinc-800">
+                      <ConversationPanel leadId={lead.id} />
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Contact modal */}
+      {contactLead && (
+        <ContactModal
+          lead={contactLead}
+          setterName={setterName}
+          onClose={() => setContactLead(null)}
+          onSent={(leadId) => {
+            setContactLead(null);
+            setLeads(prev => prev.map(l => l.id === leadId
+              ? { ...l, current_status: l.current_status === 'NO_CONTACTADO' ? 'APERTURA_ENVIADA' : l.current_status }
+              : l
+            ));
+          }}
+        />
       )}
     </div>
   );

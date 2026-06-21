@@ -8,6 +8,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const ctx = await getCurrentUserContext();
   const isAdmin = ctx?.isAdmin ?? false;
   const role = ctx?.role ?? 'student';
+  if (!ctx) console.error('[app-shell] getCurrentUserContext returned null — user will see student nav');
 
   let newSignupsToday = 0;
   if (isAdmin) {

@@ -28,14 +28,14 @@ export async function PATCH(
 
     if (!current) return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 });
 
-    const isAdmin = user.id !== current.assigned_to_user_id;
-    if (!isAdmin) {
+    // User must be the assigned setter OR an admin
+    if (user.id !== current.assigned_to_user_id) {
       const { data: profile } = await admin
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
-      if (profile?.role !== 'admin' && current.assigned_to_user_id !== user.id) {
+      if (profile?.role !== 'admin') {
         return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
       }
     }

@@ -57,6 +57,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/search') ||
     pathname.startsWith('/u/') ||
     pathname.startsWith('/leads') ||
+    pathname.startsWith('/panel') ||
+    pathname.startsWith('/inbox') ||
+    pathname.startsWith('/formularios') ||
+    pathname.startsWith('/comunicados') ||
+    pathname.startsWith('/conversaciones') ||
     pathname.startsWith('/reporte-diario') ||
     pathname.startsWith('/aperturas') ||
     pathname.startsWith('/trainer') ||

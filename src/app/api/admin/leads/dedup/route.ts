@@ -3,7 +3,12 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 
 export const dynamic = 'force-dynamic';
 
-// POST → elimina filas duplicadas por teléfono, conserva la más antigua por setter
+function normalizePhone(p: string | null | undefined): string {
+  return (p ?? '').replace(/\D/g, '');
+}
+
+// POST → dedup per (phone, assigned_to_user_id): preserva el más activo, borra el resto.
+// NO borra un lead si el mismo teléfono está en lista de otro setter (eso es válido).
 export async function POST() {
   try {
     const supabase = createSupabaseServerClient();
@@ -14,31 +19,47 @@ export async function POST() {
     const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
     if (profile?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-    // Traer todos los leads con teléfono
-    const { data: all } = await admin
+    // Fetch all leads — up to 50k
+    const { data: all, error: fetchErr } = await admin
       .from('leads')
-      .select('id, phone, assigned_to_user_id, created_at')
-      .order('created_at', { ascending: true })
+      .select('id, phone, assigned_to_user_id, follow_up_count, updated_at, is_closed')
+      .order('updated_at', { ascending: false })
       .limit(50000);
 
-    // Agrupar por teléfono → conservar el primero (más antiguo), borrar el resto
-    const seen = new Map<string, string>(); // phone → id a conservar
-    const toDelete: string[] = [];
+    if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
+
+    // Group by (normalizedPhone + setter) — the same phone can exist for different setters
+    const groups = new Map<string, any[]>();
+    let skippedNoPhone = 0;
 
     for (const lead of all ?? []) {
-      if (!lead.phone) continue;
-      if (seen.has(lead.phone)) {
-        toDelete.push(lead.id);
-      } else {
-        seen.set(lead.phone, lead.id);
-      }
+      const norm = normalizePhone(lead.phone);
+      if (!norm) { skippedNoPhone++; continue; }
+      const key = `${norm}::${lead.assigned_to_user_id ?? '__unassigned__'}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(lead);
+    }
+
+    const toDelete: string[] = [];
+
+    for (const [, leads] of groups) {
+      if (leads.length <= 1) continue;
+
+      // Keep the most active: highest follow_up_count, then most recent updated_at
+      const sorted = [...leads].sort((a, b) => {
+        const fcDiff = (b.follow_up_count ?? 0) - (a.follow_up_count ?? 0);
+        if (fcDiff !== 0) return fcDiff;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+
+      // Keep first, delete rest
+      toDelete.push(...sorted.slice(1).map((l: any) => l.id));
     }
 
     if (!toDelete.length) {
-      return NextResponse.json({ deleted: 0, message: 'No hay duplicados.' });
+      return NextResponse.json({ deleted: 0, message: 'No hay duplicados por setter.', skipped_no_phone: skippedNoPhone });
     }
 
-    // Borrar en chunks
     const CHUNK = 200;
     let deleted = 0;
     for (let i = 0; i < toDelete.length; i += CHUNK) {
@@ -48,7 +69,11 @@ export async function POST() {
       deleted += chunk.length;
     }
 
-    return NextResponse.json({ deleted, message: `${deleted} leads duplicados eliminados.` });
+    return NextResponse.json({
+      deleted,
+      message: `${deleted} leads duplicados eliminados (por setter).`,
+      skipped_no_phone: skippedNoPhone,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

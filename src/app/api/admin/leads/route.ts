@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
     let query = admin
       .from('leads')
       .select('*, assignee:profiles!leads_assigned_to_user_id_fkey(id, full_name, email)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 9999);
 
     if (userId === 'unassigned') query = query.is('assigned_to_user_id', null);
     else if (userId) query = query.eq('assigned_to_user_id', userId);

@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/team-diagnosis",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/founder-weekly",
+      "schedule": "0 9 * * 1"
+    }
+  ]
+}

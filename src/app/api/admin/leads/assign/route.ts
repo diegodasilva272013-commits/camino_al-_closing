@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
         .from('leads')
         .select('id')
         .is('assigned_to_user_id', null)
+        .order('created_at', { ascending: true })
         .limit(quantity);
       ids = (unassigned ?? []).map((l) => l.id);
     }

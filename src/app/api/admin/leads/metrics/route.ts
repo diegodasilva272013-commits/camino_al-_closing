@@ -16,13 +16,20 @@ export async function GET() {
     const today = new Date().toISOString().split('T')[0];
     const todayStart = `${today}T00:00:00.000Z`;
 
-    // Traer todos los leads con su asignación
-    const { data: leads } = await admin
-      .from('leads')
-      .select('current_status, assigned_to_user_id, assigned_at, is_closed')
-      .limit(50000);
-
-    const all = leads ?? [];
+    // Traer TODOS los leads con paginación (Supabase limita a 1000 por defecto)
+    let all: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data: page, error: pageErr } = await admin
+        .from('leads')
+        .select('current_status, assigned_to_user_id, assigned_at, is_closed')
+        .range(from, from + PAGE - 1);
+      if (pageErr || !page?.length) break;
+      all.push(...page);
+      if (page.length < PAGE) break;
+      from += PAGE;
+    }
     const count = (status: string) => all.filter((l) => l.current_status === status).length;
 
     const global = {

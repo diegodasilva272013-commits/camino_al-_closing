@@ -4,6 +4,10 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function normalizePhone(p: string | null | undefined): string {
+  return (p ?? '').replace(/\D/g, '');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = createSupabaseServerClient();
@@ -24,29 +28,60 @@ export async function POST(req: NextRequest) {
 
     const invalid = rows.filter((r) => !r.phone || !r.first_name);
     if (invalid.length) {
-      return NextResponse.json(
-        { error: `${invalid.length} filas sin teléfono o nombre` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `${invalid.length} filas sin teléfono o nombre` }, { status: 400 });
     }
 
     const batchId = batch_id ?? `batch-${Date.now()}`;
-    const inserts = rows.map((r) => ({
-      first_name: r.first_name,
-      last_name:  r.last_name ?? null,
-      phone:      r.phone,
-      country:    r.country ?? null,
-      source:     r.source ?? null,
-      batch_id:   batchId,
-    }));
 
-    const { data, error } = await admin
-      .from('leads')
-      .insert(inserts)
-      .select('id');
+    // Normalize and deduplicate within the incoming batch
+    const batchSeen = new Set<string>();
+    const uniqueRows: typeof rows = [];
+    for (const r of rows) {
+      const norm = normalizePhone(r.phone);
+      if (!norm || batchSeen.has(norm)) continue;
+      batchSeen.add(norm);
+      uniqueRows.push(r);
+    }
 
+    // Check which phones already exist in DB (in chunks of 500)
+    const existingNorm = new Set<string>();
+    const phones = uniqueRows.map(r => r.phone);
+    for (let i = 0; i < phones.length; i += 500) {
+      const chunk = phones.slice(i, i + 500);
+      const { data: existing } = await admin
+        .from('leads')
+        .select('phone')
+        .in('phone', chunk);
+      for (const e of existing ?? []) {
+        existingNorm.add(normalizePhone(e.phone));
+      }
+    }
+
+    const toInsert = uniqueRows
+      .filter(r => !existingNorm.has(normalizePhone(r.phone)))
+      .map(r => ({
+        first_name: r.first_name,
+        last_name:  r.last_name ?? null,
+        phone:      r.phone,
+        country:    r.country ?? null,
+        source:     r.source ?? null,
+        batch_id:   batchId,
+      }));
+
+    const skipped = rows.length - toInsert.length;
+
+    if (!toInsert.length) {
+      return NextResponse.json({ imported: 0, skipped, batch_id: batchId, message: 'Todos los teléfonos ya existen en la base de datos.' });
+    }
+
+    const { data, error } = await admin.from('leads').insert(toInsert).select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ imported: data?.length ?? 0, batch_id: batchId });
+
+    return NextResponse.json({
+      imported: data?.length ?? 0,
+      skipped,
+      batch_id: batchId,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

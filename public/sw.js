@@ -1,5 +1,5 @@
 // Camino al Closing — Service Worker (network-first, sin cache para HTML)
-const CACHE = 'cac-v3-2026053105';
+const CACHE = 'cac-v5-20260620';
 const ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {

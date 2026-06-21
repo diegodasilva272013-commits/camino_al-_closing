@@ -43,26 +43,31 @@ export async function registerAction(
   const password    = String(formData.get('password')    ?? '');
   const access_code = String(formData.get('access_code') ?? '').trim().toUpperCase();
 
-  if (!full_name || !email || !password || !access_code) {
-    return { error: 'Todos los campos son obligatorios.' };
+  if (!full_name || !email || !password) {
+    return { error: 'Nombre, email y contraseña son obligatorios.' };
   }
   if (password.length < 6) {
     return { error: 'La contraseña debe tener al menos 6 caracteres.' };
   }
 
-  // Validar código de acceso
   const adminClient = createSupabaseAdminClient();
-  const { data: code } = await adminClient
-    .from('invite_codes')
-    .select('id, used_count, max_uses, is_active')
-    .eq('code', access_code)
-    .maybeSingle();
 
-  if (!code || !code.is_active) {
-    return { error: 'Código de acceso inválido.' };
-  }
-  if (code.used_count >= code.max_uses) {
-    return { error: 'Este código ya alcanzó su límite de usos.' };
+  // Validar código setter solo si se ingresó uno
+  let validatedCode: { id: string; used_count: number } | null = null;
+  if (access_code) {
+    const { data: code } = await adminClient
+      .from('invite_codes')
+      .select('id, used_count, max_uses, is_active')
+      .eq('code', access_code)
+      .maybeSingle();
+
+    if (!code || !code.is_active) {
+      return { error: 'Código setter inválido.' };
+    }
+    if (code.used_count >= code.max_uses) {
+      return { error: 'Este código ya alcanzó su límite de usos.' };
+    }
+    validatedCode = code;
   }
 
   const supabase = createSupabaseServerClient();
@@ -79,18 +84,25 @@ export async function registerAction(
     return { error: traduceError(error.message) };
   }
 
-  // Incrementar used_count y guardar access_code en el perfil
+  // Actualizar perfil: setter con código, estudiante sin código
   if (data.user) {
-    await Promise.all([
-      adminClient
-        .from('invite_codes')
-        .update({ used_count: code.used_count + 1 })
-        .eq('id', code.id),
-      adminClient
+    if (validatedCode) {
+      await Promise.all([
+        adminClient
+          .from('invite_codes')
+          .update({ used_count: validatedCode.used_count + 1 })
+          .eq('id', validatedCode.id),
+        adminClient
+          .from('profiles')
+          .update({ access_code, role: 'setter' })
+          .eq('id', data.user.id),
+      ]);
+    } else {
+      await adminClient
         .from('profiles')
-        .update({ access_code, role: 'setter' })
-        .eq('id', data.user.id),
-    ]);
+        .update({ role: 'student' })
+        .eq('id', data.user.id);
+    }
   }
 
   // Si email confirmation está desactivado, Supabase devuelve sesión activa.
