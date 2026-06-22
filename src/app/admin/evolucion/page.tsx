@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+
+const VideoUploader = dynamic(() => import('@/components/d2030/VideoUploader'), { ssr: false });
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -52,12 +54,6 @@ const CAP_GLOW: Record<string, string> = {
   presencia:              'border-red-500/30',
 };
 
-const TIPO_LABELS: Record<string, string> = {
-  clase: 'Clase', mentoria_grupal: 'Mentoría grupal', mentoria_individual: 'Mentoría individual',
-  reunion_estrategica: 'Reunión estratégica', reunion_equipo: 'Reunión de equipo',
-  transcripcion: 'Transcripción', conversacion: 'Conversación', audio: 'Audio',
-};
-
 // ── Componentes simples ───────────────────────────────────────────────────────
 
 function Tendencia({ t }: { t: Capacidad['tendencia'] }) {
@@ -83,13 +79,10 @@ function BarNivel({ nivel, clave }: { nivel: number | null; clave: string }) {
 
 export default function EvolucionPage() {
   const router   = useRouter();
-  const [perfil, setPerfil]         = useState<Perfil | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  const [showForm, setShowForm]     = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitErr, setSubmitErr]   = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [perfil, setPerfil]     = useState<Perfil | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   async function loadPerfil() {
     try {
@@ -110,34 +103,6 @@ export default function EvolucionPage() {
   }
 
   useEffect(() => { loadPerfil(); }, []);
-
-  async function submitEvidencia(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSubmitting(true);
-    setSubmitErr(null);
-    const fd = new FormData(e.currentTarget);
-    try {
-      const r = await fetch('/api/d2030/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titulo:      fd.get('titulo'),
-          tipo:        fd.get('tipo'),
-          texto_crudo: fd.get('texto_crudo'),
-          contexto:    fd.get('contexto') || null,
-          fecha:       fd.get('fecha') || null,
-        }),
-      });
-      const data = await r.json();
-      if (!r.ok) { setSubmitErr(data.error ?? 'Error al analizar'); return; }
-      // Redirigir a la vista de resultado
-      router.push(`/admin/evolucion/r/${data.evidencia_id}`);
-    } catch (err: any) {
-      setSubmitErr(err.message ?? 'Error de red');
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   // —— Estados de carga y error ─────────────────────────────────────────────
 
@@ -194,63 +159,9 @@ export default function EvolucionPage() {
           </div>
         </div>
 
-        {/* Formulario de carga */}
+        {/* Uploader */}
         {showForm && (
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 space-y-4">
-            <h2 className="text-xs text-zinc-400 uppercase tracking-wider">Cargar evidencia de desempeño</h2>
-            {submitErr && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">{submitErr}</div>
-            )}
-            <form ref={formRef} onSubmit={submitEvidencia} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs text-zinc-500 mb-1">Título *</label>
-                  <input
-                    name="titulo" required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
-                    placeholder="Ej: Mentoría grupal — 21 jun"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-zinc-500 mb-1">Tipo *</label>
-                  <select name="tipo" required className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500">
-                    <option value="">Seleccioná...</option>
-                    {Object.entries(TIPO_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-zinc-500 mb-1">Fecha</label>
-                  <input name="fecha" type="date" className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-zinc-500 mb-1">Contexto</label>
-                  <input name="contexto" className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500" placeholder="Opcional: tema de la sesión, participantes..." />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Transcripción *</label>
-                <textarea
-                  name="texto_crudo" required rows={10}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 resize-y"
-                  placeholder="Pegá la transcripción completa..."
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit" disabled={submitting}
-                  className="bg-white text-zinc-900 hover:bg-zinc-100 disabled:opacity-50 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                >
-                  {submitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 border border-zinc-400 border-t-zinc-700 rounded-full animate-spin" />
-                      Analizando...
-                    </span>
-                  ) : 'Analizar evidencia'}
-                </button>
-                <span className="text-xs text-zinc-600">~15–30 seg con gpt-4o</span>
-              </div>
-            </form>
-          </div>
+          <VideoUploader onClose={() => setShowForm(false)} />
         )}
 
         {/* Las 6 capacidades */}
