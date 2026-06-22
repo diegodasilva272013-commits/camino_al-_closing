@@ -234,7 +234,7 @@ function CapacidadCard({ cap }: { cap: Capacidad }) {
             <div className="min-w-0">
               <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">{comp.descripcion}</p>
               {comp.cita_textual && (
-                <p className="text-xs text-zinc-600 italic mt-1 line-clamp-1">"{comp.cita_textual}"</p>
+                <p className="text-xs text-zinc-600 italic mt-1 line-clamp-1">&ldquo;{comp.cita_textual}&rdquo;</p>
               )}
               {comp.evidencia_titulo && (
                 <a

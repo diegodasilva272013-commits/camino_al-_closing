@@ -217,7 +217,7 @@ export default function GrabacionPage() {
                         <p className="text-sm text-zinc-100 leading-relaxed flex-1">{c.descripcion}</p>
                       </div>
                       <blockquote className="border-l-2 border-zinc-700 pl-3 text-xs text-zinc-500 italic leading-relaxed">
-                        "{c.cita}"
+                        &ldquo;{c.cita}&rdquo;
                       </blockquote>
                       {c.comportamiento_capacidad?.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-1">

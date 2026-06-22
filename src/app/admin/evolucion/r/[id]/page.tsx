@@ -122,7 +122,7 @@ export default async function ResultadoPage({ params }: { params: { id: string }
 
                     {c.cita_textual && (
                       <blockquote className="border-l-2 border-zinc-600 pl-3 text-xs text-zinc-400 italic leading-relaxed">
-                        "{c.cita_textual}"
+                        &ldquo;{c.cita_textual}&rdquo;
                       </blockquote>
                     )}
 
