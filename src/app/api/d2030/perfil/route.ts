@@ -15,87 +15,76 @@ async function requireAdmin() {
 
 /**
  * GET /api/d2030/perfil
- * Devuelve el estado actual del perfil de Diego:
- * - 6 capacidades con nivel_actual, tendencia, último comportamiento que las movió
- * - Conteos de evidencias y comportamientos
- * - tiene_datos: false si no hay ningún comportamiento aún
+ * Las 6 capacidades con nivel_actual, tendencia y último comportamiento.
  */
 export async function GET(_req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    // 4 queries paralelas
+    const { data: perfil } = await (admin as any).from('perfil').select('id').limit(1).single();
+    if (!perfil?.id) return NextResponse.json({ error: 'Perfil no inicializado. Corré la migración 0029.' }, { status: 404 });
+
     const [capsRes, medsRes, compsRes, countEvRes, countCompRes] = await Promise.all([
-      // 1. Las 6 capacidades
-      (admin as any).from('d2030_capacidades').select('clave, nombre, nivel_actual, nivel_objetivo, orden').eq('activa', true).order('orden'),
-
-      // 2. Últimas 60 mediciones (10 por cap × 6) para tendencia y nivel
-      (admin as any).from('d2030_mediciones').select('capacidad_clave, valor, fecha, created_at').order('created_at', { ascending: false }).limit(60),
-
-      // 3. Últimos 120 comportamientos con su link a capacidades + titulo de evidencia
-      (admin as any).from('d2030_comportamientos')
-        .select('id, descripcion, cita_textual, fecha, created_at, evidencia_id, d2030_comportamiento_capacidades(capacidad_clave, valencia), d2030_evidencias(titulo)')
+      (admin as any).from('objetivo_crecimiento').select('id, nombre, nombre_display, nivel_actual, orden').eq('perfil_id', perfil.id).eq('activo', true).order('orden'),
+      (admin as any).from('medicion').select('capacidad_id, valor, fecha, created_at').order('created_at', { ascending: false }).limit(60),
+      (admin as any)
+        .from('comportamiento')
+        .select('id, descripcion, cita, fecha, created_at, evidencia_id, comportamiento_capacidad(capacidad_id, valencia), evidencia(tipo)')
         .order('created_at', { ascending: false })
         .limit(120),
-
-      // 4. Total evidencias procesadas
-      (admin as any).from('d2030_evidencias').select('*', { count: 'exact', head: true }).eq('estado_proc', 'ready'),
-
-      // 5. Total comportamientos
-      (admin as any).from('d2030_comportamientos').select('*', { count: 'exact', head: true }),
+      (admin as any).from('evidencia').select('*', { count: 'exact', head: true }).eq('perfil_id', perfil.id).eq('estado', 'procesada'),
+      (admin as any).from('comportamiento').select('*', { count: 'exact', head: true }),
     ]);
 
     const caps:  any[] = capsRes.data  ?? [];
     const meds:  any[] = medsRes.data  ?? [];
     const comps: any[] = compsRes.data ?? [];
-    const totalEvidencias    = countEvRes.count  ?? 0;
-    const totalComportamientos = countCompRes.count ?? 0;
+    const totalEvidencias        = countEvRes.count  ?? 0;
+    const totalComportamientos   = countCompRes.count ?? 0;
 
-    // Agrupar mediciones por capacidad (queremos las 2 más recientes para tendencia)
+    // 2 últimas mediciones por capacidad (para tendencia)
     const medsByCap: Record<string, any[]> = {};
     for (const m of meds) {
-      if (!medsByCap[m.capacidad_clave]) medsByCap[m.capacidad_clave] = [];
-      if (medsByCap[m.capacidad_clave].length < 2) medsByCap[m.capacidad_clave].push(m);
+      if (!medsByCap[m.capacidad_id]) medsByCap[m.capacidad_id] = [];
+      if (medsByCap[m.capacidad_id].length < 2) medsByCap[m.capacidad_id].push(m);
     }
 
-    // Último comportamiento por capacidad (el más reciente que la impactó)
+    // Último comportamiento por capacidad
     const lastCompByCap: Record<string, any> = {};
     for (const c of comps) {
-      for (const link of (c.d2030_comportamiento_capacidades ?? [])) {
-        if (!lastCompByCap[link.capacidad_clave]) {
-          lastCompByCap[link.capacidad_clave] = {
-            id:              c.id,
-            descripcion:     c.descripcion,
-            cita_textual:    c.cita_textual,
-            fecha:           c.fecha,
-            evidencia_id:    c.evidencia_id,
-            evidencia_titulo: c.d2030_evidencias?.titulo ?? null,
-            valencia:        link.valencia,
+      for (const link of (c.comportamiento_capacidad ?? [])) {
+        if (!lastCompByCap[link.capacidad_id]) {
+          lastCompByCap[link.capacidad_id] = {
+            id:           c.id,
+            descripcion:  c.descripcion,
+            cita:         c.cita,
+            fecha:        c.fecha,
+            evidencia_id: c.evidencia_id,
+            tipo_evidencia: c.evidencia?.tipo ?? null,
+            valencia:     link.valencia,
           };
         }
       }
     }
 
     const capacidades = caps.map(cap => {
-      const capMeds   = medsByCap[cap.clave] ?? [];
-      const lastMed   = capMeds[0] ?? null;
-      const prevMed   = capMeds[1] ?? null;
-
+      const capMeds  = medsByCap[cap.id] ?? [];
+      const lastMed  = capMeds[0] ?? null;
+      const prevMed  = capMeds[1] ?? null;
       let tendencia: 'sube' | 'baja' | 'estable' | null = null;
       if (lastMed && prevMed) {
         const diff = lastMed.valor - prevMed.valor;
         tendencia = diff > 0.05 ? 'sube' : diff < -0.05 ? 'baja' : 'estable';
       }
-
       return {
-        clave:           cap.clave,
-        nombre:          cap.nombre,
-        nivel_actual:    cap.nivel_actual ?? null,
-        nivel_objetivo:  cap.nivel_objetivo,
+        id:            cap.id,
+        nombre:        cap.nombre,
+        nombre_display: cap.nombre_display,
+        nivel_actual:  cap.nivel_actual ?? null,
         tendencia,
         ultima_medicion: lastMed ? { valor: lastMed.valor, fecha: lastMed.fecha } : null,
-        ultimo_comportamiento: lastCompByCap[cap.clave] ?? null,
+        ultimo_comportamiento: lastCompByCap[cap.id] ?? null,
       };
     });
 

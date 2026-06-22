@@ -18,21 +18,12 @@ async function requireAdmin() {
 /**
  * POST /api/d2030/extract
  *
- * Opción A — evidencia ya existe en d2030_evidencias:
- *   Body: { evidencia_id: "uuid" }
+ * Opción A — evidencia ya existe:
+ *   { evidencia_id: "uuid" }
  *
- * Opción B — crear evidencia + extraer en un solo paso:
- *   Body: {
- *     titulo:      string,
- *     tipo:        string,
- *     texto_crudo: string,
- *     contexto?:   string,
- *     fecha?:      string (YYYY-MM-DD),
- *     fuente?:     "manual" | "auto_sync"
- *   }
- *
- * Devuelve el JSON de comportamientos, mediciones y patrones extraídos.
- * Eso es la validación: si el JSON sale limpio, el pipeline funciona.
+ * Opción B — crear evidencia + extraer en un paso:
+ *   { titulo, tipo, texto_crudo, fecha?, fuente? }
+ *   (texto_crudo se guarda como `texto` en la tabla evidencia)
  */
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin();
@@ -40,31 +31,28 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
+  // Obtener perfil_id
+  const { data: perfil } = await (admin as any).from('perfil').select('id').limit(1).single();
+  if (!perfil?.id) return NextResponse.json({ error: 'Perfil no inicializado. Corré la migración 0029.' }, { status: 404 });
+
   let evidenciaId: string;
 
   if (body.evidencia_id) {
-    // Opción A: ya existe
     evidenciaId = body.evidencia_id;
   } else {
-    // Opción B: crear y luego extraer
-    const { titulo, tipo, texto_crudo, contexto, fecha, fuente } = body;
+    const { titulo, tipo, texto_crudo, fecha } = body;
 
-    if (!titulo || !tipo || !texto_crudo?.trim()) {
-      return NextResponse.json(
-        { error: 'titulo, tipo y texto_crudo son requeridos' },
-        { status: 400 }
-      );
+    if (!tipo || !texto_crudo?.trim()) {
+      return NextResponse.json({ error: 'tipo y texto_crudo son requeridos' }, { status: 400 });
     }
 
     const { data: ev, error: evErr } = await (admin as any)
-      .from('d2030_evidencias')
+      .from('evidencia')
       .insert({
-        titulo,
+        perfil_id: perfil.id,
         tipo,
-        texto_crudo,
-        contexto: contexto ?? null,
-        fecha:    fecha ?? new Date().toISOString().split('T')[0],
-        fuente:   fuente ?? 'manual',
+        texto:     texto_crudo,
+        fecha:     fecha ?? new Date().toISOString().split('T')[0],
       })
       .select('id')
       .single();
@@ -79,7 +67,7 @@ export async function POST(req: NextRequest) {
   const result = await runExtractionPipeline(evidenciaId);
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    return NextResponse.json({ error: result.error, raw_llm: result.raw_llm }, { status: 500 });
   }
 
   return NextResponse.json(result);

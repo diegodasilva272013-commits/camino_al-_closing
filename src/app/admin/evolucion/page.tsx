@@ -181,12 +181,17 @@ export default function EvolucionPage() {
               <p className="text-zinc-600 text-sm mt-1">Sin evidencias aún. Cargá la primera transcripción.</p>
             )}
           </div>
-          <button
-            onClick={() => { setShowForm(f => !f); setSubmitErr(null); }}
-            className="shrink-0 text-sm bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            {showForm ? '✕' : '+ Cargar evidencia'}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="/admin/evolucion/config" className="text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-colors">
+              Config
+            </a>
+            <button
+              onClick={() => { setShowForm(f => !f); setSubmitErr(null); }}
+              className="text-sm bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              {showForm ? '✕' : '+ Cargar evidencia'}
+            </button>
+          </div>
         </div>
 
         {/* Formulario de carga */}
