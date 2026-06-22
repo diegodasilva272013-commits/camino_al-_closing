@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { CAPACIDADES, CAPACITY_COLORS, type CapacidadKey } from '@/lib/motor-cac-ceo';
 
 type Estado = {
@@ -13,13 +13,16 @@ type Estado = {
   patron_dominante?: { patron: string; count: number; tipo: string; capacidad: string; label_capacidad: string; descripcion?: string } | null;
   patron_positivo?: { patron: string; count: number; tipo: string; capacidad: string; label_capacidad: string } | null;
   todos_patrones?: any[];
-  comportamientos_neg?: { behavior: string; capacidad: string; count: number }[];
-  comportamientos_pos?: { behavior: string; capacidad: string; count: number }[];
   proxima_accion?: { capacidad: string; titulo: string; descripcion: string; criterio_validacion: string } | null;
   feedback_general?: string | null;
   prediccion?: string | null;
   ejercicios_activos?: any[];
-  snapshots?: { snapshot_date: string; scores: Record<string, number> }[];
+};
+
+type SyncStatus = 'idle' | 'syncing' | 'done' | 'no_data';
+
+const NIVEL_COLOR: Record<string, string> = {
+  fuerte: 'text-emerald-400', medio: 'text-yellow-400', debil: 'text-red-400', sin_datos: 'text-zinc-500',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -31,106 +34,192 @@ const TYPE_LABELS: Record<string, string> = {
   mensaje_equipo: 'Mensaje al equipo',
 };
 
-const NIVEL_COLOR: Record<string, string> = {
-  fuerte: 'text-emerald-400', medio: 'text-yellow-400', debil: 'text-red-400', sin_datos: 'text-zinc-500',
-};
-
 export default function EvolucionPage() {
-  const [estado, setEstado]         = useState<Estado | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [showForm, setShowForm]     = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]         = useState<any>(null);
+  const [estado, setEstado]           = useState<Estado | null>(null);
+  const [syncStatus, setSyncStatus]   = useState<SyncStatus>('syncing');
+  const [syncMsg, setSyncMsg]         = useState('Sincronizando datos del equipo...');
+  const [showForm, setShowForm]       = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [formResult, setFormResult]   = useState<any>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const syncedRef = useRef(false);
 
-  useEffect(() => { fetchEstado(); }, []);
-
-  async function fetchEstado() {
-    setLoading(true);
+  const fetchEstado = useCallback(async () => {
     try {
       const r = await fetch('/api/founder/estado');
-      setEstado(await r.json());
-    } catch {}
-    setLoading(false);
-  }
+      const d = await r.json();
+      setEstado(d);
+      return d as Estado;
+    } catch { return null; }
+  }, []);
 
-  async function submitEvidence(e: React.FormEvent<HTMLFormElement>) {
+  const runSync = useCallback(async () => {
+    if (syncedRef.current) return;
+    syncedRef.current = true;
+    setSyncStatus('syncing');
+    setSyncMsg('Sincronizando datos del equipo...');
+
+    try {
+      const r = await fetch('/api/founder/sync', { method: 'POST' });
+      const d = await r.json();
+
+      if (d.synced > 0) {
+        setSyncMsg(`${d.message} Actualizando perfil...`);
+        const newEstado = await fetchEstado();
+        if (newEstado?.has_data) {
+          setSyncStatus('done');
+          setSyncMsg(`✓ ${d.message}`);
+          // Si hay más pendientes, volver a sincronizar
+          if (d.pending > 0) {
+            syncedRef.current = false;
+            setTimeout(() => runSync(), 500);
+          }
+        } else {
+          setSyncStatus('no_data');
+          setSyncMsg('Datos sincronizados. Análisis en proceso...');
+        }
+      } else if (d.synced === 0 && d.already_synced > 0) {
+        // Ya estaba sincronizado
+        setSyncStatus('done');
+        setSyncMsg('');
+      } else {
+        // No hay team_diagnostics todavía
+        setSyncStatus('no_data');
+        setSyncMsg(d.message ?? 'No hay datos de equipo aún.');
+      }
+    } catch {
+      setSyncStatus('no_data');
+      setSyncMsg('Error al sincronizar.');
+    }
+  }, [fetchEstado]);
+
+  useEffect(() => {
+    // Cargar estado Y lanzar sync en paralelo
+    fetchEstado().then(e => {
+      if (e?.has_data) setSyncStatus('idle');
+    });
+    runSync();
+  }, []);
+
+  async function submitManualEvidence(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
-    setResult(null);
+    setFormResult(null);
     const fd = new FormData(e.currentTarget);
-    const body = {
-      title:        fd.get('title'),
-      type:         fd.get('type'),
-      content_text: fd.get('content_text'),
-      context:      fd.get('context'),
-      duration_min: fd.get('duration_min') ? Number(fd.get('duration_min')) : null,
-      date_recorded: fd.get('date_recorded') || null,
-    };
     try {
       const r = await fetch('/api/founder/evidences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          title:        fd.get('title'),
+          type:         fd.get('type'),
+          content_text: fd.get('content_text'),
+          context:      fd.get('context'),
+          date_recorded: fd.get('date_recorded') || null,
+        }),
       });
       const data = await r.json();
-      if (!r.ok) { setResult({ error: data.error }); return; }
-      setResult({ ok: true, analysis: data.analysis });
+      if (!r.ok) { setFormResult({ error: data.error }); return; }
+      setFormResult({ ok: true });
       formRef.current?.reset();
       setShowForm(false);
       await fetchEstado();
     } catch (err: any) {
-      setResult({ error: err.message });
+      setFormResult({ error: err.message });
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-      <div className="text-zinc-400 text-sm animate-pulse">Cargando estado de Diego...</div>
+  // —— Loading inicial: sync todavía corriendo y sin datos
+  if (!estado && syncStatus === 'syncing') return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+      <div className="w-8 h-8 border-2 border-zinc-600 border-t-white rounded-full animate-spin" />
+      <p className="text-zinc-400 text-sm">Sincronizando datos del equipo...</p>
     </div>
   );
 
+  // —— Sin datos después de sync
   if (!estado?.has_data) return (
-    <EmptyState
-      showForm={showForm} onAdd={() => setShowForm(true)}
-      submitting={submitting} result={result}
-      formRef={formRef} onSubmit={submitEvidence}
-    />
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="max-w-2xl mx-auto px-4 pt-16 pb-20 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Diego 2030</h1>
+        </div>
+
+        {syncStatus === 'no_data' && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-3">
+            <div className="text-zinc-300 text-sm font-medium">Sin datos de equipo aún</div>
+            <p className="text-zinc-500 text-sm leading-relaxed">
+              El diagnóstico diario del equipo corre automáticamente a las 8 AM UTC.<br />
+              Una vez que haya diagnósticos, el sistema los analiza solo — sin formularios.
+            </p>
+            <button
+              onClick={() => { syncedRef.current = false; runSync(); }}
+              className="text-xs border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 px-4 py-2 rounded-lg transition-colors"
+            >
+              Reintentar sync
+            </button>
+          </div>
+        )}
+
+        {syncStatus === 'syncing' && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-zinc-600 border-t-white rounded-full animate-spin shrink-0" />
+            <p className="text-zinc-400 text-sm">{syncMsg}</p>
+          </div>
+        )}
+
+        <div className="border-t border-zinc-800 pt-4">
+          <p className="text-xs text-zinc-600 mb-3">O cargá evidencia directa:</p>
+          {!showForm ? (
+            <button
+              onClick={() => setShowForm(true)}
+              className="text-xs border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 px-4 py-2 rounded-lg transition-colors"
+            >
+              + Cargar transcripción manual
+            </button>
+          ) : (
+            <ManualEvidenceForm formRef={formRef} onSubmit={submitManualEvidence} submitting={submitting} result={formResult} onCancel={() => setShowForm(false)} />
+          )}
+        </div>
+      </div>
+    </div>
   );
 
-  const ev = estado;
+  const ev = estado!;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-20">
       <div className="max-w-4xl mx-auto px-4 pt-8 space-y-8">
 
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">Diego 2030</h1>
             <p className="text-zinc-500 text-sm mt-1">
               {ev.total_evidencias} evidencia{ev.total_evidencias !== 1 ? 's' : ''} analizadas
               {ev.ultima_evidencia && ` · última: ${ev.ultima_evidencia.date_recorded}`}
+              {syncStatus === 'syncing' && <span className="ml-2 text-zinc-600 text-xs animate-pulse">· sincronizando...</span>}
+              {syncMsg && syncStatus === 'done' && <span className="ml-2 text-emerald-600 text-xs">· {syncMsg}</span>}
             </p>
           </div>
           <button
-            onClick={() => { setShowForm(f => !f); setResult(null); }}
-            className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+            onClick={() => { setShowForm(f => !f); setFormResult(null); }}
+            className="shrink-0 text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
           >
-            {showForm ? '✕ Cerrar' : '+ Nueva evidencia'}
+            {showForm ? '✕ Cerrar' : '+ Evidencia manual'}
           </button>
         </div>
 
-        {/* Estado HOY — 3 bloques */}
+        {/* Estado HOY — 3 bloques clave */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className={`rounded-xl border p-4 ${ev.capacidad_debil ? 'bg-red-500/10 border-red-500/30' : 'bg-zinc-900 border-zinc-800'}`}>
-            <div className="text-xs text-zinc-400 mb-1 uppercase tracking-wider">Capacidad más débil</div>
+            <div className="text-xs text-zinc-400 mb-2 uppercase tracking-wider">Capacidad más débil</div>
             {ev.capacidad_debil ? (
               <>
                 <div className="text-base font-bold text-red-300 leading-tight">{ev.capacidad_debil.label}</div>
-                <div className="text-3xl font-black text-red-400 mt-1">
+                <div className="text-3xl font-black text-red-400 mt-2">
                   {ev.capacidad_debil.score}<span className="text-sm font-normal text-zinc-500">/10</span>
                 </div>
               </>
@@ -138,24 +227,25 @@ export default function EvolucionPage() {
           </div>
 
           <div className={`rounded-xl border p-4 ${ev.patron_dominante ? 'bg-orange-500/10 border-orange-500/30' : 'bg-zinc-900 border-zinc-800'}`}>
-            <div className="text-xs text-zinc-400 mb-1 uppercase tracking-wider">Patrón más frecuente</div>
+            <div className="text-xs text-zinc-400 mb-2 uppercase tracking-wider">Patrón más frecuente</div>
             {ev.patron_dominante ? (
               <>
                 <div className="text-sm font-bold text-orange-300 leading-tight">"{ev.patron_dominante.patron}"</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{ev.patron_dominante.label_capacidad}</div>
-                <div className="text-2xl font-black text-orange-400 mt-1">
-                  {ev.patron_dominante.count}<span className="text-sm font-normal text-zinc-500"> veces</span>
+                <div className="text-xs text-zinc-500 mt-0.5">{ev.patron_dominante.label_capacidad}</div>
+                <div className="text-2xl font-black text-orange-400 mt-2">
+                  {ev.patron_dominante.count}
+                  <span className="text-sm font-normal text-zinc-500"> veces</span>
                 </div>
               </>
-            ) : <div className="text-zinc-500 text-sm mt-2">Sin patrones</div>}
+            ) : <div className="text-zinc-500 text-sm mt-2">Sin patrones aún</div>}
           </div>
 
           <div className={`rounded-xl border p-4 ${ev.capacidad_fuerte ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-900 border-zinc-800'}`}>
-            <div className="text-xs text-zinc-400 mb-1 uppercase tracking-wider">Punto más fuerte</div>
+            <div className="text-xs text-zinc-400 mb-2 uppercase tracking-wider">Punto más fuerte</div>
             {ev.capacidad_fuerte ? (
               <>
                 <div className="text-base font-bold text-emerald-300 leading-tight">{ev.capacidad_fuerte.label}</div>
-                <div className="text-3xl font-black text-emerald-400 mt-1">
+                <div className="text-3xl font-black text-emerald-400 mt-2">
                   {ev.capacidad_fuerte.score}<span className="text-sm font-normal text-zinc-500">/10</span>
                 </div>
               </>
@@ -163,16 +253,16 @@ export default function EvolucionPage() {
           </div>
         </div>
 
-        {/* Próxima acción */}
+        {/* Próxima acción — Motor de intervención */}
         {ev.proxima_accion && (
           <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-5">
             <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Próxima acción · Motor de intervención</div>
-            <div className="text-base font-semibold text-white mb-1">{ev.proxima_accion.titulo}</div>
+            <div className="text-base font-semibold text-white mb-2">{ev.proxima_accion.titulo}</div>
             <p className="text-sm text-zinc-300 leading-relaxed">{ev.proxima_accion.descripcion}</p>
             {ev.proxima_accion.criterio_validacion && (
-              <div className="mt-3 pt-3 border-t border-zinc-700/50">
-                <span className="text-xs text-zinc-500 uppercase tracking-wide">Validación: </span>
-                <span className="text-xs text-zinc-300">{ev.proxima_accion.criterio_validacion}</span>
+              <div className="mt-3 pt-3 border-t border-zinc-700/50 text-xs text-zinc-400">
+                <span className="text-zinc-500 uppercase tracking-wide">Validación: </span>
+                {ev.proxima_accion.criterio_validacion}
               </div>
             )}
           </div>
@@ -188,75 +278,75 @@ export default function EvolucionPage() {
 
         {/* Capacidades — barras */}
         <div>
-          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-3">Capacidades</h2>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800">
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Capacidades</h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800/60">
             {(ev.capacidades ?? []).map(cap => (
               <div key={cap.key} className="flex items-center gap-4 px-4 py-3">
                 <div className="w-36 shrink-0">
-                  <div className="text-sm font-medium text-zinc-200">{cap.label}</div>
-                  <div className={`text-xs ${NIVEL_COLOR[cap.nivel] ?? 'text-zinc-500'}`}>
+                  <div className="text-sm font-medium text-zinc-200 leading-tight">{cap.label}</div>
+                  <div className={`text-xs mt-0.5 ${NIVEL_COLOR[cap.nivel] ?? 'text-zinc-500'}`}>
                     {cap.nivel === 'fuerte' ? 'Fuerte' : cap.nivel === 'medio' ? 'Medio' : cap.nivel === 'debil' ? 'Débil' : 'Sin datos'}
                   </div>
                 </div>
-                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   {cap.score != null && (
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="h-full rounded-full"
                       style={{ width: `${cap.score * 10}%`, backgroundColor: CAPACITY_COLORS[cap.key as CapacidadKey] ?? '#6b7280' }}
                     />
                   )}
                 </div>
-                <div className="w-12 text-right">
+                <div className="w-14 text-right">
                   <span className="text-sm font-bold text-zinc-100">{cap.score ?? '—'}</span>
-                  {cap.score != null && <span className="text-xs text-zinc-500">/10</span>}
+                  {cap.score != null && <span className="text-xs text-zinc-600">/10</span>}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Feedback general */}
+        {/* Feedback último análisis */}
         {ev.feedback_general && (
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-5">
-            <div className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Feedback del último análisis</div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Feedback del último análisis</div>
             <p className="text-sm text-zinc-300 leading-relaxed">{ev.feedback_general}</p>
           </div>
         )}
 
-        {/* Patrones */}
+        {/* Patrones con frecuencia */}
         {(ev.todos_patrones ?? []).length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-3">
-              Patrones detectados · {(ev.todos_patrones ?? []).length} total
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+              Patrones detectados · {(ev.todos_patrones ?? []).length}
             </h2>
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                  <tr className="border-b border-zinc-800 text-xs text-zinc-600 uppercase tracking-wider">
                     <th className="px-4 py-2 text-left">Patrón</th>
-                    <th className="px-4 py-2 text-left hidden sm:table-cell">Capacidad</th>
+                    <th className="px-4 py-2 text-left hidden md:table-cell">Capacidad</th>
                     <th className="px-4 py-2 text-center">Tipo</th>
-                    <th className="px-4 py-2 text-right">Veces</th>
+                    <th className="px-4 py-2 text-right">×</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800">
+                <tbody className="divide-y divide-zinc-800/60">
                   {(ev.todos_patrones ?? []).slice(0, 15).map((p: any, i: number) => (
-                    <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
+                    <tr key={i} className="hover:bg-zinc-800/30 transition-colors">
                       <td className="px-4 py-2.5">
-                        <div className="font-medium text-zinc-200">{p.patron}</div>
-                        {p.descripcion && <div className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{p.descripcion}</div>}
+                        <div className="font-medium text-zinc-200 text-sm">{p.patron}</div>
+                        {p.descripcion && <div className="text-xs text-zinc-600 mt-0.5 line-clamp-1">{p.descripcion}</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-zinc-400 text-xs hidden sm:table-cell">
+                      <td className="px-4 py-2.5 text-zinc-500 text-xs hidden md:table-cell">
                         {CAPACIDADES[p.capacidad as CapacidadKey] ?? p.capacidad}
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                          p.tipo === 'negativo' ? 'bg-red-500/20 text-red-300' :
-                          p.tipo === 'positivo' ? 'bg-emerald-500/20 text-emerald-300' :
-                          'bg-zinc-700 text-zinc-300'
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          p.tipo === 'negativo' ? 'bg-red-500/20 text-red-400' :
+                          p.tipo === 'positivo' ? 'bg-emerald-500/20 text-emerald-400' :
+                          'bg-zinc-700 text-zinc-400'
                         }`}>{p.tipo}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-bold text-zinc-200">{p.count}</td>
+                      <td className="px-4 py-2.5 text-right font-bold text-zinc-300">{p.count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -268,51 +358,46 @@ export default function EvolucionPage() {
         {/* Ejercicios activos */}
         {(ev.ejercicios_activos ?? []).length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-3">
-              Ejercicios activos · {(ev.ejercicios_activos ?? []).length}
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+              Ejercicios · {(ev.ejercicios_activos ?? []).length}
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(ev.ejercicios_activos ?? []).map((ex: any, i: number) => (
-                <div key={ex.id ?? i} className="bg-zinc-900 border border-zinc-700 rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium text-zinc-100 text-sm">{ex.title}</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">
-                        {CAPACIDADES[ex.capacity as CapacidadKey] ?? ex.capacity}
-                        {ex.due_at && ` · vence ${new Date(ex.due_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`}
-                      </div>
+                <div key={ex.id ?? i} className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-zinc-200 text-sm">{ex.title}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">
+                      {CAPACIDADES[ex.capacity as CapacidadKey] ?? ex.capacity}
+                      {ex.due_at && ` · ${new Date(ex.due_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`}
                     </div>
-                    <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                      ex.status === 'pending'      ? 'bg-yellow-500/20 text-yellow-300' :
-                      ex.status === 'in_progress'  ? 'bg-blue-500/20 text-blue-300' :
-                      ex.status === 'delivered'    ? 'bg-orange-500/20 text-orange-300' :
-                      ex.status === 'approved'     ? 'bg-emerald-500/20 text-emerald-300' :
-                      'bg-zinc-700 text-zinc-300'
-                    }`}>{ex.status}</span>
                   </div>
+                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                    ex.status === 'pending'     ? 'bg-yellow-500/20 text-yellow-400' :
+                    ex.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                    ex.status === 'delivered'   ? 'bg-orange-500/20 text-orange-400' :
+                    ex.status === 'approved'    ? 'bg-emerald-500/20 text-emerald-400' :
+                    'bg-zinc-700 text-zinc-400'
+                  }`}>{ex.status}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Formulario al fondo */}
+        {/* Formulario manual — AL FONDO, colapsado */}
         {showForm && (
-          <div id="nueva-evidencia" className="bg-zinc-900 border border-zinc-700 rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-zinc-200 mb-4 uppercase tracking-wider">Nueva evidencia</h2>
-            {result?.error && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">{result.error}</div>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6">
+            <h2 className="text-xs text-zinc-400 uppercase tracking-wider mb-4">Cargar evidencia manual</h2>
+            {formResult?.error && (
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">{formResult.error}</div>
             )}
-            <EvidenceForm formRef={formRef} onSubmit={submitEvidence} submitting={submitting} onCancel={() => { setShowForm(false); setResult(null); }} />
+            <ManualEvidenceForm formRef={formRef} onSubmit={submitManualEvidence} submitting={submitting} result={formResult} onCancel={() => { setShowForm(false); setFormResult(null); }} />
           </div>
         )}
 
-        {result?.ok && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
-            <div className="text-emerald-300 font-semibold text-sm mb-2">✓ Evidencia analizada con memoria histórica</div>
-            {result.analysis?.feedback_general && (
-              <p className="text-sm text-zinc-300 leading-relaxed">{result.analysis.feedback_general}</p>
-            )}
+        {formResult?.ok && !showForm && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-emerald-400 text-sm">
+            ✓ Evidencia analizada y agregada al perfil
           </div>
         )}
       </div>
@@ -320,86 +405,50 @@ export default function EvolucionPage() {
   );
 }
 
-function EvidenceForm({ formRef, onSubmit, submitting, onCancel }: {
+function ManualEvidenceForm({ formRef, onSubmit, submitting, result, onCancel }: {
   formRef: React.RefObject<HTMLFormElement>;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   submitting: boolean;
+  result: any;
   onCancel?: () => void;
 }) {
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-xs text-zinc-400 mb-1">Título *</label>
-          <input name="title" required className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500" placeholder="Ej: Clase CAC Módulo 3 — 15 junio" />
+          <label className="block text-xs text-zinc-500 mb-1">Título *</label>
+          <input name="title" required className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500" placeholder="Ej: Mentoría grupal — 21 junio" />
         </div>
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">Tipo *</label>
+          <label className="block text-xs text-zinc-500 mb-1">Tipo *</label>
           <select name="type" required className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500">
             <option value="">Seleccioná...</option>
             {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">Fecha</label>
+          <label className="block text-xs text-zinc-500 mb-1">Fecha</label>
           <input name="date_recorded" type="date" className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-500" />
         </div>
       </div>
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Contexto (opcional)</label>
-        <input name="context" className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500" placeholder="Ej: Grupo de 8 setters, primer encuentro del mes" />
+        <label className="block text-xs text-zinc-500 mb-1">Contexto</label>
+        <input name="context" className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500" placeholder="Opcional" />
       </div>
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Transcripción o texto *</label>
-        <textarea name="content_text" required rows={10} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 resize-y" placeholder="Pegá la transcripción, el texto del documento, o el resumen del audio..." />
+        <label className="block text-xs text-zinc-500 mb-1">Transcripción / texto *</label>
+        <textarea name="content_text" required rows={10} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 resize-y" placeholder="Pegá la transcripción..." />
       </div>
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={submitting} className="bg-white text-zinc-900 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 rounded-lg text-sm font-semibold transition-colors">
+      <div className="flex gap-3">
+        <button type="submit" disabled={submitting} className="bg-white text-zinc-900 hover:bg-zinc-100 disabled:opacity-50 px-5 py-2 rounded-lg text-sm font-semibold transition-colors">
           {submitting ? 'Analizando con o3...' : 'Analizar evidencia'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="text-zinc-400 hover:text-zinc-200 px-4 py-2 rounded-lg text-sm transition-colors">
+          <button type="button" onClick={onCancel} className="text-zinc-500 hover:text-zinc-300 px-4 py-2 rounded-lg text-sm transition-colors">
             Cancelar
           </button>
         )}
       </div>
     </form>
-  );
-}
-
-function EmptyState({ onAdd, showForm, submitting, result, formRef, onSubmit }: {
-  onAdd: () => void; showForm: boolean; submitting: boolean; result: any;
-  formRef: React.RefObject<HTMLFormElement>;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="max-w-2xl mx-auto px-4 pt-16 pb-20 space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Diego 2030</h1>
-          <p className="text-zinc-500 text-sm mt-1">No hay evidencias analizadas aún.</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center space-y-3">
-          <div className="text-4xl">🧠</div>
-          <p className="text-zinc-300 text-sm leading-relaxed">
-            Subí la primera evidencia para que el Motor CAC CEO construya tu perfil de evolución.<br />
-            Cada análisis acumula patrones, scores y memoria. El sistema aprende con cada evidencia.
-          </p>
-          {!showForm && (
-            <button onClick={onAdd} className="bg-white text-zinc-900 hover:bg-zinc-100 px-5 py-2 rounded-lg text-sm font-semibold transition-colors">
-              + Primera evidencia
-            </button>
-          )}
-        </div>
-        {showForm && (
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6">
-            {result?.error && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">{result.error}</div>
-            )}
-            <EvidenceForm formRef={formRef} onSubmit={onSubmit} submitting={submitting} />
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
