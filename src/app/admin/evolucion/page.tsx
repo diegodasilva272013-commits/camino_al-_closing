@@ -78,7 +78,6 @@ function BarNivel({ nivel, clave }: { nivel: number | null; clave: string }) {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function EvolucionPage() {
-  const router   = useRouter();
   const [perfil, setPerfil]     = useState<Perfil | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
@@ -151,7 +150,7 @@ export default function EvolucionPage() {
               Config
             </a>
             <button
-              onClick={() => { setShowForm(f => !f); setSubmitErr(null); }}
+              onClick={() => setShowForm(f => !f)}
               className="text-sm bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg font-medium transition-colors"
             >
               {showForm ? '✕' : '+ Cargar evidencia'}
