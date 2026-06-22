@@ -111,7 +111,7 @@ export default function VideoUploader({ onClose }: { onClose?: () => void }) {
       ]);
 
       const outputData = await ffmpeg.readFile('output.mp4');
-      const videoBlob  = new Blob([outputData as Uint8Array], { type: 'video/mp4' });
+      const videoBlob  = new Blob([outputData as unknown as BlobPart], { type: 'video/mp4' });
       await ffmpeg.deleteFile('input.mp4');
       await ffmpeg.deleteFile('output.mp4');
 
