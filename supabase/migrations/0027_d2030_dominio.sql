@@ -8,10 +8,11 @@ create table if not exists d2030_capacidades (
   clave          text unique not null,
   nombre         text not null,
   descripcion    text,
-  nivel_objetivo int  not null default 10 check (nivel_objetivo between 1 and 10),
-  orden          int  not null default 0,
-  activa         bool not null default true,
-  created_at     timestamptz not null default now()
+  nivel_objetivo int          not null default 10 check (nivel_objetivo between 1 and 10),
+  nivel_actual   numeric(4,1)          check (nivel_actual between 0 and 10),  -- cache rolling de mediciones, nunca manual
+  orden          int          not null default 0,
+  activa         bool         not null default true,
+  created_at     timestamptz  not null default now()
 );
 
 -- Seed: las 6 capacidades actuales del Motor CAC CEO como filas configurables.
@@ -67,12 +68,14 @@ create table if not exists d2030_comportamientos (
   created_at   timestamptz not null default now()
 );
 
--- M:M comportamiento ↔ capacidad con valencia EN la relación.
+-- M:M comportamiento ↔ capacidad con valencia y peso EN la relación.
 -- Un comportamiento puede reforzar UNA capacidad y debilitar OTRA simultáneamente.
+-- peso ∈ [0.1, 1.0]: intensidad y claridad de la evidencia que respalda el impacto.
 create table if not exists d2030_comportamiento_capacidades (
-  comportamiento_id uuid not null references d2030_comportamientos(id) on delete cascade,
-  capacidad_clave   text not null references d2030_capacidades(clave),
-  valencia          text not null check (valencia in ('refuerza','debilita')),
+  comportamiento_id uuid          not null references d2030_comportamientos(id) on delete cascade,
+  capacidad_clave   text          not null references d2030_capacidades(clave),
+  valencia          text          not null check (valencia in ('refuerza','debilita')),
+  peso              decimal(3,2)  not null default 0.5 check (peso between 0.1 and 1.0),
   primary key (comportamiento_id, capacidad_clave)
 );
 
