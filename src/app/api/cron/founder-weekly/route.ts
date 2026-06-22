@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
     const supabase = createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const adminClient = createSupabaseAdminClient();
+    const adminClient = createSupabaseAdminClient() as any;
     const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
     if ((profile as any)?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient() as any;
 
   // Calcular semana actual
   const now       = new Date();

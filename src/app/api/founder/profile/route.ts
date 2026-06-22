@@ -8,7 +8,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient() as any;
   const { data: p } = await admin.from('profiles').select('role').eq('id', user.id).single();
   if ((p as any)?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
