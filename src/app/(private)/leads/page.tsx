@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  RefreshCw, Phone, MessageCircle, ChevronDown, ChevronUp,
+  RefreshCw, MessageCircle, ChevronDown, ChevronUp,
   Search, X, ArrowUpDown, ArrowUp, ArrowDown, Download,
 } from 'lucide-react';
-import { LeadStatusBadge } from './_components/LeadStatusBadge';
 import { ContactModal } from './_components/ContactModal';
 import { ConversationPanel } from './_components/ConversationPanel';
-import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
+import { LEAD_STATUSES, STATUS_LABELS, STATUS_COLORS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 
 type Lead = {
@@ -16,6 +15,7 @@ type Lead = {
   first_name: string;
   last_name: string | null;
   phone: string;
+  email: string | null;
   country: string | null;
   current_status: string;
   follow_up_count: number;
@@ -58,14 +58,15 @@ export default function LeadsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [noteEdit, setNoteEdit] = useState<{ id: string; value: string } | null>(null);
   const [contactLead, setContactLead] = useState<Lead | null>(null);
+  const [statusOpen, setStatusOpen]   = useState<string | null>(null); // lead id con sheet abierto
   const [setterName, setSetterName]   = useState('');
 
   // Filters & sort
-  const [search, setSearch]           = useState('');
+  const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterClosed, setFilterClosed] = useState<'all' | 'open' | 'closed'>('open');
-  const [sortKey, setSortKey]         = useState<SortKey>('updated');
-  const [sortDir, setSortDir]         = useState<SortDir>('desc');
+  const [sortKey, setSortKey]           = useState<SortKey>('updated');
+  const [sortDir, setSortDir]           = useState<SortDir>('desc');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,25 +116,18 @@ export default function LeadsPage() {
 
   const visible = useMemo(() => {
     let result = leads;
-
-    // closed filter
     if (filterClosed === 'open')   result = result.filter(l => !l.is_closed);
     if (filterClosed === 'closed') result = result.filter(l => l.is_closed);
-
-    // status filter
     if (filterStatus) result = result.filter(l => l.current_status === filterStatus);
-
-    // search
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter(l =>
         `${l.first_name} ${l.last_name ?? ''}`.toLowerCase().includes(q) ||
         l.phone.includes(q) ||
+        (l.email ?? '').toLowerCase().includes(q) ||
         (l.notes ?? '').toLowerCase().includes(q)
       );
     }
-
-    // sort
     result = [...result].sort((a, b) => {
       let cmp = 0;
       if (sortKey === 'name') {
@@ -149,7 +143,6 @@ export default function LeadsPage() {
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
-
     return result;
   }, [leads, search, filterStatus, filterClosed, sortKey, sortDir]);
 
@@ -184,13 +177,15 @@ export default function LeadsPage() {
     );
   }
 
+  // El lead cuyo sheet de estado está abierto
+  const sheetLead = statusOpen ? leads.find(l => l.id === statusOpen) : null;
+
   return (
     <div className="min-h-screen bg-[#080808] pb-24">
 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-[#080808]/95 backdrop-blur border-b border-white/5 px-4 pt-3 pb-2 space-y-2">
 
-        {/* Title + refresh */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-yellow-500/60">Mis Leads</p>
@@ -205,7 +200,7 @@ export default function LeadsPage() {
               className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-900/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-900/20 transition"
             >
               <Download className="h-3.5 w-3.5" />
-              Exportar Excel
+              Exportar
             </a>
             <button
               onClick={load} disabled={loading}
@@ -223,7 +218,7 @@ export default function LeadsPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o nota..."
+            placeholder="Buscar por nombre, teléfono, mail o nota..."
             className="w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-9 pr-9 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-yellow-500/30"
           />
           {search && (
@@ -233,7 +228,7 @@ export default function LeadsPage() {
           )}
         </div>
 
-        {/* Active / Cerrados */}
+        {/* Activos / Cerrados */}
         <div className="flex gap-1.5">
           {([['open', 'Activos'], ['closed', 'Cerrados'], ['all', 'Todos']] as const).map(([v, l]) => (
             <button key={v} onClick={() => { setFilterClosed(v); setFilterStatus(''); }}
@@ -280,7 +275,6 @@ export default function LeadsPage() {
           <SortBtn k="updated" label="Última acción" />
         </div>
 
-        {/* Result count */}
         {(search || filterStatus) && (
           <p className="text-[11px] text-zinc-500 pb-1">
             {visible.length} resultado{visible.length !== 1 ? 's' : ''}
@@ -311,6 +305,7 @@ export default function LeadsPage() {
             const isExpanded = expanded === lead.id;
             const isSaving   = saving === lead.id;
             const fullName   = `${lead.first_name} ${lead.last_name ?? ''}`.trim();
+            const waPhone    = lead.phone.replace(/\D/g, '');
 
             return (
               <div
@@ -322,30 +317,55 @@ export default function LeadsPage() {
                 )}
               >
                 {/* Main row */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer active:bg-white/5"
-                  onClick={() => setExpanded(isExpanded ? null : lead.id)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white text-sm truncate">
-                      {search
-                        ? highlightMatch(fullName, search)
-                        : fullName}
-                    </p>
-                    <p className="text-[11px] text-zinc-500 font-mono mt-0.5">{lead.phone}</p>
+                <div className="flex items-center gap-3 px-4 py-3">
+
+                  {/* Info — tap to expand */}
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer active:opacity-70"
+                    onClick={() => setExpanded(isExpanded ? null : lead.id)}
+                  >
+                    <p className="font-semibold text-white text-sm truncate">{fullName}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {/* Celular → WhatsApp directo */}
+                      <a
+                        href={`https://wa.me/${waPhone}`}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-[11px] text-emerald-400 font-mono hover:text-emerald-300 transition-colors"
+                      >
+                        {lead.phone}
+                      </a>
+                      {lead.email && (
+                        <span className="text-[11px] text-zinc-500 truncate max-w-[160px]">{lead.email}</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <LeadStatusBadge
-                      status={lead.current_status}
-                      onChange={isSaving || lead.is_closed ? undefined : (s) => patchLead(lead.id, { current_status: s })}
-                    />
-                  </div>
+                  {/* Estado — tap abre sheet */}
+                  {!lead.is_closed ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatusOpen(lead.id); }}
+                      disabled={isSaving}
+                      className={cn(
+                        'shrink-0 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap transition active:scale-95 disabled:opacity-50',
+                        STATUS_COLORS[lead.current_status as LeadStatus] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      )}
+                    >
+                      {isSaving ? '...' : STATUS_LABELS[lead.current_status as LeadStatus] ?? lead.current_status}
+                    </button>
+                  ) : (
+                    <span className="shrink-0 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap bg-zinc-800/60 text-zinc-500 border-zinc-700/40">
+                      Cerrado
+                    </span>
+                  )}
 
-                  <div className="flex items-center gap-1 text-zinc-600 shrink-0 text-[10px]">
-                    <span>{lead.follow_up_count}/{lead.max_follow_ups}</span>
+                  {/* Expand toggle */}
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : lead.id)}
+                    className="text-zinc-600 shrink-0"
+                  >
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
+                  </button>
                 </div>
 
                 {/* Expanded panel */}
@@ -361,25 +381,12 @@ export default function LeadsPage() {
                           <MessageCircle className="h-3.5 w-3.5" /> Contactar
                         </button>
                         <a
-                          href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                          href={`https://wa.me/${waPhone}`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-xs text-emerald-400 active:bg-emerald-900/40"
                         >
-                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp directo
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                         </a>
-                        <a
-                          href={`tel:${lead.phone}`}
-                          className="flex items-center gap-1.5 rounded-lg border border-sky-700/40 bg-sky-900/20 px-3 py-1.5 text-xs text-sky-400"
-                        >
-                          <Phone className="h-3.5 w-3.5" /> Llamar
-                        </a>
-                        <button
-                          onClick={() => patchLead(lead.id, { current_status: 'REUNION_AGENDADA' })}
-                          disabled={isSaving}
-                          className="flex items-center gap-1.5 rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-1.5 text-xs text-yellow-400 disabled:opacity-40"
-                        >
-                          ✓ Reunión agendada
-                        </button>
                         <button
                           onClick={() => patchLead(lead.id, { current_status: 'NO_CALIFICA', is_closed: true, closed_reason: 'No califica' })}
                           disabled={isSaving}
@@ -461,14 +468,12 @@ export default function LeadsPage() {
                       )}
                     </div>
 
-                    {/* Última acción */}
                     {lead.last_action_at && (
                       <p className="text-[10px] text-zinc-600">
                         Última acción: {new Date(lead.last_action_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
 
-                    {/* Conversación de prospección */}
                     <div className="pt-1 border-t border-zinc-800">
                       <ConversationPanel leadId={lead.id} />
                     </div>
@@ -495,20 +500,45 @@ export default function LeadsPage() {
           }}
         />
       )}
+
+      {/* Status bottom sheet */}
+      {sheetLead && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60"
+            onClick={() => setStatusOpen(null)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-700 rounded-t-2xl pb-safe">
+            <div className="p-4 border-b border-zinc-800">
+              <p className="text-xs text-zinc-500 text-center">
+                {sheetLead.first_name} {sheetLead.last_name} — cambiar estado
+              </p>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh] p-3 space-y-1.5">
+              {LEAD_STATUSES.map(s => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    patchLead(sheetLead.id, { current_status: s });
+                    setStatusOpen(null);
+                  }}
+                  className={cn(
+                    'w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition active:scale-[0.98]',
+                    STATUS_COLORS[s],
+                    sheetLead.current_status === s && 'ring-2 ring-white/25'
+                  )}
+                >
+                  <span className="flex items-center justify-between">
+                    {STATUS_LABELS[s]}
+                    {sheetLead.current_status === s && <span className="text-base">✓</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// Highlight matching text in search results
-function highlightMatch(text: string, query: string): React.ReactNode {
-  if (!query) return text;
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx === -1) return text;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-yellow-500/30 text-yellow-300 rounded-sm">{text.slice(idx, idx + query.length)}</mark>
-      {text.slice(idx + query.length)}
-    </>
-  );
-}
