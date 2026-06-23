@@ -1,13 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  RefreshCw, MessageCircle, ChevronDown, ChevronUp,
-  Search, X, ArrowUpDown, ArrowUp, ArrowDown, Download, ChevronRight,
-} from 'lucide-react';
+import { RefreshCw, Search, X, MessageCircle, ChevronRight, Download } from 'lucide-react';
 import { ContactModal } from './_components/ContactModal';
-import { ConversationPanel } from './_components/ConversationPanel';
-import { LEAD_STATUSES, STATUS_LABELS, STATUS_COLORS, type LeadStatus } from '@/constants/leads';
+import { LEAD_STATUSES, STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 
 type Lead = {
@@ -29,32 +25,49 @@ type Lead = {
 };
 
 type OpeningMessage = { id: string; name: string; message: string };
-type SortKey = 'name' | 'status' | 'followups' | 'updated';
-type SortDir = 'asc' | 'desc';
 
-const STATUS_ORDER: Record<string, number> = {
-  NO_CONTACTADO: 0, APERTURA_ENVIADA: 1, CONTACTADO: 2, NO_RESPONDE: 3,
-  RESPONDIO: 4, INTERES_DETECTADO: 5, INVITADO_AL_GRUPO: 6, INGRESO_AL_GRUPO: 7,
-  ACTIVO_EN_GRUPO: 8, DIAGNOSTICO_INICIADO: 9, DIAGNOSTICO_PROFUNDO: 10,
-  REUNION_PROPUESTA: 11, REUNION_AGENDADA: 12, SEGUIMIENTO_FUTURO: 13, NO_CALIFICA: 14,
+// Pipeline columns — paleta alineada al logo (azul · amarillo · negro · gris)
+const COLUMNS = [
+  { key: 'NO_CONTACTADO',        label: 'Sin Contactar',     phase: 'new'      },
+  { key: 'APERTURA_ENVIADA',     label: 'Apertura Enviada',  phase: 'new'      },
+  { key: 'CONTACTADO',           label: 'Contactado',        phase: 'contact'  },
+  { key: 'NO_RESPONDE',          label: 'No Responde',       phase: 'stuck'    },
+  { key: 'RESPONDIO',            label: 'Respondió',         phase: 'blue'     },
+  { key: 'INTERES_DETECTADO',    label: 'Interés',           phase: 'blue'     },
+  { key: 'INVITADO_AL_GRUPO',    label: 'Invitado Grupo',    phase: 'blue'     },
+  { key: 'INGRESO_AL_GRUPO',     label: 'En Grupo',          phase: 'blue'     },
+  { key: 'ACTIVO_EN_GRUPO',      label: 'Activo Grupo',      phase: 'blue'     },
+  { key: 'DIAGNOSTICO_INICIADO', label: 'Diagnóstico',       phase: 'gold'     },
+  { key: 'DIAGNOSTICO_PROFUNDO', label: 'Diagn. Profundo',   phase: 'gold'     },
+  { key: 'REUNION_PROPUESTA',    label: 'Reunión Prop.',     phase: 'gold'     },
+  { key: 'REUNION_AGENDADA',     label: 'Reunión ✓',         phase: 'won'      },
+  { key: 'SEGUIMIENTO_FUTURO',   label: 'Seguim. Futuro',    phase: 'paused'   },
+  { key: 'NO_CALIFICA',          label: 'No Califica',       phase: 'lost'     },
+] as const;
+
+type Phase = (typeof COLUMNS)[number]['phase'];
+
+const PHASE: Record<Phase, { col: string; header: string; badge: string; bar: string }> = {
+  new:     { col: 'bg-zinc-900/60 border-zinc-700/50',          header: 'text-zinc-400',       badge: 'bg-zinc-700 text-zinc-300',                       bar: 'bg-zinc-600'    },
+  contact: { col: 'bg-zinc-900/60 border-zinc-600/50',          header: 'text-zinc-300',       badge: 'bg-zinc-600 text-white',                          bar: 'bg-zinc-400'    },
+  stuck:   { col: 'bg-red-950/30 border-red-900/40',            header: 'text-red-400',        badge: 'bg-red-900/60 text-red-300',                      bar: 'bg-red-500'     },
+  blue:    { col: 'bg-blue-950/25 border-blue-800/40',          header: 'text-blue-400',       badge: 'bg-blue-900/50 text-blue-300',                    bar: 'bg-blue-500'    },
+  gold:    { col: 'bg-yellow-950/20 border-yellow-700/40',      header: 'text-yellow-400',     badge: 'bg-yellow-900/40 text-yellow-300',                bar: 'bg-yellow-400'  },
+  won:     { col: 'bg-emerald-950/30 border-emerald-700/50',    header: 'text-emerald-400',    badge: 'bg-emerald-900/50 text-emerald-300',              bar: 'bg-emerald-400' },
+  paused:  { col: 'bg-zinc-900/40 border-zinc-800/40',          header: 'text-zinc-500',       badge: 'bg-zinc-800 text-zinc-500',                       bar: 'bg-zinc-600'    },
+  lost:    { col: 'bg-zinc-950/80 border-red-900/30',           header: 'text-red-500/80',     badge: 'bg-red-950/60 text-red-400',                      bar: 'bg-red-700'     },
 };
 
 export default function LeadsPage() {
-  const [leads, setLeads]         = useState<Lead[]>([]);
-  const [openings, setOpenings]   = useState<OpeningMessage[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [saving, setSaving]       = useState<string | null>(null);
-  const [expanded, setExpanded]   = useState<string | null>(null);
-  const [noteEdit, setNoteEdit]   = useState<{ id: string; value: string } | null>(null);
+  const [leads, setLeads]           = useState<Lead[]>([]);
+  const [openings, setOpenings]     = useState<OpeningMessage[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState<string | null>(null);
   const [contactLead, setContactLead] = useState<Lead | null>(null);
-  const [statusOpen, setStatusOpen]   = useState<string | null>(null);
+  const [statusOpen, setStatusOpen]   = useState<Lead | null>(null);
   const [setterName, setSetterName]   = useState('');
-
-  const [search, setSearch]             = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterClosed, setFilterClosed] = useState<'all' | 'open' | 'closed'>('open');
-  const [sortKey, setSortKey]           = useState<SortKey>('updated');
-  const [sortDir, setSortDir]           = useState<SortDir>('desc');
+  const [search, setSearch]           = useState('');
+  const [showClosed, setShowClosed]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,343 +85,144 @@ export default function LeadsPage() {
     fetch('/api/profile/me').then(r => r.json()).then(d => { if (d.full_name) setSetterName(d.full_name); }).catch(() => {});
   }, []);
 
-  async function patchLead(id: string, body: Record<string, unknown>) {
-    setSaving(id);
-    const res = await fetch(`/api/leads/${id}`, {
+  async function moveToStatus(lead: Lead, newStatus: string) {
+    setSaving(lead.id);
+    const isClosed = newStatus === 'NO_CALIFICA';
+    const res = await fetch(`/api/leads/${lead.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ current_status: newStatus, ...(isClosed ? { is_closed: true, closed_reason: 'No califica' } : {}) }),
     });
     if (res.ok) {
       const updated = await res.json();
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
+      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, ...updated } : l));
     }
     setSaving(null);
-  }
-
-  async function followUp(id: string) {
-    setSaving(id);
-    const res = await fetch(`/api/leads/${id}/followup`, { method: 'POST' });
-    if (res.ok) {
-      const updated = await res.json();
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
-    }
-    setSaving(null);
-  }
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('desc'); }
+    setStatusOpen(null);
   }
 
   const open   = leads.filter(l => !l.is_closed);
   const closed = leads.filter(l => l.is_closed);
 
   const visible = useMemo(() => {
-    let result = leads;
-    if (filterClosed === 'open')   result = result.filter(l => !l.is_closed);
-    if (filterClosed === 'closed') result = result.filter(l => l.is_closed);
-    if (filterStatus) result = result.filter(l => l.current_status === filterStatus);
+    const base = showClosed ? leads : open;
     const q = search.trim().toLowerCase();
-    if (q) result = result.filter(l =>
+    if (!q) return base;
+    return base.filter(l =>
       `${l.first_name} ${l.last_name ?? ''}`.toLowerCase().includes(q) ||
       l.phone.includes(q) ||
-      (l.email ?? '').toLowerCase().includes(q) ||
-      (l.notes ?? '').toLowerCase().includes(q)
+      (l.email ?? '').toLowerCase().includes(q)
     );
-    return [...result].sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'name') {
-        cmp = `${a.first_name} ${a.last_name ?? ''}`.toLowerCase().localeCompare(`${b.first_name} ${b.last_name ?? ''}`.toLowerCase(), 'es');
-      } else if (sortKey === 'status') {
-        cmp = (STATUS_ORDER[a.current_status] ?? 99) - (STATUS_ORDER[b.current_status] ?? 99);
-      } else if (sortKey === 'followups') {
-        cmp = a.follow_up_count - b.follow_up_count;
-      } else {
-        cmp = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  }, [leads, search, filterStatus, filterClosed, sortKey, sortDir]);
+  }, [leads, search, showClosed]);
 
-  const statusCounts = useMemo(() => {
-    const base = filterClosed === 'open' ? open : filterClosed === 'closed' ? closed : leads;
-    return base.reduce<Record<string, number>>((acc, l) => {
-      acc[l.current_status] = (acc[l.current_status] ?? 0) + 1;
-      return acc;
-    }, {});
-  }, [leads, filterClosed]);
-
-  function SortBtn({ k, label }: { k: SortKey; label: string }) {
-    const active = sortKey === k;
-    return (
-      <button onClick={() => toggleSort(k)} className={cn(
-        'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap border transition',
-        active ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' : 'border-white/8 text-zinc-500 hover:text-zinc-300'
-      )}>
-        {label}
-        {active ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
-      </button>
-    );
-  }
-
-  const sheetLead = statusOpen ? leads.find(l => l.id === statusOpen) : null;
+  const byStatus = useMemo(() => {
+    const map: Record<string, Lead[]> = {};
+    for (const col of COLUMNS) map[col.key] = [];
+    for (const l of visible) {
+      if (map[l.current_status]) map[l.current_status].push(l);
+    }
+    return map;
+  }, [visible]);
 
   return (
-    <div className="min-h-screen bg-[#080808] pb-24">
+    <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#080808]/95 backdrop-blur border-b border-white/5 px-4 pt-3 pb-2 space-y-2">
+      <div className="shrink-0 border-b border-white/5 px-4 pt-3 pb-3 space-y-2.5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-yellow-500/60">Mis Leads</p>
+            <p className="text-[10px] uppercase tracking-widest text-yellow-500/60 font-medium">Pipeline</p>
             <p className="text-sm font-semibold text-white">{open.length} activos · {closed.length} cerrados</p>
           </div>
           <div className="flex items-center gap-2">
-            <a href="/api/leads/export" download className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition">
+            <a href="/api/leads/export" download className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5">
               <Download className="h-3.5 w-3.5" /> Exportar
             </a>
-            <button onClick={load} disabled={loading} className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition">
-              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} /> Actualizar
+            <button onClick={load} disabled={loading} className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5">
+              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             </button>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o mail..."
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-9 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-          />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="h-3.5 w-3.5 text-zinc-500" /></button>}
-        </div>
-
-        {/* Activos / Cerrados / Todos */}
-        <div className="flex gap-1.5">
-          {([['open', 'Activos'], ['closed', 'Cerrados'], ['all', 'Todos']] as const).map(([v, l]) => (
-            <button key={v} onClick={() => { setFilterClosed(v); setFilterStatus(''); }}
-              className={cn('rounded-full px-3 py-1 text-[11px] font-semibold border transition',
-                filterClosed === v ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
-              )}>
-              {l} ({v === 'open' ? open.length : v === 'closed' ? closed.length : leads.length})
-            </button>
-          ))}
-        </div>
-
-        {/* Status pills */}
-        <div className="overflow-x-auto">
-          <div className="flex gap-1.5 pb-1 min-w-max">
-            <button onClick={() => setFilterStatus('')}
-              className={cn('rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
-                !filterStatus ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
-              )}>
-              Todos ({Object.values(statusCounts).reduce((a, b) => a + b, 0)})
-            </button>
-            {Object.entries(statusCounts).sort(([, a], [, b]) => b - a).map(([status, count]) => (
-              <button key={status} onClick={() => setFilterStatus(filterStatus === status ? '' : status)}
-                className={cn('rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap border transition',
-                  filterStatus === status ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
-                )}>
-                {STATUS_LABELS[status as LeadStatus] ?? status} ({count})
-              </button>
-            ))}
+        <div className="flex gap-2 items-center">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600 pointer-events-none" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar lead..."
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-8 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+            />
+            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="h-3.5 w-3.5 text-zinc-500" /></button>}
           </div>
-        </div>
 
-        {/* Sort */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          <span className="text-[10px] text-zinc-600 shrink-0">Ordenar:</span>
-          <SortBtn k="updated" label="Última acción" />
-          <SortBtn k="name" label="Nombre" />
-          <SortBtn k="status" label="Estado" />
-          <SortBtn k="followups" label="Seguim." />
+          {/* Toggle cerrados */}
+          <button
+            onClick={() => setShowClosed(v => !v)}
+            className={cn(
+              'rounded-xl border px-3 py-2 text-xs font-medium whitespace-nowrap transition',
+              showClosed ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            {showClosed ? 'Todos' : 'Activos'}
+          </button>
         </div>
       </div>
 
-      {/* List */}
+      {/* Kanban board */}
       {loading ? (
-        <div className="flex justify-center pt-20">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 pt-24 text-center px-8">
-          <p className="text-sm text-zinc-500">{search ? `Sin resultados para &ldquo;${search}&rdquo;` : 'No hay leads con ese filtro.'}</p>
-          <button onClick={() => { setSearch(''); setFilterStatus(''); }} className="text-xs text-yellow-400 underline">Limpiar filtros</button>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
         </div>
       ) : (
-        <div className="px-3 pt-3 space-y-px">
-          {visible.map(lead => {
-            const isExpanded = expanded === lead.id;
-            const isSaving   = saving === lead.id;
-            const fullName   = `${lead.first_name} ${lead.last_name ?? ''}`.trim();
-            const waPhone    = lead.phone.replace(/\D/g, '');
-            const statusColor = STATUS_COLORS[lead.current_status as LeadStatus] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700/40';
-
-            return (
-              <div key={lead.id} className={cn(
-                'rounded-xl border overflow-hidden transition-all',
-                lead.is_closed ? 'border-zinc-800/50 opacity-50' : 'border-zinc-800',
-                isExpanded && 'border-zinc-700 bg-zinc-900/40'
-              )}>
-                {/* Row principal */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-white/[0.02]"
-                  onClick={() => setExpanded(isExpanded ? null : lead.id)}
-                >
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white text-[15px] leading-tight truncate">{fullName}</p>
-                    <div className="flex items-center gap-2.5 mt-1 flex-wrap">
-                      <a
-                        href={`https://wa.me/${waPhone}`}
-                        target="_blank" rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="text-[12px] text-zinc-300 font-mono hover:text-white transition-colors"
-                      >
-                        {lead.phone}
-                      </a>
-                      {lead.email && (
-                        <span className="text-[11px] text-zinc-600 truncate max-w-[180px]">{lead.email}</span>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="flex gap-2.5 h-full px-3 py-3 min-w-max">
+            {COLUMNS.map(col => {
+              const colLeads = byStatus[col.key] ?? [];
+              const style    = PHASE[col.phase];
+              return (
+                <div key={col.key} className={cn('flex flex-col w-[210px] rounded-2xl border', style.col)}>
+                  {/* Column header */}
+                  <div className="px-3.5 pt-3 pb-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className={cn('text-[11px] font-bold uppercase tracking-wider', style.header)}>{col.label}</p>
+                      {colLeads.length > 0 && (
+                        <span className={cn('text-[10px] font-bold rounded-full px-1.5 py-0.5', style.badge)}>
+                          {colLeads.length}
+                        </span>
                       )}
                     </div>
+                    {/* Color bar */}
+                    <div className={cn('h-0.5 rounded-full mt-2 opacity-60', style.bar)} />
                   </div>
 
-                  {/* Estado + dots */}
-                  <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                    {/* Badge de estado — toca para cambiar */}
-                    {!lead.is_closed ? (
-                      <button
-                        disabled={isSaving}
-                        onClick={() => setStatusOpen(lead.id)}
-                        className={cn(
-                          'flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition active:scale-95 disabled:opacity-40',
-                          statusColor
-                        )}
-                      >
-                        {isSaving ? '...' : STATUS_LABELS[lead.current_status as LeadStatus] ?? lead.current_status}
-                        <ChevronDown className="h-3 w-3 opacity-60" />
-                      </button>
+                  {/* Lead cards */}
+                  <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-2 scrollbar-thin">
+                    {colLeads.length === 0 ? (
+                      <div className="flex items-center justify-center h-16">
+                        <p className="text-[10px] text-zinc-700">Vacío</p>
+                      </div>
                     ) : (
-                      <span className="rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-600">Cerrado</span>
+                      colLeads.map(lead => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          saving={saving === lead.id}
+                          onMove={() => setStatusOpen(lead)}
+                          onContact={() => setContactLead(lead)}
+                          phaseStyle={style}
+                        />
+                      ))
                     )}
-                    {/* Dots de seguimiento */}
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
-                        <div key={i} className={cn('h-1.5 w-1.5 rounded-full', i < lead.follow_up_count ? 'bg-yellow-400' : 'bg-zinc-700')} />
-                      ))}
-                    </div>
                   </div>
-
-                  <ChevronRight className={cn('h-4 w-4 text-zinc-700 shrink-0 transition-transform', isExpanded && 'rotate-90')} />
                 </div>
-
-                {/* Panel expandido */}
-                {isExpanded && (
-                  <div className="border-t border-zinc-800 px-4 py-4 space-y-4">
-
-                    {/* Acciones rápidas */}
-                    {!lead.is_closed && (
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => setContactLead(lead)}
-                          className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" /> Contactar
-                        </button>
-                        <a
-                          href={`https://wa.me/${waPhone}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                        </a>
-                        <button
-                          onClick={() => followUp(lead.id)}
-                          disabled={isSaving || lead.follow_up_count >= lead.max_follow_ups}
-                          className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition disabled:opacity-30"
-                        >
-                          +1 seguimiento
-                        </button>
-                        <button
-                          onClick={() => patchLead(lead.id, { current_status: 'NO_CALIFICA', is_closed: true, closed_reason: 'No califica' })}
-                          disabled={isSaving}
-                          className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-transparent px-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-700 transition disabled:opacity-30"
-                        >
-                          No califica
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Nota */}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-zinc-600 mb-1.5">Nota</p>
-                      {noteEdit?.id === lead.id ? (
-                        <div className="space-y-2">
-                          <textarea
-                            value={noteEdit.value}
-                            onChange={e => setNoteEdit({ id: lead.id, value: e.target.value })}
-                            rows={3} autoFocus
-                            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600 resize-none"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => { patchLead(lead.id, { notes: noteEdit.value }); setNoteEdit(null); }}
-                              className="rounded-lg bg-white/10 border border-white/10 px-4 py-1.5 text-xs text-white hover:bg-white/15 transition"
-                            >
-                              Guardar
-                            </button>
-                            <button onClick={() => setNoteEdit(null)} className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition">
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setNoteEdit({ id: lead.id, value: lead.notes ?? '' })}
-                          className="w-full text-left rounded-lg border border-zinc-800 bg-zinc-800/30 px-3 py-2.5 text-sm text-zinc-400 min-h-[40px] hover:border-zinc-700 transition"
-                        >
-                          {lead.notes || <span className="text-zinc-700 italic text-xs">Agregar nota...</span>}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Apertura */}
-                    {!lead.is_closed && openings.length > 0 && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest text-zinc-600 mb-1.5">Mensaje de apertura</p>
-                        <select
-                          value={lead.opening_message_used ?? ''}
-                          onChange={e => patchLead(lead.id, { opening_message_used: e.target.value || null })}
-                          className="w-full rounded-lg border border-zinc-800 bg-zinc-800/40 px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600"
-                        >
-                          <option value="">Sin apertura seleccionada</option>
-                          {openings.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Última acción */}
-                    {lead.last_action_at && (
-                      <p className="text-[10px] text-zinc-700">
-                        Última acción: {new Date(lead.last_action_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-
-                    {/* Conversación */}
-                    <div className="pt-1 border-t border-zinc-800/60">
-                      <ConversationPanel leadId={lead.id} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Modal de contacto */}
+      {/* Modal contactar */}
       {contactLead && (
         <ContactModal
           lead={contactLead}
@@ -424,44 +238,122 @@ export default function LeadsPage() {
         />
       )}
 
-      {/* Bottom sheet — cambiar estado */}
-      {sheetLead && (
+      {/* Bottom sheet — mover lead */}
+      {statusOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={() => setStatusOpen(null)} />
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950 border-t border-zinc-800 rounded-t-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
               <div>
-                <p className="text-sm font-semibold text-white">{sheetLead.first_name} {sheetLead.last_name}</p>
-                <p className="text-[11px] text-zinc-500 mt-0.5">Seleccioná el nuevo estado</p>
+                <p className="text-sm font-semibold text-white">
+                  {statusOpen.first_name} {statusOpen.last_name}
+                </p>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Ahora en <span className="text-zinc-300">{STATUS_LABELS[statusOpen.current_status as LeadStatus] ?? statusOpen.current_status}</span> · Mover a:
+                </p>
               </div>
-              <button onClick={() => setStatusOpen(null)} className="text-zinc-600 hover:text-zinc-400 transition p-1">
+              <button onClick={() => setStatusOpen(null)} className="p-2 text-zinc-600 hover:text-zinc-300 transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="overflow-y-auto max-h-[55vh] p-3 space-y-1">
-              {LEAD_STATUSES.map(s => {
-                const isCurrent = sheetLead.current_status === s;
+              {COLUMNS.map(col => {
+                const isCurrent = statusOpen.current_status === col.key;
+                const s = PHASE[col.phase];
                 return (
                   <button
-                    key={s}
-                    onClick={() => { patchLead(sheetLead.id, { current_status: s }); setStatusOpen(null); }}
+                    key={col.key}
+                    onClick={() => moveToStatus(statusOpen, col.key)}
+                    disabled={isCurrent}
                     className={cn(
                       'w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition active:scale-[0.99]',
                       isCurrent
-                        ? cn(STATUS_COLORS[s], 'ring-1 ring-white/20')
-                        : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                        ? cn('border-yellow-500/30 bg-yellow-500/10 text-yellow-400', 'cursor-default')
+                        : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'
                     )}
                   >
-                    {STATUS_LABELS[s]}
-                    {isCurrent && <span className="text-xs opacity-70">actual</span>}
+                    <span className="flex items-center gap-2.5">
+                      <span className={cn('h-2 w-2 rounded-full shrink-0', s.bar)} />
+                      {col.label}
+                    </span>
+                    {isCurrent
+                      ? <span className="text-[10px] text-yellow-500/70 font-normal">actual</span>
+                      : <ChevronRight className="h-3.5 w-3.5 text-zinc-700" />
+                    }
                   </button>
                 );
               })}
             </div>
-            <div className="h-safe-bottom" />
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function LeadCard({
+  lead, saving, onMove, onContact, phaseStyle,
+}: {
+  lead: Lead;
+  saving: boolean;
+  onMove: () => void;
+  onContact: () => void;
+  phaseStyle: { bar: string };
+}) {
+  const waPhone  = lead.phone.replace(/\D/g, '');
+  const fullName = `${lead.first_name} ${lead.last_name ?? ''}`.trim();
+
+  return (
+    <div className="bg-[#0f0f0f] border border-zinc-800/80 rounded-xl p-3 space-y-2.5 hover:border-zinc-700 transition">
+      {/* Nombre */}
+      <p className="text-[13px] font-semibold text-white leading-snug">{fullName}</p>
+
+      {/* Teléfono → WhatsApp */}
+      <a
+        href={`https://wa.me/${waPhone}`}
+        target="_blank" rel="noopener noreferrer"
+        className="text-[11px] text-blue-400 font-mono block hover:text-blue-300 transition-colors"
+        onClick={e => e.stopPropagation()}
+      >
+        {lead.phone}
+      </a>
+
+      {/* Mail */}
+      {lead.email && (
+        <p className="text-[10px] text-zinc-600 truncate">{lead.email}</p>
+      )}
+
+      {/* Follow-up bar + acciones */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Dots seguimiento */}
+        <div className="flex gap-0.5">
+          {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
+            <div
+              key={i}
+              className={cn('h-1 w-3.5 rounded-full', i < lead.follow_up_count ? phaseStyle.bar : 'bg-zinc-800')}
+            />
+          ))}
+        </div>
+
+        {/* Acciones */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onContact}
+            title="Contactar"
+            className="p-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition"
+          >
+            <MessageCircle className="h-3 w-3" />
+          </button>
+          <button
+            onClick={onMove}
+            disabled={saving}
+            title="Mover a..."
+            className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2 py-1.5 text-[10px] font-medium text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-40"
+          >
+            {saving ? '...' : <>Mover <ChevronRight className="h-3 w-3" /></>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
