@@ -131,6 +131,7 @@ export default function LeadsPage() {
   const [contactLead, setContactLead] = useState<Lead | null>(null);
   const [moveTarget, setMoveTarget]   = useState<Lead | null>(null);
   const [setterName, setSetterName]   = useState('');
+  const [activeMacro, setActiveMacro] = useState<MacroId>('sin_contactar');
 
   // Drag state
   const [dragging, setDragging]   = useState<Lead | null>(null);
@@ -273,72 +274,140 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Kanban — 6 columnas simétricas, sin scroll horizontal */}
+      {/* Kanban */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden p-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 h-full">
-            {MACRO.map(col => {
+        <>
+          {/* ── MOBILE: tabs + columna única scrolleable ── */}
+          <div className="lg:hidden flex flex-col flex-1 min-h-0">
+            {/* Tab bar horizontal */}
+            <div className="shrink-0 flex overflow-x-auto gap-1 px-2 py-2 border-b border-zinc-800/60 scrollbar-none">
+              {MACRO.map(col => {
+                const count    = byMacro[col.id]?.length ?? 0;
+                const isActive = activeMacro === col.id;
+                return (
+                  <button
+                    key={col.id}
+                    onClick={() => setActiveMacro(col.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all',
+                      isActive
+                        ? cn('border text-white bg-zinc-800', col.col)
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    )}
+                  >
+                    <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', col.bar)} />
+                    {col.label}
+                    <span className={cn('text-[9px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center', isActive ? col.badge : 'bg-zinc-800 text-zinc-500')}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Columna activa — scrolleable sin límite */}
+            {(() => {
+              const col      = MACRO.find(m => m.id === activeMacro)!;
               const colLeads = byMacro[col.id] ?? [];
-              const isOver   = dragOver === col.id;
               return (
-                <div
-                  key={col.id}
-                  data-macro-id={col.id}
-                  onDragOver={e => { e.preventDefault(); setDragOver(col.id); }}
-                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
-                  onDrop={e => { e.preventDefault(); if (dragging) moveLead(dragging, col.dropStatus); setDragOver(null); }}
-                  className={cn(
-                    'flex flex-col rounded-2xl border bg-zinc-900/40 transition-all',
-                    col.col,
-                    isOver && col.over
-                  )}
-                >
-                  {/* Column header */}
-                  <div className="px-3 pt-3 pb-2 shrink-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className={cn('text-[11px] font-bold uppercase tracking-wider', col.header)}>{col.label}</p>
-                      <span className={cn('text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center', col.badge)}>
-                        {colLeads.length}
-                      </span>
-                    </div>
-                    <div className={cn('h-0.5 rounded-full', col.bar, 'opacity-50')} />
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {/* Header de etapa */}
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={cn('text-xs font-bold uppercase tracking-wider', col.header)}>{col.label}</p>
+                    <div className={cn('h-0.5 flex-1 mx-3 rounded-full', col.bar, 'opacity-40')} />
+                    <span className={cn('text-[10px] font-bold rounded-full px-2 py-0.5', col.badge)}>{colLeads.length}</span>
                   </div>
 
-                  {/* Cards — scrollable vertical dentro de la columna */}
-                  <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
-                    {colLeads.length === 0 ? (
-                      <div className={cn('h-20 rounded-xl border-2 border-dashed flex items-center justify-center transition-all', isOver ? 'border-white/30 bg-white/5' : 'border-zinc-800')}>
-                        <p className="text-[10px] text-zinc-700">Soltar aquí</p>
-                      </div>
-                    ) : (
-                      colLeads.map(lead => (
-                        <LeadCard
-                          key={lead.id}
-                          lead={lead}
-                          macroBar={col.bar}
-                          macroBadge={col.badge}
-                          saving={saving === lead.id}
-                          isDragging={dragging?.id === lead.id}
-                          onMove={() => setMoveTarget(lead)}
-                          onContact={() => setContactLead(lead)}
-                          onDragStart={() => setDragging(lead)}
-                          onDragEnd={() => { setDragging(null); setDragOver(null); }}
-                          onTouchStart={e => onTouchStart(lead, e)}
-                          onTouchMove={onTouchMove}
-                          onTouchEnd={onTouchEnd}
-                        />
-                      ))
-                    )}
-                  </div>
+                  {colLeads.length === 0 ? (
+                    <div className="h-32 rounded-2xl border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center gap-2">
+                      <span className={cn('h-3 w-3 rounded-full opacity-30', col.bar)} />
+                      <p className="text-xs text-zinc-700">Sin leads en esta etapa</p>
+                    </div>
+                  ) : colLeads.map(lead => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      macroBar={col.bar}
+                      macroBadge={col.badge}
+                      saving={saving === lead.id}
+                      isDragging={false}
+                      onMove={() => setMoveTarget(lead)}
+                      onContact={() => setContactLead(lead)}
+                      onDragStart={() => setDragging(lead)}
+                      onDragEnd={() => { setDragging(null); setDragOver(null); }}
+                      onTouchStart={e => onTouchStart(lead, e)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={onTouchEnd}
+                    />
+                  ))}
                 </div>
               );
-            })}
+            })()}
           </div>
-        </div>
+
+          {/* ── DESKTOP: 6 columnas simétricas ── */}
+          <div className="hidden lg:flex flex-1 overflow-hidden p-3">
+            <div className="grid grid-cols-6 gap-2.5 h-full w-full">
+              {MACRO.map(col => {
+                const colLeads = byMacro[col.id] ?? [];
+                const isOver   = dragOver === col.id;
+                return (
+                  <div
+                    key={col.id}
+                    data-macro-id={col.id}
+                    onDragOver={e => { e.preventDefault(); setDragOver(col.id); }}
+                    onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
+                    onDrop={e => { e.preventDefault(); if (dragging) moveLead(dragging, col.dropStatus); setDragOver(null); }}
+                    className={cn(
+                      'flex flex-col rounded-2xl border bg-zinc-900/40 transition-all',
+                      col.col,
+                      isOver && col.over
+                    )}
+                  >
+                    <div className="px-3 pt-3 pb-2 shrink-0">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className={cn('text-[11px] font-bold uppercase tracking-wider', col.header)}>{col.label}</p>
+                        <span className={cn('text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center', col.badge)}>
+                          {colLeads.length}
+                        </span>
+                      </div>
+                      <div className={cn('h-0.5 rounded-full', col.bar, 'opacity-50')} />
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
+                      {colLeads.length === 0 ? (
+                        <div className={cn('h-20 rounded-xl border-2 border-dashed flex items-center justify-center transition-all', isOver ? 'border-white/30 bg-white/5' : 'border-zinc-800')}>
+                          <p className="text-[10px] text-zinc-700">Soltar aquí</p>
+                        </div>
+                      ) : (
+                        colLeads.map(lead => (
+                          <LeadCard
+                            key={lead.id}
+                            lead={lead}
+                            macroBar={col.bar}
+                            macroBadge={col.badge}
+                            saving={saving === lead.id}
+                            isDragging={dragging?.id === lead.id}
+                            onMove={() => setMoveTarget(lead)}
+                            onContact={() => setContactLead(lead)}
+                            onDragStart={() => setDragging(lead)}
+                            onDragEnd={() => { setDragging(null); setDragOver(null); }}
+                            onTouchStart={e => onTouchStart(lead, e)}
+                            onTouchMove={onTouchMove}
+                            onTouchEnd={onTouchEnd}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal contactar */}

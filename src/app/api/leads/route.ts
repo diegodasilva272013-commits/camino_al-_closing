@@ -14,7 +14,8 @@ export async function GET() {
       .from('leads')
       .select('*')
       .eq('assigned_to_user_id', user.id)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(10000);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
