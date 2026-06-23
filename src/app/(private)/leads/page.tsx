@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { RefreshCw, Search, X, MessageCircle, ChevronRight } from 'lucide-react';
+import { RefreshCw, Search, X, MessageCircle, ChevronRight, Wifi } from 'lucide-react';
 import { ContactModal } from './_components/ContactModal';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
+import { useLeadsRealtime } from '@/hooks/useLeadsRealtime';
 
 type Lead = {
   id: string;
@@ -135,6 +136,13 @@ export default function LeadsPage() {
   const [dragging, setDragging]   = useState<Lead | null>(null);
   const [dragOver, setDragOver]   = useState<MacroId | null>(null);
 
+  // Realtime — actualiza cards cuando el admin o un setter cambia un lead
+  useLeadsRealtime({
+    onUpdate: (updated) => {
+      setLeads(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+    },
+  });
+
   // Touch drag state
   const touchDrag  = useRef<Lead | null>(null);
   const touchClone = useRef<HTMLDivElement | null>(null);
@@ -245,6 +253,10 @@ export default function LeadsPage() {
           <div>
             <p className="text-[10px] uppercase tracking-widest text-yellow-500/70 font-semibold">Pipeline</p>
             <p className="text-sm font-bold text-white">{open.length} leads activos</p>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl border border-emerald-800/40 bg-emerald-950/20 px-2.5 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-semibold text-emerald-400">En vivo</span>
           </div>
           <button onClick={load} disabled={loading} className="rounded-xl border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-300 transition">
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />

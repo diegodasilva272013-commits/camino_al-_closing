@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Upload, RefreshCw, UserPlus, Filter, X, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { useLeadsRealtime } from '@/hooks/useLeadsRealtime';
 import { PageHeader } from '@/components/layout/page-header';
 import { LeadStatusBadge } from '@/app/(private)/leads/_components/LeadStatusBadge';
 import { LEAD_STATUSES, STATUS_LABELS } from '@/constants/leads';
@@ -70,7 +71,18 @@ function AdminLeadsPageInner() {
   const [assignResult, setAssignResult] = useState('');
 
   // Inline status edit
-  const [saving, setSaving] = useState<string | null>(null);
+  const [saving, setSaving]       = useState<string | null>(null);
+  const [liveCount, setLiveCount] = useState(0);
+
+  // Realtime — refleja en tiempo real los cambios de setters
+  useLeadsRealtime({
+    onUpdate: (updated) => {
+      setLeads(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+      setLiveCount(n => n + 1);
+      setTimeout(() => setLiveCount(n => Math.max(0, n - 1)), 3000);
+    },
+    onInsert: () => { load(); },
+  });
 
   // Dedup
   const [deduping, setDeduping] = useState(false);
@@ -261,6 +273,15 @@ function AdminLeadsPageInner() {
         <button onClick={load} disabled={loading} className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs text-brand-muted hover:text-brand-text transition">
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </button>
+        <div className={cn(
+          'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-all',
+          liveCount > 0
+            ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400'
+            : 'border-emerald-800/40 bg-emerald-950/20 text-emerald-500'
+        )}>
+          <span className={cn('h-1.5 w-1.5 rounded-full', liveCount > 0 ? 'bg-yellow-400' : 'bg-emerald-400 animate-pulse')} />
+          {liveCount > 0 ? `${liveCount} cambio${liveCount > 1 ? 's' : ''}` : 'En vivo'}
+        </div>
       </div>
 
       {/* Filters */}
