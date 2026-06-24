@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Loader2, Send, CheckCircle, AlertTriangle,
@@ -195,15 +195,34 @@ export default function FormularioDetailPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadForm = useCallback(() => {
-    fetch(`/api/forms/${id}`).then(r => r.json()).then(d => {
+    return fetch(`/api/forms/${id}`).then(r => r.json()).then(d => {
       setForm(d);
       setLoading(false);
+      return d;
     });
   }, [id]);
 
   useEffect(() => { loadForm(); }, [loadForm]);
+
+  // Auto-poll mientras el análisis esté pendiente
+  useEffect(() => {
+    if (form?.submission?.status === 'analyzing') {
+      if (pollRef.current) return;
+      pollRef.current = setInterval(async () => {
+        const d = await loadForm();
+        if (d?.submission?.status !== 'analyzing') {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+        }
+      }, 3000);
+    } else {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    }
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [form?.submission?.status, loadForm]);
 
   async function submit() {
     if (!form) return;
@@ -217,7 +236,7 @@ export default function FormularioDetailPage() {
     const d = await r.json();
     setSubmitting(false);
     if (!r.ok) { setError(d.error ?? 'Error al enviar'); return; }
-    // Reload to show results
+    // Cargar para mostrar el estado "analyzing" y arrancar polling
     loadForm();
   }
 
@@ -245,10 +264,7 @@ export default function FormularioDetailPage() {
         <div className="flex flex-col items-center py-20 text-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-brand-gold" />
           <p className="text-brand-text font-semibold">El Motor CAC está analizando tus respuestas...</p>
-          <p className="text-sm text-brand-muted">Esto puede tomar unos segundos. Actualizá la página en un momento.</p>
-          <button onClick={loadForm} className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-brand-muted hover:text-brand-text transition">
-            Actualizar
-          </button>
+          <p className="text-sm text-brand-muted">Actualizando automáticamente en segundos.</p>
         </div>
       ) : (
         /* Fill form */
