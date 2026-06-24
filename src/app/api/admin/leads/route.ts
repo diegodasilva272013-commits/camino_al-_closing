@@ -12,6 +12,9 @@ async function requireAdmin(supabase: ReturnType<typeof createSupabaseServerClie
   return user;
 }
 
+const DEFAULT_PER_PAGE = 200;
+const MAX_PER_PAGE = 500;
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createSupabaseServerClient();
@@ -24,12 +27,16 @@ export async function GET(req: NextRequest) {
     const status   = searchParams.get('status');
     const batchId  = searchParams.get('batch_id');
     const source   = searchParams.get('source');
+    const page     = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
+    const perPage  = Math.min(MAX_PER_PAGE, Math.max(1, parseInt(searchParams.get('per_page') ?? String(DEFAULT_PER_PAGE), 10)));
+    const from     = (page - 1) * perPage;
+    const to       = from + perPage - 1;
 
-    let query = admin
+    let query = (admin as any)
       .from('leads')
-      .select('*, assignee:profiles!leads_assigned_to_user_id_fkey(id, full_name, email)')
+      .select('*, assignee:profiles!leads_assigned_to_user_id_fkey(id, full_name, email)', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(0, 9999);
+      .range(from, to);
 
     if (userId === 'unassigned') query = query.is('assigned_to_user_id', null);
     else if (userId) query = query.eq('assigned_to_user_id', userId);
@@ -37,9 +44,18 @@ export async function GET(req: NextRequest) {
     if (batchId) query = query.eq('batch_id', batchId);
     if (source)  query = query.eq('source', source);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data ?? []);
+
+    const total = count ?? 0;
+    return NextResponse.json({
+      data: data ?? [],
+      total,
+      page,
+      per_page: perPage,
+      total_pages: Math.ceil(total / perPage),
+      has_more: to < total - 1,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

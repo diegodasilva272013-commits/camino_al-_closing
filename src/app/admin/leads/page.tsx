@@ -73,6 +73,9 @@ function AdminLeadsPageInner() {
   // Inline status edit
   const [saving, setSaving]       = useState<string | null>(null);
   const [liveCount, setLiveCount] = useState(0);
+  const [page, setPage]           = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLeads, setTotalLeads] = useState(0);
 
   // Realtime — refleja en tiempo real los cambios de setters
   useLeadsRealtime({
@@ -122,15 +125,22 @@ function AdminLeadsPageInner() {
     setSaving(null);
   }
 
-  async function load() {
+  async function load(p = page) {
     setLoading(true);
     const params = new URLSearchParams();
     if (filterStatus) params.set('status', filterStatus);
     if (filterUser)   params.set('user_id', filterUser);
+    params.set('page', String(p));
+    params.set('per_page', '200');
 
     const res = await fetch(`/api/admin/leads?${params}`);
-    const data = await res.json();
-    setLeads(Array.isArray(data) ? data : []);
+    const json = await res.json();
+    // Soporta respuesta paginada { data, total, ... } o array legacy
+    const leads = Array.isArray(json) ? json : (json.data ?? []);
+    setLeads(leads);
+    if (json.total_pages) setTotalPages(json.total_pages);
+    if (json.total !== undefined) setTotalLeads(json.total);
+    setPage(p);
     setLoading(false);
   }
 
@@ -142,8 +152,8 @@ function AdminLeadsPageInner() {
     } catch { /**/ }
   }
 
-  useEffect(() => { load(); loadUsers(); }, []);
-  useEffect(() => { load(); }, [filterStatus, filterUser]);
+  useEffect(() => { load(1); loadUsers(); }, []);
+  useEffect(() => { load(1); }, [filterStatus, filterUser]);
 
   function handleCSVFile(file: File) {
     const reader = new FileReader();
@@ -222,7 +232,7 @@ function AdminLeadsPageInner() {
       <PageHeader
         eyebrow="Admin · Leads"
         title="Gestión de Leads"
-        description={`${leads.length} leads · ${unassigned} sin asignar${dupCount > 0 ? ` · ⚠️ ${dupCount} duplicados` : ''}`}
+        description={`${totalLeads > 0 ? totalLeads.toLocaleString('es-AR') : leads.length} leads · ${unassigned} sin asignar${dupCount > 0 ? ` · ⚠️ ${dupCount} duplicados` : ''}`}
       />
 
       {/* Alerta de duplicados */}
@@ -270,7 +280,7 @@ function AdminLeadsPageInner() {
           <UserPlus className="h-4 w-4" />
           Asignar leads
         </button>
-        <button onClick={load} disabled={loading} className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs text-brand-muted hover:text-brand-text transition">
+        <button onClick={() => load(page)} disabled={loading} className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs text-brand-muted hover:text-brand-text transition">
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </button>
         <div className={cn(
@@ -369,6 +379,37 @@ function AdminLeadsPageInner() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-xs text-brand-muted">
+            Mostrando {leads.length} de <span className="text-brand-gold font-semibold">{totalLeads.toLocaleString('es-AR')}</span> leads
+            · Página {page} de {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => load(page - 1)}
+              disabled={page <= 1 || loading}
+              className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs text-brand-muted hover:text-brand-text disabled:opacity-30 transition"
+            >
+              ← Anterior
+            </button>
+            <button
+              onClick={() => load(page + 1)}
+              disabled={page >= totalPages || loading}
+              className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs text-brand-muted hover:text-brand-text disabled:opacity-30 transition"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
+      )}
+      {totalLeads > 0 && totalPages === 1 && (
+        <p className="mt-2 text-xs text-brand-muted">
+          {totalLeads.toLocaleString('es-AR')} leads en total
+        </p>
       )}
 
       {/* Import Modal */}

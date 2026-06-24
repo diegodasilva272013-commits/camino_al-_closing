@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const normalized = phone.replace(/\D/g, '');
   const { data: lead } = await (admin as any)
     .from('leads')
-    .select('id, assigned_to_user_id, status')
+    .select('id, assigned_to_user_id, current_status')
     .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
     .limit(1)
     .single();
@@ -68,36 +68,51 @@ export async function POST(req: NextRequest) {
     .eq('setter_id', setterId)
     .single();
 
+  const now = new Date().toISOString();
+
   if (!conv) {
     const { data: newConv } = await (admin as any)
       .from('prospecting_conversations')
-      .insert({ lead_id: lead.id, setter_id: setterId, status: 'responded', last_message_at: new Date().toISOString() })
+      .insert({ lead_id: lead.id, setter_id: setterId, status: 'responded', last_message_at: now, origen: 'evolution_api' })
       .select('id')
       .single();
     conv = newConv;
   } else {
     await (admin as any)
       .from('prospecting_conversations')
-      .update({ status: 'responded', last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ status: 'responded', last_message_at: now, updated_at: now })
       .eq('id', conv.id);
   }
 
   if (!conv) return NextResponse.json({ ok: false, error: 'Could not create conversation' }, { status: 500 });
 
-  // Add inbound message
+  // Add inbound message con origen para trazabilidad futura
   await (admin as any).from('prospecting_conversation_messages').insert({
     conversation_id: conv.id,
     lead_id: lead.id,
     setter_id: setterId,
     direction: 'inbound',
     body: messageText.trim(),
-    sent_at: new Date().toISOString(),
+    sent_at: now,
+    origen: 'evolution_api',
   });
 
-  // Update lead status to RESPONDIO if earlier in funnel
+  // Update lead status to RESPONDIO si está en etapas tempranas del funnel
   const earlyStatuses = ['NO_CONTACTADO', 'APERTURA_ENVIADA', 'CONTACTADO', 'NO_RESPONDE'];
-  if (earlyStatuses.includes(lead.status)) {
-    await (admin as any).from('leads').update({ status: 'RESPONDIO', updated_at: new Date().toISOString() }).eq('id', lead.id);
+  if (earlyStatuses.includes(lead.current_status)) {
+    await (admin as any)
+      .from('leads')
+      .update({ current_status: 'RESPONDIO', last_action_at: now, updated_at: now })
+      .eq('id', lead.id);
+    // Registrar actividad
+    await (admin as any).from('lead_activities').insert({
+      lead_id: lead.id,
+      user_id: setterId,
+      type: 'STATUS_CHANGE',
+      previous_status: lead.current_status,
+      new_status: 'RESPONDIO',
+      note: 'Respuesta recibida vía WhatsApp (Evolution API)',
+    });
   }
 
   // Update campaign_lead status if exists

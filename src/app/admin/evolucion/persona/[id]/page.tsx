@@ -52,20 +52,24 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
 
   if (!persona) notFound();
 
-  // Vincular persona.email → profiles → reinforcement_submissions
+  // Vincular persona → user_id (post-migración 0033: user_id directo; fallback por email)
   let formSubs: any[] = [];
+  let personaUserId: string | null = persona.user_id ?? null;
   try {
-    const { data: profile } = await (admin as any)
-      .from('profiles')
-      .select('id')
-      .eq('email', persona.email)
-      .maybeSingle();
+    if (!personaUserId && persona.email) {
+      const { data: profile } = await (admin as any)
+        .from('profiles')
+        .select('id')
+        .eq('email', persona.email)
+        .maybeSingle();
+      personaUserId = profile?.id ?? null;
+    }
 
-    if (profile?.id) {
+    if (personaUserId) {
       const { data } = await (admin as any)
         .from('reinforcement_submissions')
         .select('id, form_id, submitted_at, total_score, nivel_general, ai_risk, reinforcement_forms(title, topic)')
-        .eq('user_id', profile.id)
+        .eq('user_id', personaUserId)
         .eq('status', 'analyzed')
         .order('submitted_at', { ascending: false });
       formSubs = data ?? [];
