@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import {
   Plus, ArrowLeft, TrendingUp, TrendingDown, Minus,
-  CalendarDays, Zap, ClipboardList,
+  CalendarDays, Zap, ClipboardList, ClipboardCheck, ExternalLink,
 } from 'lucide-react';
 import type { Evidencia, Patron, Intervencion } from '@/types/evolucion';
 
@@ -51,6 +51,26 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
   ]);
 
   if (!persona) notFound();
+
+  // Vincular persona.email → profiles → reinforcement_submissions
+  let formSubs: any[] = [];
+  try {
+    const { data: profile } = await (admin as any)
+      .from('profiles')
+      .select('id')
+      .eq('email', persona.email)
+      .maybeSingle();
+
+    if (profile?.id) {
+      const { data } = await (admin as any)
+        .from('reinforcement_submissions')
+        .select('id, form_id, submitted_at, total_score, nivel_general, ai_risk, reinforcement_forms(title, topic)')
+        .eq('user_id', profile.id)
+        .eq('status', 'analyzed')
+        .order('submitted_at', { ascending: false });
+      formSubs = data ?? [];
+    }
+  } catch {}
 
   const evidList: Evidencia[]     = evidencias    ?? [];
   const patronList: Patron[]       = patrones      ?? [];
@@ -166,6 +186,63 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
             </div>
           )}
         </div>
+      </div>
+
+      {/* Formularios de refuerzo — conectados por email */}
+      <div className="mt-6 max-w-5xl">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="flex items-center gap-2 text-xs uppercase tracking-widest text-brand-gold/50">
+            <ClipboardCheck className="h-3.5 w-3.5" /> Formularios CAC ({formSubs.length})
+          </p>
+          {formSubs.length > 0 && (
+            <span className="text-[10px] text-brand-muted/50">
+              Promedio: <span className="text-brand-gold font-bold">
+                {Math.round(formSubs.reduce((s: number, f: any) => s + (f.total_score ?? 0), 0) / formSubs.length)}/100
+              </span>
+            </span>
+          )}
+        </div>
+        {formSubs.length === 0 ? (
+          <p className="text-xs text-brand-muted/50">Este setter no completó formularios aún.</p>
+        ) : (
+          <div className="space-y-2">
+            {formSubs.map((sub: any) => {
+              const score = sub.total_score ?? 0;
+              const scoreColor = score >= 70 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-red-400';
+              const riskColor  = sub.ai_risk === 'bajo' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-900/10'
+                               : sub.ai_risk === 'medio' ? 'text-amber-400 border-amber-500/20 bg-amber-900/10'
+                               : 'text-red-400 border-red-500/20 bg-red-900/10';
+              const fecha = new Date(sub.submitted_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' });
+              return (
+                <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-zinc-800/60 bg-[#0d0d0d] px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    {sub.reinforcement_forms?.topic && (
+                      <p className="text-[10px] uppercase tracking-wider text-brand-gold/40 truncate">{sub.reinforcement_forms.topic}</p>
+                    )}
+                    <p className="text-xs font-semibold text-brand-text truncate">{sub.reinforcement_forms?.title ?? 'Formulario'}</p>
+                    <p className="text-[10px] text-brand-muted mt-0.5">{fecha}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {sub.ai_risk && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${riskColor}`}>IA {sub.ai_risk}</span>
+                    )}
+                    {sub.nivel_general && (
+                      <span className="text-[10px] text-brand-muted capitalize">{sub.nivel_general.replace('_', ' ')}</span>
+                    )}
+                    <span className={`text-base font-black ${scoreColor}`}>{score}</span>
+                    <span className="text-[10px] text-brand-muted/50">/100</span>
+                  </div>
+                  <Link
+                    href={`/admin/forms/${sub.form_id}`}
+                    className="shrink-0 text-[10px] rounded border border-zinc-700 px-2 py-1 text-brand-muted hover:text-brand-gold hover:border-brand-gold/40 transition flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" /> Ver
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Evidencias */}

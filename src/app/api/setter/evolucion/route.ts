@@ -124,10 +124,11 @@ export async function GET() {
 
     // ── Formularios ──────────────────────────────────────────────────
     let forms_summary = { completed: 0, avg_score: null as number | null, latest_nivel: null as string | null };
+    let forms_list: { id: string; form_id: string; title: string; topic: string | null; submitted_at: string; total_score: number | null; nivel_general: string | null; ai_risk: string | null }[] = [];
     try {
       const { data: subs } = await (admin as any)
         .from('reinforcement_submissions')
-        .select('total_score, nivel_general, status, submitted_at')
+        .select('id, form_id, total_score, nivel_general, ai_risk, status, submitted_at, reinforcement_forms(id, title, topic)')
         .eq('user_id', id)
         .eq('status', 'analyzed')
         .order('submitted_at', { ascending: false });
@@ -138,9 +139,19 @@ export async function GET() {
         avg_score: avg !== null ? Math.round(avg) : null,
         latest_nivel: all[0]?.nivel_general ?? null,
       };
+      forms_list = all.map((s: any) => ({
+        id:            s.id,
+        form_id:       s.form_id,
+        title:         s.reinforcement_forms?.title ?? 'Formulario',
+        topic:         s.reinforcement_forms?.topic ?? null,
+        submitted_at:  s.submitted_at,
+        total_score:   s.total_score,
+        nivel_general: s.nivel_general,
+        ai_risk:       s.ai_risk,
+      }));
     } catch {}
 
-    return NextResponse.json({ leads_summary, conversations_summary, trainer_summary, forms_summary });
+    return NextResponse.json({ leads_summary, conversations_summary, trainer_summary, forms_summary, forms_list });
   } catch (err: unknown) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

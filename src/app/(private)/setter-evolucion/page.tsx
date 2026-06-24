@@ -16,12 +16,14 @@ type LeadsSummary = { total: number; contacted: number; responded: number; inter
 type ConvsSummary = { total: number; with_reflection: number; approved_reflections: number; total_xp_earned: number; cap_scores: Record<string, { label: string; avg: number }>; latest: { date: string; resultado: string; xp: number }[] };
 type TrainerSummary = { total_sessions: number; completed_sessions: number; unique_scenarios: number; last_evaluation: string | null; groups_practiced: string[] };
 type FormsSummary = { completed: number; avg_score: number | null; latest_nivel: string | null };
+type FormItem = { id: string; form_id: string; title: string; topic: string | null; submitted_at: string; total_score: number | null; nivel_general: string | null; ai_risk: string | null };
 
 type EvolucionData = {
   leads_summary: LeadsSummary;
   conversations_summary: ConvsSummary;
   trainer_summary: TrainerSummary;
   forms_summary: FormsSummary;
+  forms_list: FormItem[];
 };
 
 function KpiCard({ label, value, sub, accent = false, icon }: { label: string; value: string | number; sub?: string; accent?: boolean; icon?: React.ReactNode }) {
@@ -96,7 +98,7 @@ export default function SetterEvolucionPage() {
 
   if (!data) return null;
 
-  const { leads_summary: l, conversations_summary: c, trainer_summary: t, forms_summary: f } = data;
+  const { leads_summary: l, conversations_summary: c, trainer_summary: t, forms_summary: f, forms_list = [] } = data;
   const nivel = f.latest_nivel ? NIVEL_LABEL[f.latest_nivel] : null;
 
   const leadsDistrib = [
@@ -242,9 +244,37 @@ export default function SetterEvolucionPage() {
         {f.completed > 0 && (
           <div className="mb-8">
             <SectionTitle icon={<ClipboardCheck className="h-3.5 w-3.5" />} label="Conocimiento CAC — Formularios" />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <KpiCard label="Completados"  value={f.completed} />
               <KpiCard label="Promedio"     value={f.avg_score !== null ? `${f.avg_score}/100` : '—'} accent />
+            </div>
+
+            {/* Lista individual de formularios */}
+            <div className="space-y-2">
+              {forms_list.map(form => {
+                const score   = form.total_score ?? 0;
+                const scoreColor = score >= 70 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-red-400';
+                const nivel   = form.nivel_general ? NIVEL_LABEL[form.nivel_general] : null;
+                const fecha   = new Date(form.submitted_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' });
+                return (
+                  <a
+                    key={form.id}
+                    href={`/formularios/${form.form_id}`}
+                    className="flex items-center gap-3 rounded-xl border border-[rgba(212,175,55,0.08)] bg-[#0d0d0d] px-4 py-3 hover:bg-[#111] hover:border-brand-gold/15 transition group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      {form.topic && <p className="text-[10px] uppercase tracking-wider text-brand-gold/40 truncate">{form.topic}</p>}
+                      <p className="text-xs font-semibold text-brand-text truncate">{form.title}</p>
+                      <p className="text-[10px] text-brand-muted mt-0.5">{fecha}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {nivel && <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${nivel.c}`}>{nivel.l}</span>}
+                      <span className={`text-sm font-black ${scoreColor}`}>{score}</span>
+                      <span className="text-[10px] text-brand-muted/50">/100</span>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
           </div>
         )}
