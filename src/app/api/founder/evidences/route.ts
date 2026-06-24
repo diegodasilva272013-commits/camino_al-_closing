@@ -42,103 +42,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-// POST /api/founder/evidences — crear evidencia + analizar con memoria histórica
-export async function POST(req: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  const body = await req.json();
-  const { title, type, content_text, context, duration_min, date_recorded } = body;
-
-  if (!title || !type || !content_text?.trim()) {
-    return NextResponse.json({ error: 'title, type y content_text son requeridos' }, { status: 400 });
-  }
-
-  // 1. Guardar evidencia
-  const { data: evidence, error: evErr } = await (admin as any)
-    .from('founder_evidences')
-    .insert({
-      title, type, content_text, context, duration_min,
-      date_recorded: date_recorded || new Date().toISOString().split('T')[0],
-      analysis_status: 'analyzing',
-    })
-    .select('id')
-    .single();
-
-  if (evErr) return NextResponse.json({ error: evErr.message }, { status: 500 });
-
-  try {
-    // 2. Cargar memoria histórica ANTES del análisis
-    const memory       = await loadMemory(admin);
-    const memoryCtx    = buildMemoryContext(memory);
-    const analysisUser = buildAnalysisPrompt(content_text, type, context);
-
-    // Inyectar memoria al inicio del mensaje del usuario
-    const fullUserPrompt = memoryCtx
-      ? `${memoryCtx}\n\n${analysisUser}`
-      : analysisUser;
-
-    // 3. Analizar con Motor CAC CEO (o3) + memoria
-    const completion = await (openai.chat.completions.create as any)({
-      model:            'o3',
-      reasoning_effort: 'medium',
-      messages: [
-        { role: 'system', content: MOTOR_CAC_CEO_SYSTEM },
-        { role: 'user',   content: fullUserPrompt },
-      ],
-    });
-
-    const raw       = (completion.choices[0].message.content ?? '{}').trim();
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    const analysis  = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-
-    // 4. Guardar análisis
-    const { data: analysisRow } = await (admin as any).from('founder_analyses').insert({
-      evidence_id: evidence.id,
-      analysis:    analysis,
-      capacities:  analysis.capacidades ?? {},
-      patterns:    analysis.patrones_detectados ?? [],
-      exercises:   analysis.intervencion_prioritaria ? [analysis.intervencion_prioritaria] : [],
-    }).select('id').single();
-
-    // 5. Actualizar memoria acumulada en DB (patrones + comportamientos)
-    await Promise.all([
-      updatePatterns(admin, evidence.id, analysis.patrones_detectados ?? []),
-      updateBehaviors(admin, analysis.capacidades ?? {}),
-    ]);
-
-    // 6. Crear ejercicio automáticamente si hay intervención
-    if (analysis.intervencion_prioritaria) {
-      const inv = analysis.intervencion_prioritaria;
-      const dueAt = new Date();
-      dueAt.setDate(dueAt.getDate() + (inv.duracion_dias ?? 7));
-
-      await (admin as any).from('founder_exercises').insert({
-        capacity:        inv.capacidad,
-        title:           inv.titulo,
-        description:     inv.descripcion,
-        origin_analysis: analysisRow?.id,
-        due_at:          dueAt.toISOString(),
-        status:          'pending',
-      });
-    }
-
-    // 7. Actualizar snapshot de capacidades
-    await updateCapacitySnapshot(admin);
-
-    // 8. Marcar evidencia como lista
-    await (admin as any).from('founder_evidences')
-      .update({ analysis_status: 'ready' })
-      .eq('id', evidence.id);
-
-    return NextResponse.json({ evidence_id: evidence.id, analysis });
-
-  } catch (err: any) {
-    await (admin as any).from('founder_evidences')
-      .update({ analysis_status: 'error' })
-      .eq('id', evidence.id);
-    return NextResponse.json({ error: err.message ?? 'Error en análisis' }, { status: 500 });
-  }
+// POST /api/founder/evidences — DESACTIVADO (F5-A: sistema 0025/0026 en modo lectura)
+// Las nuevas evidencias del founder van a /api/d2030/evidencia (sistema 0029)
+export async function POST(_req: NextRequest) {
+  return NextResponse.json(
+    { error: 'Sistema legacy desactivado. Usá /api/d2030/evidencia — sistema 0029 es la fuente de verdad.' },
+    { status: 410 }
+  );
 }
 
 async function updateCapacitySnapshot(admin: any) {

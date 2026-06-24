@@ -245,11 +245,40 @@ Respondé con este JSON exacto:
   };
 
   // ── Guardar en historial ──────────────────────────────────────────────
-  const { error: saveErr } = await (admin as any)
+  const { data: savedDiag, error: saveErr } = await (admin as any)
     .from('team_diagnostics')
-    .insert({ diagnosis, meta });
+    .insert({ diagnosis, meta })
+    .select('id')
+    .single();
 
   if (saveErr) console.error('[cron/team-diagnosis] save error:', saveErr.message);
 
+  // F5-B: inferencia de señales de Diego — función separada para poder
+  // moverla a clases u otro trigger sin tocar este cron.
+  if (savedDiag?.id) dispararInferenciaSenal(req, savedDiag.id);
+
   return NextResponse.json({ ok: true, meta, diagnosis });
+}
+
+/**
+ * Dispara la inferencia de señales de Diego (senal_equipo) a partir
+ * del diagnóstico del equipo recién guardado.
+ *
+ * Función separada e independiente: se puede mover a cualquier otro
+ * endpoint (clases, reuniones, etc.) sin tocar el cron.
+ * Solo requiere un NextRequest con host header y el ID del diagnóstico.
+ */
+function dispararInferenciaSenal(req: NextRequest, teamDiagnosticId: number): void {
+  const host     = req.headers.get('host') ?? 'localhost:3000';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  void fetch(`${protocol}://${host}/api/d2030/senal-equipo/infer`, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'x-internal-key': process.env.CRON_SECRET ?? '',
+    },
+    body: JSON.stringify({ team_diagnostic_id: teamDiagnosticId }),
+  }).catch((err) =>
+    console.error('[team-diagnosis] senal-equipo inference failed:', err)
+  );
 }

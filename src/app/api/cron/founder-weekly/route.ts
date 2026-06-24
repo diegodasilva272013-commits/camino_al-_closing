@@ -8,7 +8,15 @@ export const maxDuration = 300;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
+  // F5-A: sistema founder legacy (0025/0026) en modo lectura. El cron ya no escribe.
+  // El reporte semanal del founder se generará desde sistema 0029 (F5-B).
+  return NextResponse.json({ ok: true, skipped: true, reason: 'Sistema legacy desactivado.' });
+}
+
+// Código legacy preservado — no ejecuta. Referencia para F5-B.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _GET_legacy(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const isCron     = authHeader === `Bearer ${process.env.CRON_SECRET}`;
 

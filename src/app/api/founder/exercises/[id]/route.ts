@@ -18,8 +18,16 @@ async function requireAdmin() {
   return admin;
 }
 
-// PATCH — actualizar estado o enviar entrega
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+// PATCH — DESACTIVADO (F5-A: sistema 0025/0026 en modo lectura)
+// Los ejercicios del founder van al sistema 0029 (/api/d2030/ejercicio)
+export async function PATCH() {
+  return NextResponse.json(
+    { error: 'Sistema legacy desactivado. Usá /api/d2030/ejercicio — sistema 0029 es la fuente de verdad.' },
+    { status: 410 }
+  );
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _PATCH_legacy(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 

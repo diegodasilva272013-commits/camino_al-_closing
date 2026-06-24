@@ -31,16 +31,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(data);
 }
 
-// DELETE evidencia
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  const { error } = await (admin as any)
-    .from('founder_evidences')
-    .delete()
-    .eq('id', params.id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+// DELETE evidencia — DESACTIVADO (F5-A: sistema 0025/0026 en modo lectura)
+// La data histórica se conserva intacta. No se borra nada del sistema legacy.
+export async function DELETE() {
+  return NextResponse.json(
+    { error: 'Sistema legacy desactivado. Las evidencias históricas no se eliminan.' },
+    { status: 410 }
+  );
 }
