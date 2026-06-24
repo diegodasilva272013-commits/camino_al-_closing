@@ -26,7 +26,6 @@ export async function PATCH() {
     { status: 410 }
   );
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function _PATCH_legacy(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
