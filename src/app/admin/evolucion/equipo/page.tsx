@@ -48,19 +48,21 @@ export default async function EvolucionEquipoDashboard() {
       .limit(300),
   ]);
 
-  const setters: any[] = setterProfiles ?? [];
+  const setters = (setterProfiles ?? []) as any[];
+  const personas = (personasData  ?? []) as any[];
+  const patrones = (patronesData  ?? []) as any[];
 
   // LEFT JOIN en JS: persona por user_id
-  const personaByUserId = new Map(
-    (personasData ?? []).map((p: any) => [p.user_id, p])
+  const personaByUserId = new Map<string, any>(
+    personas.map((p: any) => [p.user_id as string, p])
   );
 
   // Patrones agrupados por persona_id
   const patronesByPersonaId = new Map<string, any[]>();
-  for (const p of (patronesData ?? [])) {
-    const list = patronesByPersonaId.get(p.persona_id) ?? [];
+  for (const p of patrones) {
+    const list = patronesByPersonaId.get(p.persona_id as string) ?? [];
     list.push(p);
-    patronesByPersonaId.set(p.persona_id, list);
+    patronesByPersonaId.set(p.persona_id as string, list);
   }
 
   return (
