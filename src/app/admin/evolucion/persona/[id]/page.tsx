@@ -9,6 +9,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import type { Evidencia, Patron, Intervencion } from '@/types/evolucion';
+import { MotorRunButton } from '@/components/evolucion/MotorRunButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -242,15 +243,18 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
           title={(persona as any)?.nombre ?? (profile as any)?.full_name ?? 'Sin nombre'}
           description={`${(persona as any)?.rol_actual ?? 'Setter'}${(persona as any)?.fecha_ingreso ? ' · Ingresó ' + new Date((persona as any).fecha_ingreso).toLocaleDateString('es-AR') : ''}`}
         />
-        {personaId && (
-          <Link
-            href={`/admin/evolucion/evidencia/nueva?persona_id=${personaId}`}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition"
-          >
-            <Plus className="h-4 w-4" />
-            Cargar evidencia
-          </Link>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <MotorRunButton userId={userId} />
+          {personaId && (
+            <Link
+              href={`/admin/evolucion/evidencia/nueva?persona_id=${personaId}`}
+              className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition"
+            >
+              <Plus className="h-4 w-4" />
+              Cargar evidencia
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Objetivo actual */}

@@ -153,6 +153,17 @@ Devolvé SOLO JSON sin comentarios:
       await admin.from('profiles').update({ points: ((profile as any)?.points ?? 0) + xp } as any).eq('id', user_id);
     }
 
+    // Auto-trigger Motor B (fire-and-forget)
+    const motorUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/admin/evolucion/motor/run`;
+    fetch(motorUrl, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ user_id }),
+    }).catch(() => {});
+
     return NextResponse.json({ ok: true, submission_id, xp_earned: xp });
   } catch (err: any) {
     await (admin as any)

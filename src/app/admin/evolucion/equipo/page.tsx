@@ -5,6 +5,7 @@ import {
   Plus, TrendingUp, TrendingDown, Minus, User, Zap, ChevronRight,
   ClipboardCheck, MessageSquare, Swords, Users2,
 } from 'lucide-react';
+import { MotorRunButton } from '@/components/evolucion/MotorRunButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -230,7 +231,8 @@ export default async function EvolucionEquipoDashboard() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-3 flex-wrap">
+      <div className="mt-6 flex gap-3 flex-wrap items-center">
+        <MotorRunButton label="Analizar todo el equipo" />
         <Link
           href="/admin/evolucion/catalogo"
           className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm text-brand-muted hover:text-brand-text hover:border-zinc-500 transition"

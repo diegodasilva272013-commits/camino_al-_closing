@@ -1,48 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
+import { buildConversationAnalysisPrompt, type CapEntry } from '@/lib/motor-cac-extractor';
 
 export const dynamic = 'force-dynamic';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const ANALYSIS_SYSTEM = `Sos el Motor CAC — sistema de análisis de conversaciones de ventas de Camino al Closing.
-
-Tu trabajo: analizar una conversación real entre un setter CAC y un prospecto, y devolver un diagnóstico profesional, honesto y sin filtros.
-
-FILOSOFÍA CAC:
-No formamos vendedores. Formamos solucionadores de problemas. No entrenamos respuestas. Entrenamos pensamiento comercial. Premiamos criterio, no actividad. Conversaciones que generan confianza, respetan la oferta y protegen la marca.
-
-Analizar en estas 8 dimensiones:
-- intención (claridad del objetivo de la conversación)
-- rapport (conexión humana antes del pitch)
-- empatia_profesional (entender el mundo del prospecto sin perder el foco)
-- diagnostico (preguntas que descubren el problema real)
-- generacion_interes (capacidad de crear deseo sin presión)
-- seguimiento (manejo de silencios, vistas, demoras)
-- profesionalismo (tono, límites, manejo de la marca)
-- criterio (decisiones tomadas en tiempo real)
-
-Devolvé JSON con este formato exacto:
-{
-  "resultado_probable": "una frase corta: ej. 'Quedó en visto', 'Generó reunión', 'Prospecto desapareció', 'Se bloqueó', 'Terminó sin avance'",
-  "fortalezas": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
-  "errores": ["error 1", "error 2", "error 3"],
-  "momento_gano_confianza": "descripción exacta del momento o 'No hubo momento claro'",
-  "momento_perdio_confianza": "descripción exacta del momento o 'No se detectó pérdida'",
-  "donde_se_rompio": "descripción del punto de quiebre o 'No hubo ruptura visible'",
-  "capacidades_impactadas": {
-    "intencion": "alta | media | baja | no_mostrada",
-    "rapport": "alta | media | baja | no_mostrada",
-    "empatia_profesional": "alta | media | baja | no_mostrada",
-    "diagnostico": "alta | media | baja | no_mostrada",
-    "generacion_interes": "alta | media | baja | no_mostrada",
-    "seguimiento": "alta | media | baja | no_mostrada",
-    "profesionalismo": "alta | media | baja | no_mostrada",
-    "criterio": "alta | media | baja | no_mostrada"
-  },
-  "que_haria_operador_cac": "párrafo de 2-3 oraciones: qué habría hecho diferente un operador CAC experimentado"
-}`;
 
 // GET — list user's analyses
 export async function GET() {
@@ -89,6 +52,22 @@ export async function POST(req: NextRequest) {
 
   const admin = createSupabaseAdminClient();
 
+  // Cargar capacidades activas desde DB (fuente de verdad — ninguna lista fija)
+  const { data: capsRaw } = await (admin as any)
+    .from('capacidades')
+    .select('id, clave, nombre, claves_alias')
+    .eq('activo', true)
+    .order('orden');
+
+  const caps: CapEntry[] = (capsRaw ?? []).map((c: any) => ({
+    id:           c.id,
+    clave:        c.clave ?? null,
+    nombre:       c.nombre,
+    claves_alias: c.claves_alias ?? [],
+  }));
+
+  const analysisSystem = buildConversationAnalysisPrompt(caps);
+
   // Insert placeholder
   const { data: inserted, error: insErr } = await (admin as any)
     .from('conversation_analyses')
@@ -103,7 +82,7 @@ export async function POST(req: NextRequest) {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: ANALYSIS_SYSTEM },
+        { role: 'system', content: analysisSystem },
         { role: 'user', content: `Analizá esta conversación:\n\n${raw_text}` },
       ],
       temperature: 0.4,
@@ -117,6 +96,17 @@ export async function POST(req: NextRequest) {
       .from('conversation_analyses')
       .update({ analysis, status: 'ready' })
       .eq('id', id);
+
+    // Auto-trigger Motor B (fire-and-forget — no bloquea la respuesta al setter)
+    const motorUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/admin/evolucion/motor/run`;
+    fetch(motorUrl, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ user_id: user.id }),
+    }).catch(() => {}); // errores silenciosos — el motor se puede correr manualmente
 
     return NextResponse.json({ id, analysis });
   } catch (err: any) {
