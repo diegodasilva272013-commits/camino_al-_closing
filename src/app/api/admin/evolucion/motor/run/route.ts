@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 4. Recalcular patrones (función SQL existente, procesa todos) ─────────
-  await admin.rpc('calcular_patrones').catch(() => {});
+  try { await admin.rpc('calcular_patrones'); } catch { /* ignorar */ }
 
   return NextResponse.json(summary);
   } catch (err: any) {
