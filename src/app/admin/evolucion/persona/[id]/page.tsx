@@ -75,89 +75,68 @@ function ScoreBar({ score, nombre }: { score: number | null; nombre: string }) {
 }
 
 export default async function PerfilPersonaPage({ params }: { params: { id: string } }) {
-  const admin = createSupabaseAdminClient() as any;
-  const { id } = params;
+  const admin   = createSupabaseAdminClient() as any;
+  const userId  = params.id; // params.id es user_id — todos los setters lo tienen en profiles
 
-  // ── Datos base — sin cambio respecto a la versión anterior ───────────────────
+  // ── Fase 1: profile (fuente de verdad) + persona por user_id (puede ser null) ─
+  const [{ data: profile }, { data: persona }] = await Promise.all([
+    admin.from('profiles').select('id, full_name, email').eq('id', userId).maybeSingle(),
+    admin.from('personas').select('*').eq('user_id', userId).maybeSingle(),
+  ]);
+
+  if (!profile) notFound();
+
+  const personaId = (persona as any)?.id ?? null; // null = sin perfil CAC registrado aún
+
+  // ── Fase 2: todas las queries en paralelo ─────────────────────────────────────
   const [
-    { data: persona },
     { data: evidencias },
     { data: patrones },
     { data: intervenciones },
+    formsRes, compsRes, capsRes, convRes, trainerRes, leadsRes,
   ] = await Promise.all([
-    admin.from('personas').select('*').eq('id', id).single(),
-    admin.from('evidencias').select('*').eq('persona_id', id).order('fecha', { ascending: false }),
-    // Ajuste: agrego catalogo join para obtener tipo positivo/negativo real del catálogo
-    admin.from('patrones')
-      .select('*, capacidad:capacidades(nombre), catalogo:catalogo_comportamientos(tipo)')
-      .eq('persona_id', id)
-      .order('frecuencia', { ascending: false }),
-    admin.from('intervenciones')
-      .select('*, patron:patrones(etiqueta), capacidad:capacidades(nombre)')
-      .eq('persona_id', id)
-      .order('fecha', { ascending: false }),
+    personaId
+      ? admin.from('evidencias').select('*').eq('persona_id', personaId).order('fecha', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    personaId
+      ? admin.from('patrones')
+          .select('*, capacidad:capacidades(nombre), catalogo:catalogo_comportamientos(tipo)')
+          .eq('persona_id', personaId).order('frecuencia', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    personaId
+      ? admin.from('intervenciones')
+          .select('*, patron:patrones(etiqueta), capacidad:capacidades(nombre)')
+          .eq('persona_id', personaId).order('fecha', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    // Actividad real — siempre por userId, sin depender de persona
+    admin.from('reinforcement_submissions')
+      .select('id, form_id, submitted_at, total_score, nivel_general, ai_risk, reinforcement_forms(title, topic)')
+      .eq('user_id', userId).eq('status', 'analyzed').order('submitted_at', { ascending: false }),
+    personaId
+      ? admin.from('comportamientos').select('capacidad_id, tipo').eq('persona_id', personaId)
+      : Promise.resolve({ data: [] }),
+    admin.from('capacidades').select('id, nombre, orden').eq('activo', true).order('orden'),
+    admin.from('conversation_analyses')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId).eq('status', 'ready'),
+    admin.from('trainer_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    admin.from('leads').select('current_status, is_closed').eq('assigned_to_user_id', userId),
   ]);
 
-  if (!persona) notFound();
+  const formSubs        = (formsRes.data   ?? []) as any[];
+  const comportsList    = (compsRes.data   ?? []) as any[];
+  const capacidadesList = (capsRes.data    ?? []) as any[];
+  const convCount       = convRes.count    ?? 0;
+  const trainerCount    = trainerRes.count ?? 0;
 
-  // ── Resolver user_id (F4: primero user_id directo, fallback email) ────────────
-  let personaUserId: string | null = persona.user_id ?? null;
-  let formSubs:        any[] = [];
-  let comportsList:    any[] = [];
-  let capacidadesList: any[] = [];
-  let convCount    = 0;
-  let trainerCount = 0;
-  let leadsData    = { total: 0, reuniones: 0, cerrados: 0 };
-
-  try {
-    if (!personaUserId && persona.email) {
-      const { data: profile } = await admin
-        .from('profiles').select('id').eq('email', persona.email).maybeSingle();
-      personaUserId = profile?.id ?? null;
-    }
-
-    const [formsRes, compsRes, capsRes, convRes, trainerRes, leadsRes] = await Promise.all([
-      // Formularios (existente, sin cambio)
-      personaUserId
-        ? admin.from('reinforcement_submissions')
-            .select('id, form_id, submitted_at, total_score, nivel_general, ai_risk, reinforcement_forms(title, topic)')
-            .eq('user_id', personaUserId).eq('status', 'analyzed').order('submitted_at', { ascending: false })
-        : Promise.resolve({ data: [] }),
-      // Comportamientos por persona — para calcular score 0-10 por capacidad
-      admin.from('comportamientos').select('capacidad_id, tipo').eq('persona_id', id),
-      // Las 9 capacidades CAC
-      admin.from('capacidades').select('id, nombre, orden').eq('activo', true).order('orden'),
-      // Conversaciones analizadas — count
-      personaUserId
-        ? admin.from('conversation_analyses')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', personaUserId).eq('status', 'ready')
-        : Promise.resolve({ count: 0 }),
-      // Sesiones de trainer — count
-      personaUserId
-        ? admin.from('trainer_sessions')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', personaUserId)
-        : Promise.resolve({ count: 0 }),
-      // Leads asignados
-      personaUserId
-        ? admin.from('leads').select('current_status, is_closed').eq('assigned_to_user_id', personaUserId)
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    formSubs        = formsRes.data   ?? [];
-    comportsList    = compsRes.data   ?? [];
-    capacidadesList = capsRes.data    ?? [];
-    convCount       = convRes.count   ?? 0;
-    trainerCount    = trainerRes.count ?? 0;
-
-    const leads = leadsRes.data ?? [];
-    leadsData = {
-      total:     leads.length,
-      reuniones: leads.filter((l: any) => l.current_status === 'REUNION_AGENDADA').length,
-      cerrados:  leads.filter((l: any) => l.is_closed).length,
-    };
-  } catch {}
+  const leads = (leadsRes.data ?? []) as any[];
+  const leadsData = {
+    total:     leads.length,
+    reuniones: leads.filter((l: any) => l.current_status === 'REUNION_AGENDADA').length,
+    cerrados:  leads.filter((l: any) => l.is_closed).length,
+  };
 
   // ── Listas base ────────────────────────────────────────────────────────────
   const evidList:   Evidencia[]    = evidencias    ?? [];
@@ -250,33 +229,35 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
 
       {/* Navegación */}
       <Link
-        href="/admin/evolucion"
+        href="/admin/evolucion/equipo"
         className="mb-4 inline-flex items-center gap-2 text-xs text-brand-muted hover:text-brand-text transition"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Volver al dashboard
+        <ArrowLeft className="h-3.5 w-3.5" /> Volver al equipo
       </Link>
 
       {/* Encabezado */}
       <div className="flex items-start justify-between gap-4">
         <PageHeader
-          eyebrow="Admin · Evolución"
-          title={persona.nombre}
-          description={`${persona.rol_actual ?? 'Setter'} · Ingresó ${new Date(persona.fecha_ingreso).toLocaleDateString('es-AR')}`}
+          eyebrow="Admin · Evolución CAC"
+          title={(persona as any)?.nombre ?? (profile as any)?.full_name ?? 'Sin nombre'}
+          description={`${(persona as any)?.rol_actual ?? 'Setter'}${(persona as any)?.fecha_ingreso ? ' · Ingresó ' + new Date((persona as any).fecha_ingreso).toLocaleDateString('es-AR') : ''}`}
         />
-        <Link
-          href={`/admin/evolucion/evidencia/nueva?persona_id=${persona.id}`}
-          className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition"
-        >
-          <Plus className="h-4 w-4" />
-          Cargar evidencia
-        </Link>
+        {personaId && (
+          <Link
+            href={`/admin/evolucion/evidencia/nueva?persona_id=${personaId}`}
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition"
+          >
+            <Plus className="h-4 w-4" />
+            Cargar evidencia
+          </Link>
+        )}
       </div>
 
       {/* Objetivo actual */}
-      {persona.objetivo_actual && (
+      {(persona as any)?.objetivo_actual && (
         <div className="mt-2 max-w-2xl rounded-xl border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)] px-4 py-3">
           <p className="text-[11px] font-medium uppercase tracking-wider text-brand-gold/50 mb-1">Objetivo actual</p>
-          <p className="text-sm text-brand-muted">{persona.objetivo_actual}</p>
+          <p className="text-sm text-brand-muted">{(persona as any).objetivo_actual}</p>
         </div>
       )}
 
@@ -380,7 +361,7 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
                     ×{pat.frecuencia}
                   </span>
                   <Link
-                    href={`/admin/evolucion/intervencion/nueva?patron_id=${pat.id}&persona_id=${persona.id}`}
+                    href={`/admin/evolucion/intervencion/nueva?patron_id=${pat.id}&persona_id=${personaId}`}
                     className="text-[10px] rounded border border-zinc-700 px-2 py-0.5 text-brand-muted hover:text-brand-gold hover:border-brand-gold/40 transition"
                   >
                     Intervenir
@@ -574,32 +555,30 @@ export default async function PerfilPersonaPage({ params }: { params: { id: stri
       </div>
 
       {/* ── OPERACIÓN (leads) ───────────────────────────────────────────────────── */}
-      {personaUserId && (
-        <div className="mt-6 max-w-5xl">
-          <p className="mb-3 flex items-center gap-2 text-xs uppercase tracking-widest text-brand-gold/50">
-            <Users className="h-3.5 w-3.5" /> Operación · leads asignados
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              { label: 'Leads totales',        value: leadsData.total,     color: 'text-brand-text' },
-              { label: 'Reuniones agendadas',   value: leadsData.reuniones, color: 'text-amber-400'  },
-              { label: 'Cerrados',              value: leadsData.cerrados,  color: 'text-emerald-400' },
-            ] as const).map(({ label, value, color }) => (
-              <div key={label} className="rounded-xl border border-zinc-800/60 bg-[#0d0d0d] px-4 py-3 text-center">
-                <p className={`text-2xl font-black ${color}`}>{value}</p>
-                <p className="text-[10px] text-brand-muted mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-          {leadsData.total > 0 && (
-            <p className="mt-2 text-[10px] text-brand-muted/50">
-              Tasa de reunión: {Math.round((leadsData.reuniones / leadsData.total) * 100)}%
-              {' · '}
-              Tasa de cierre: {Math.round((leadsData.cerrados / leadsData.total) * 100)}%
-            </p>
-          )}
+      <div className="mt-6 max-w-5xl">
+        <p className="mb-3 flex items-center gap-2 text-xs uppercase tracking-widest text-brand-gold/50">
+          <Users className="h-3.5 w-3.5" /> Operación · leads asignados
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            { label: 'Leads totales',        value: leadsData.total,     color: 'text-brand-text' },
+            { label: 'Reuniones agendadas',   value: leadsData.reuniones, color: 'text-amber-400'  },
+            { label: 'Cerrados',              value: leadsData.cerrados,  color: 'text-emerald-400' },
+          ] as const).map(({ label, value, color }) => (
+            <div key={label} className="rounded-xl border border-zinc-800/60 bg-[#0d0d0d] px-4 py-3 text-center">
+              <p className={`text-2xl font-black ${color}`}>{value}</p>
+              <p className="text-[10px] text-brand-muted mt-0.5">{label}</p>
+            </div>
+          ))}
         </div>
-      )}
+        {leadsData.total > 0 && (
+          <p className="mt-2 text-[10px] text-brand-muted/50">
+            Tasa de reunión: {Math.round((leadsData.reuniones / leadsData.total) * 100)}%
+            {' · '}
+            Tasa de cierre: {Math.round((leadsData.cerrados / leadsData.total) * 100)}%
+          </p>
+        )}
+      </div>
 
       {/* ── CRITERIO DE PASE ────────────────────────────────────────────────────── */}
       <div className="mt-6 max-w-5xl mb-12">

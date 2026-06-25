@@ -172,18 +172,16 @@ export default async function EvolucionEquipoDashboard() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     {persona && (
-                      <>
-                        <span className="text-[11px] text-brand-muted">
-                          {pats.length} patrón{pats.length !== 1 ? 'es' : ''}
-                        </span>
-                        <Link
-                          href={`/admin/evolucion/persona/${persona.id}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs font-medium text-brand-gold hover:border-brand-gold/50 transition"
-                        >
-                          Ver perfil <ChevronRight className="h-3 w-3" />
-                        </Link>
-                      </>
+                      <span className="text-[11px] text-brand-muted">
+                        {pats.length} patrón{pats.length !== 1 ? 'es' : ''}
+                      </span>
                     )}
+                    <Link
+                      href={`/admin/evolucion/persona/${profile.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(212,175,55,0.2)] px-3 py-1.5 text-xs font-medium text-brand-gold hover:border-brand-gold/50 transition"
+                    >
+                      Ver <ChevronRight className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
 
