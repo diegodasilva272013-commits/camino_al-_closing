@@ -153,16 +153,25 @@ Devolvé SOLO JSON sin comentarios:
       await admin.from('profiles').update({ points: ((profile as any)?.points ?? 0) + xp } as any).eq('id', user_id);
     }
 
-    // Auto-trigger Motor B (fire-and-forget)
-    const motorUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/admin/evolucion/motor/run`;
-    fetch(motorUrl, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-      },
-      body: JSON.stringify({ user_id }),
-    }).catch(() => {});
+    // Auto-trigger Motor B — awaited para garantizar ejecución en serverless
+    try {
+      const host     = req.headers.get('host') ?? 'localhost:3000';
+      const protocol = host.startsWith('localhost') ? 'http' : 'https';
+      const motorRes = await fetch(`${protocol}://${host}/api/admin/evolucion/motor/run`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+        },
+        body: JSON.stringify({ user_id }),
+      });
+      if (!motorRes.ok) {
+        const motorErr = await motorRes.json().catch(() => ({}));
+        console.error('[motor auto-trigger formulario]', motorErr);
+      }
+    } catch (motorErr) {
+      console.error('[motor auto-trigger formulario]', motorErr);
+    }
 
     return NextResponse.json({ ok: true, submission_id, xp_earned: xp });
   } catch (err: any) {

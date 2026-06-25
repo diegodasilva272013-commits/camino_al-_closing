@@ -97,16 +97,25 @@ export async function POST(req: NextRequest) {
       .update({ analysis, status: 'ready' })
       .eq('id', id);
 
-    // Auto-trigger Motor B (fire-and-forget — no bloquea la respuesta al setter)
-    const motorUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/admin/evolucion/motor/run`;
-    fetch(motorUrl, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-      },
-      body: JSON.stringify({ user_id: user.id }),
-    }).catch(() => {}); // errores silenciosos — el motor se puede correr manualmente
+    // Auto-trigger Motor B — awaited para garantizar ejecución en serverless
+    try {
+      const host     = req.headers.get('host') ?? 'localhost:3000';
+      const protocol = host.startsWith('localhost') ? 'http' : 'https';
+      const motorRes = await fetch(`${protocol}://${host}/api/admin/evolucion/motor/run`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+        },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      if (!motorRes.ok) {
+        const motorErr = await motorRes.json().catch(() => ({}));
+        console.error('[motor auto-trigger conversación]', motorErr);
+      }
+    } catch (motorErr) {
+      console.error('[motor auto-trigger conversación]', motorErr);
+    }
 
     return NextResponse.json({ id, analysis });
   } catch (err: any) {
