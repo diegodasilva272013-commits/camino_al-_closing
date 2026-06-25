@@ -23,7 +23,11 @@ export function MotorRunButton({ userId, label }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(userId ? { user_id: userId } : {}),
       });
-      const data = await res.json();
+      let data: any = {};
+      try { data = await res.json(); } catch {
+        setResult(`Error ${res.status}: respuesta vacía del servidor — revisá los logs de Vercel`);
+        return;
+      }
       if (!res.ok) {
         setResult(`Error: ${data.error ?? res.statusText}`);
         return;

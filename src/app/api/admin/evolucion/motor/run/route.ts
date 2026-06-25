@@ -29,6 +29,7 @@ async function authorize(req: NextRequest): Promise<{ ok: boolean; adminClient: 
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const { ok, adminClient: admin } = await authorize(req);
   if (!ok) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
@@ -87,6 +88,10 @@ export async function POST(req: NextRequest) {
   await admin.rpc('calcular_patrones').catch(() => {});
 
   return NextResponse.json(summary);
+  } catch (err: any) {
+    console.error('[motor/run]', err);
+    return NextResponse.json({ error: err?.message ?? 'Error interno del motor' }, { status: 500 });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
