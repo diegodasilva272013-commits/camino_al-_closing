@@ -32,9 +32,18 @@ export function MotorRunButton({ userId, label }: Props) {
         setResult(`Error: ${data.error ?? res.statusText}`);
         return;
       }
-      const ev = data.created?.evidencias     ?? 0;
-      const co = data.created?.comportamientos ?? 0;
-      setResult(`✓ ${ev} evidencia${ev !== 1 ? 's' : ''} · ${co} comportamiento${co !== 1 ? 's' : ''}`);
+      const ev   = data.created?.evidencias      ?? 0;
+      const co   = data.created?.comportamientos ?? 0;
+      const skip = data.users_skipped            ?? 0;
+      const dbg  = (data.debug as string[] | undefined) ?? [];
+
+      if (ev === 0 && co === 0) {
+        // Mostrar diagnóstico en lugar del ✓ vacío
+        const lines = dbg.length ? dbg.join(' | ') : `skip:${skip} processed:${data.users_processed}`;
+        setResult(`0 items — ${lines}`);
+      } else {
+        setResult(`✓ ${ev} evidencia${ev !== 1 ? 's' : ''} · ${co} comportamiento${co !== 1 ? 's' : ''}`);
+      }
       router.refresh();
     } catch (e: any) {
       setResult(`Error: ${e.message}`);

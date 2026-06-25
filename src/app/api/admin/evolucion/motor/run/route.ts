@@ -13,13 +13,10 @@ export const maxDuration = 300;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Acepta admin logueado o CRON_SECRET (para auto-trigger desde otros endpoints)
 async function authorize(req: NextRequest): Promise<{ ok: boolean; adminClient: any }> {
   const auth  = req.headers.get('authorization');
   const admin = createSupabaseAdminClient() as any;
-
   if (auth === `Bearer ${process.env.CRON_SECRET}`) return { ok: true, adminClient: admin };
-
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, adminClient: null };
@@ -30,64 +27,85 @@ async function authorize(req: NextRequest): Promise<{ ok: boolean; adminClient: 
 
 export async function POST(req: NextRequest) {
   try {
-  const { ok, adminClient: admin } = await authorize(req);
-  if (!ok) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { ok, adminClient: admin } = await authorize(req);
+    if (!ok) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const targetUserId: string | null = body.user_id ?? null;
+    // ── 0. Verificar que la migración 0037 fue ejecutada ─────────────────────
+    const { error: migErr } = await admin
+      .from('conversation_analyses')
+      .select('motor_processed_at')
+      .limit(0);
 
-  // ── 1. Cargar capacidades activas (fuente de verdad, no hay listas fijas) ──
-  const { data: capsRaw } = await admin
-    .from('capacidades')
-    .select('id, clave, nombre, claves_alias')
-    .eq('activo', true)
-    .order('orden');
-
-  const caps: CapEntry[] = (capsRaw ?? []).map((c: any) => ({
-    id:           c.id,
-    clave:        c.clave ?? null,
-    nombre:       c.nombre,
-    claves_alias: c.claves_alias ?? [],
-  }));
-
-  const { capMap, capNameMap } = buildCapMaps(caps);
-
-  // ── 2. Resolver setters a procesar ────────────────────────────────────────
-  let userIds: string[] = [];
-  if (targetUserId) {
-    userIds = [targetUserId];
-  } else {
-    const { data: profiles } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('role', 'setter');
-    userIds = (profiles ?? []).map((p: any) => p.id as string);
-  }
-
-  // ── 3. Procesar cada setter ───────────────────────────────────────────────
-  const summary = {
-    users_processed: 0,
-    users_skipped:   0,
-    created: { evidencias: 0, comportamientos: 0 },
-    errors: [] as string[],
-  };
-
-  for (const userId of userIds) {
-    try {
-      const result = await processUser(admin, userId, capMap, capNameMap);
-      if (result.skipped) { summary.users_skipped++; continue; }
-      summary.users_processed++;
-      summary.created.evidencias      += result.evidencias;
-      summary.created.comportamientos += result.comportamientos;
-    } catch (err: any) {
-      summary.errors.push(`${userId}: ${err.message}`);
+    if (migErr) {
+      return NextResponse.json({
+        error: `Migración 0037 pendiente — ejecutá supabase/migrations/0037_motor_b_schema.sql en Supabase SQL Editor. Detalle: ${migErr.message}`,
+      }, { status: 400 });
     }
-  }
 
-  // ── 4. Recalcular patrones (función SQL existente, procesa todos) ─────────
-  try { await admin.rpc('calcular_patrones'); } catch { /* ignorar */ }
+    const body = await req.json().catch(() => ({}));
+    const targetUserId: string | null = body.user_id ?? null;
 
-  return NextResponse.json(summary);
+    // ── 1. Cargar capacidades activas desde DB ────────────────────────────────
+    const { data: capsRaw, error: capsErr } = await admin
+      .from('capacidades')
+      .select('id, clave, nombre, claves_alias')
+      .eq('activo', true)
+      .order('orden');
+
+    if (capsErr) {
+      return NextResponse.json({ error: `Error al leer capacidades: ${capsErr.message}` }, { status: 500 });
+    }
+
+    const caps: CapEntry[] = (capsRaw ?? []).map((c: any) => ({
+      id:           c.id,
+      clave:        c.clave ?? null,
+      nombre:       c.nombre,
+      claves_alias: c.claves_alias ?? [],
+    }));
+
+    const { capMap, capNameMap } = buildCapMaps(caps);
+
+    // ── 2. Resolver setters a procesar ────────────────────────────────────────
+    let userIds: string[] = [];
+    if (targetUserId) {
+      userIds = [targetUserId];
+    } else {
+      const { data: profiles } = await admin.from('profiles').select('id').eq('role', 'setter');
+      userIds = (profiles ?? []).map((p: any) => p.id as string);
+    }
+
+    // ── 3. Procesar cada setter ───────────────────────────────────────────────
+    const summary = {
+      users_processed:  0,
+      users_skipped:    0,
+      created:          { evidencias: 0, comportamientos: 0 },
+      errors:           [] as string[],
+      debug:            [] as string[],
+    };
+
+    for (const userId of userIds) {
+      try {
+        const result = await processUser(admin, userId, capMap, capNameMap, openai);
+        if (result.debug) summary.debug.push(...result.debug);
+        if (result.skipped) {
+          summary.users_skipped++;
+          summary.debug.push(`SKIP ${userId}: ${result.skipReason ?? 'sin persona y no se pudo crear'}`);
+          continue;
+        }
+        summary.users_processed++;
+        summary.created.evidencias      += result.evidencias;
+        summary.created.comportamientos += result.comportamientos;
+      } catch (err: any) {
+        summary.errors.push(`${userId}: ${err.message}`);
+      }
+    }
+
+    // ── 4. Recalcular patrones ────────────────────────────────────────────────
+    try { await admin.rpc('calcular_patrones'); } catch (e: any) {
+      summary.debug.push(`calcular_patrones error: ${e?.message}`);
+    }
+
+    return NextResponse.json(summary);
   } catch (err: any) {
     console.error('[motor/run]', err);
     return NextResponse.json({ error: err?.message ?? 'Error interno del motor' }, { status: 500 });
@@ -96,32 +114,84 @@ export async function POST(req: NextRequest) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface ProcessResult {
+  skipped:      boolean;
+  skipReason?:  string;
+  evidencias:   number;
+  comportamientos: number;
+  debug:        string[];
+}
+
 async function processUser(
   admin:      any,
   userId:     string,
   capMap:     Map<string, string>,
   capNameMap: Map<string, string>,
-): Promise<{ skipped: boolean; evidencias: number; comportamientos: number }> {
-  // Resolver persona_id (debe existir tras el backfill de 0036)
-  const { data: persona } = await admin
+  openaiClient: OpenAI,
+): Promise<ProcessResult> {
+  const debug: string[] = [];
+
+  // ── Resolver o crear persona ──────────────────────────────────────────────
+  let personaId: string;
+
+  const { data: personaExist } = await admin
     .from('personas')
     .select('id')
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (!persona) return { skipped: true, evidencias: 0, comportamientos: 0 };
-  const personaId = persona.id as string;
+  if (personaExist) {
+    personaId = personaExist.id as string;
+    debug.push(`persona OK: ${personaId}`);
+  } else {
+    // Auto-crear: idéntico al backfill de 0036
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profile) {
+      return { skipped: true, skipReason: 'no existe en profiles', evidencias: 0, comportamientos: 0, debug };
+    }
+
+    const { data: newP, error: newPErr } = await admin
+      .from('personas')
+      .insert({
+        nombre:       profile.full_name ?? profile.email ?? 'Sin nombre',
+        email:        profile.email ?? '',
+        rol_actual:   'setter',
+        activo:       true,
+        user_id:      userId,
+        fecha_ingreso: new Date().toISOString().split('T')[0],
+      })
+      .select('id')
+      .single();
+
+    if (newPErr || !newP) {
+      return { skipped: true, skipReason: `no pudo crear persona: ${newPErr?.message}`, evidencias: 0, comportamientos: 0, debug };
+    }
+
+    personaId = newP.id as string;
+    debug.push(`persona CREADA: ${personaId}`);
+  }
 
   let evidencias      = 0;
   let comportamientos = 0;
 
   // ── A. Conversaciones ────────────────────────────────────────────────────
-  const { data: convs } = await admin
+  const { data: convs, error: convsErr } = await admin
     .from('conversation_analyses')
     .select('id, analysis, created_at')
     .eq('user_id', userId)
     .eq('status', 'ready')
     .is('motor_processed_at', null);
+
+  if (convsErr) {
+    debug.push(`conversaciones ERROR: ${convsErr.message}`);
+  } else {
+    debug.push(`conversaciones encontradas: ${convs?.length ?? 0}`);
+  }
 
   for (const conv of (convs ?? []) as any[]) {
     const a     = conv.analysis ?? {};
@@ -148,10 +218,8 @@ async function processUser(
       .single();
 
     if (evErr) {
-      // Duplicado (índice único) → ya procesado antes, marcar y continuar
-      await admin.from('conversation_analyses')
-        .update({ motor_processed_at: new Date().toISOString() })
-        .eq('id', conv.id);
+      debug.push(`conv ${conv.id} evidencia skip: ${evErr.message}`);
+      await admin.from('conversation_analyses').update({ motor_processed_at: new Date().toISOString() }).eq('id', conv.id);
       continue;
     }
 
@@ -159,28 +227,33 @@ async function processUser(
 
     const behaviors = extractFromConversation(a, capMap, capNameMap, ev.id, personaId, fecha);
     if (behaviors.length) {
-      await admin.from('comportamientos').insert(behaviors);
-      comportamientos += behaviors.length;
+      const { error: bErr } = await admin.from('comportamientos').insert(behaviors);
+      if (bErr) debug.push(`comportamientos insert error: ${bErr.message}`);
+      else comportamientos += behaviors.length;
     }
 
-    await admin.from('conversation_analyses')
-      .update({ motor_processed_at: new Date().toISOString() })
-      .eq('id', conv.id);
+    await admin.from('conversation_analyses').update({ motor_processed_at: new Date().toISOString() }).eq('id', conv.id);
   }
 
-  // ── B. Formularios (evidencia sin comportamientos — categorías ≠ capacidades) ─
-  const { data: subs } = await admin
+  // ── B. Formularios ───────────────────────────────────────────────────────
+  const { data: subs, error: subsErr } = await admin
     .from('reinforcement_submissions')
     .select('id, total_score, nivel_general, submitted_at, reinforcement_forms(title)')
     .eq('user_id', userId)
     .eq('status', 'analyzed')
     .is('motor_processed_at', null);
 
+  if (subsErr) {
+    debug.push(`formularios ERROR: ${subsErr.message}`);
+  } else {
+    debug.push(`formularios encontrados: ${subs?.length ?? 0}`);
+  }
+
   for (const sub of (subs ?? []) as any[]) {
     const fecha = (sub.submitted_at as string)?.split('T')[0] ?? new Date().toISOString().split('T')[0];
     const title = sub.reinforcement_forms?.title ?? 'Formulario CAC';
 
-    await admin.from('evidencias').insert({
+    const { error: evErr } = await admin.from('evidencias').insert({
       persona_id:        personaId,
       tipo:              'evaluacion',
       fecha,
@@ -188,22 +261,29 @@ async function processUser(
       fuente_tipo:       'formulario',
       fuente_externa_id: sub.id,
     });
-    // Ignorar error de duplicado silenciosamente
 
-    evidencias++;
+    if (evErr) {
+      debug.push(`formulario ${sub.id} evidencia skip: ${evErr.message}`);
+    } else {
+      evidencias++;
+    }
 
-    await admin.from('reinforcement_submissions')
-      .update({ motor_processed_at: new Date().toISOString() })
-      .eq('id', sub.id);
+    await admin.from('reinforcement_submissions').update({ motor_processed_at: new Date().toISOString() }).eq('id', sub.id);
   }
 
   // ── C. Trainer sessions ──────────────────────────────────────────────────
-  const { data: sessions } = await admin
+  const { data: sessions, error: sessionsErr } = await admin
     .from('trainer_sessions')
     .select('id, scenario_name, last_evaluation, started_at, ended_at')
     .eq('user_id', userId)
     .not('ended_at', 'is', null)
     .is('motor_processed_at', null);
+
+  if (sessionsErr) {
+    debug.push(`trainer ERROR: ${sessionsErr.message}`);
+  } else {
+    debug.push(`trainer sessions encontradas: ${sessions?.length ?? 0}`);
+  }
 
   for (const session of (sessions ?? []) as any[]) {
     const fecha = ((session.ended_at ?? session.started_at) as string)?.split('T')[0]
@@ -226,9 +306,8 @@ async function processUser(
       .single();
 
     if (evErr) {
-      await admin.from('trainer_sessions')
-        .update({ motor_processed_at: new Date().toISOString() })
-        .eq('id', session.id);
+      debug.push(`trainer ${session.id} evidencia skip: ${evErr.message}`);
+      await admin.from('trainer_sessions').update({ motor_processed_at: new Date().toISOString() }).eq('id', session.id);
       continue;
     }
 
@@ -236,23 +315,17 @@ async function processUser(
 
     if (session.last_evaluation) {
       const behaviors = await extractFromTrainerSession(
-        session.last_evaluation,
-        capNameMap,
-        ev.id,
-        personaId,
-        fecha,
-        openai,
+        session.last_evaluation, capNameMap, ev.id, personaId, fecha, openaiClient,
       );
       if (behaviors.length) {
-        await admin.from('comportamientos').insert(behaviors);
-        comportamientos += behaviors.length;
+        const { error: bErr } = await admin.from('comportamientos').insert(behaviors);
+        if (bErr) debug.push(`trainer comportamientos error: ${bErr.message}`);
+        else comportamientos += behaviors.length;
       }
     }
 
-    await admin.from('trainer_sessions')
-      .update({ motor_processed_at: new Date().toISOString() })
-      .eq('id', session.id);
+    await admin.from('trainer_sessions').update({ motor_processed_at: new Date().toISOString() }).eq('id', session.id);
   }
 
-  return { skipped: false, evidencias, comportamientos };
+  return { skipped: false, evidencias, comportamientos, debug };
 }
