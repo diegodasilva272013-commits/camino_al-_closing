@@ -54,6 +54,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Formularios',   href: '/admin/forms',           icon: ClipboardCheck },
   { label: 'Evaluaciones',  href: '/admin/conversaciones',  icon: ClipboardList },
   { label: 'Comunicados',   href: '/admin/comunicados',     icon: Bell },
+  { label: 'Evolución CAC', href: '/admin/evolucion/equipo', icon: TrendingUp },
   { label: 'Diego 2030',    href: '/admin/evolucion',       icon: TrendingUp },
   { label: 'Evolution API', href: '/admin/evolution',       icon: Wifi },
   { label: 'Calendario',    href: '/setter-calendario',     icon: Calendar },
