@@ -69,8 +69,10 @@ export function extractFromConversation(
     const levelStr = String(level);
     if (levelStr !== 'alta' && levelStr !== 'baja') continue;
 
-    const capId = capMap.get(key);
-    if (!capId) continue; // clave desconocida — se ignora, no torcemos la evolución
+    // Buscar por clave exacta primero, luego por clave normalizada (sin acentos/espacios)
+    const normKey = key.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s_\-]/g, '');
+    const capId   = capMap.get(key) ?? capMap.get(normKey);
+    if (!capId) continue;
 
     const capNombre = capNameMap.get(capId) ?? key;
     const tipo      = levelStr === 'alta' ? 'positivo' : 'negativo';

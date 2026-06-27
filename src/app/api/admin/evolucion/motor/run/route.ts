@@ -8,23 +8,10 @@ export const maxDuration = 300;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Mapa fijo de claves de análisis → nombre de capacidad
-// Cubre tanto el formato viejo (8 claves) como el nuevo (9 claves con clave de DB)
-const KEY_TO_NOMBRE: Record<string, string> = {
-  intencion:               'Criterio',
-  rapport:                 'Comunicación',
-  empatia_profesional:     'Comunicación',
-  diagnostico:             'Diagnóstico',
-  generacion_interes:      'Generación de interés',
-  seguimiento:             'Seguimiento',
-  profesionalismo:         'Profesionalismo operativo',
-  criterio:                'Criterio',
-  escucha:                 'Escucha',
-  comunicacion:            'Comunicación',
-  profesionalismo_operativo: 'Profesionalismo operativo',
-  adaptabilidad:           'Adaptabilidad',
-  profesionalismo_canal:   'Profesionalismo de canal',
-};
+// Normaliza texto para matching: minúsculas, sin acentos, sin espacios ni guiones
+function norm(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s_\-]/g, '');
+}
 
 async function authorize(req: NextRequest): Promise<{ ok: boolean; admin: any }> {
   const auth  = req.headers.get('authorization');
@@ -46,24 +33,53 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const targetUserId: string | null = body.user_id ?? null;
 
-    // ── 1. Capacidades desde DB (solo nombre + id — siempre existen desde 0016) ──
-    const { data: capsRaw, error: capsErr } = await admin
-      .from('capacidades')
-      .select('id, nombre')
-      .eq('activo', true)
-      .order('orden');
+    // ── 1. Capacidades desde DB ───────────────────────────────────────────────
+    // Intentamos leer clave+claves_alias (requiere migración 0037).
+    // Si no existen todavía, leemos solo id+nombre y hacemos matching normalizado.
+    let capsRaw: any[] | null = null;
+    let hasClave = false;
 
-    if (capsErr) {
-      return NextResponse.json({ error: `Error leyendo capacidades: ${capsErr.message}` }, { status: 500 });
+    const withClave = await admin
+      .from('capacidades').select('id, nombre, clave, claves_alias').eq('activo', true).order('orden');
+
+    if (!withClave.error) {
+      capsRaw  = withClave.data;
+      hasClave = true;
+    } else {
+      const withoutClave = await admin
+        .from('capacidades').select('id, nombre').eq('activo', true).order('orden');
+      if (withoutClave.error) {
+        return NextResponse.json({ error: `Error leyendo capacidades: ${withoutClave.error.message}` }, { status: 500 });
+      }
+      capsRaw = withoutClave.data;
     }
 
-    // Map: clave JSON → capacidad_id  y  capacidad_id → nombre
-    const nombreToId  = new Map<string, string>((capsRaw ?? []).map((c: any) => [c.nombre as string, c.id as string]));
-    const capNameMap  = new Map<string, string>((capsRaw ?? []).map((c: any) => [c.id as string, c.nombre as string]));
-    const capMap      = new Map<string, string>();
-    for (const [key, nombre] of Object.entries(KEY_TO_NOMBRE)) {
-      const id = nombreToId.get(nombre);
-      if (id) capMap.set(key, id);
+    const capNameMap = new Map<string, string>((capsRaw ?? []).map((c: any) => [c.id as string, c.nombre as string]));
+
+    // capMap: clave-de-análisis → capacidad_id
+    const capMap = new Map<string, string>();
+
+    if (hasClave) {
+      // Post-migración 0037: fuente de verdad es la DB
+      for (const c of capsRaw ?? []) {
+        if (c.clave)          capMap.set(c.clave,  c.id);
+        for (const a of c.claves_alias ?? []) capMap.set(a, c.id);
+      }
+    }
+
+    // Matching normalizado por nombre: funciona siempre, cubre la mayoría de claves
+    // Ejemplo: "escucha" → norm("Escucha") = "escucha" ✓
+    //          "diagnostico" → norm("Diagnóstico") = "diagnostico" ✓
+    //          "generacion_interes" → norm("Generación de interés") = "generaciondeinteres" ✗ (cubre con clave post-0037)
+    for (const c of capsRaw ?? []) {
+      const normNombre = norm(c.nombre);
+      if (!capMap.has(normNombre)) capMap.set(normNombre, c.id);
+    }
+    // También indexamos por cada clave JSON normalizada contra nombres normalizados
+    for (const c of capsRaw ?? []) {
+      const normNombre = norm(c.nombre);
+      // Si la clave normalizada de un key coincide con el nombre normalizado, mapear
+      capMap.set(normNombre, c.id); // ya arriba, pero sin sobrescribir clave explícita
     }
 
     // ── 2. Setters a procesar ─────────────────────────────────────────────────
