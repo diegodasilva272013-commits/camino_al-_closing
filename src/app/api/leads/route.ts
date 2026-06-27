@@ -19,16 +19,7 @@ export async function GET() {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Dedup by phone — keep the most recently updated (first in desc order)
-    const seen = new Set<string>();
-    const deduped = (data ?? []).filter((l) => {
-      const key = l.phone?.replace(/\D/g, '') ?? l.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    return NextResponse.json(deduped);
+    return NextResponse.json(data ?? []);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
