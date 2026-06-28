@@ -155,9 +155,9 @@ function AdminLeadsPageInner() {
 
   async function loadUsers() {
     try {
-      const res = await fetch('/api/admin/leads/metrics');
+      const res  = await fetch('/api/admin/setters');
       const data = await res.json();
-      setUsers((data?.ranking ?? []).map((u: { id: string; name: string }) => ({ id: u.id, full_name: u.name, email: '' })));
+      setUsers((data?.setters ?? []).map((u: any) => ({ id: u.user_id, full_name: u.name, email: u.email ?? '' })));
     } catch { /**/ }
   }
 
