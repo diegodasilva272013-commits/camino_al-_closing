@@ -558,7 +558,7 @@ function LeadCard({
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       className={cn(
-        'bg-[#111] border border-zinc-800 rounded-xl p-3 space-y-2.5 cursor-grab active:cursor-grabbing select-none',
+        'bg-[#111] border border-zinc-800 rounded-xl p-3 space-y-2 cursor-grab active:cursor-grabbing select-none overflow-hidden',
         'hover:border-zinc-700 transition-all',
         isDragging && 'opacity-40 scale-95'
       )}
@@ -590,13 +590,13 @@ function LeadCard({
       )}
 
       {/* Seguimiento + acciones */}
-      <div className="flex items-center justify-between gap-1 pt-0.5">
-        <div className="flex gap-0.5">
+      <div className="flex items-center gap-1 pt-0.5">
+        <div className="flex gap-0.5 shrink-0">
           {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
-            <div key={i} className={cn('h-1 w-3 rounded-full', i < lead.follow_up_count ? macroBar : 'bg-zinc-800')} />
+            <div key={i} className={cn('h-1 w-2 rounded-full', i < lead.follow_up_count ? macroBar : 'bg-zinc-800')} />
           ))}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto shrink-0">
           <button
             onMouseDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onContact(); }}
@@ -608,7 +608,7 @@ function LeadCard({
             disabled={saving}
             onMouseDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onMove(); }}
-            className="flex items-center gap-0.5 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-40"
+            className="flex items-center gap-0.5 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-40 whitespace-nowrap"
           >
             {saving ? '...' : <>Mover <ChevronRight className="h-3 w-3" /></>}
           </button>
