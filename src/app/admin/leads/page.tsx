@@ -68,6 +68,7 @@ function AdminLeadsPageInner() {
   const [assignSetter, setAssignSetter] = useState('');
   const [assigning, setAssigning]     = useState(false);
   const [assignMsg, setAssignMsg]     = useState('');
+  const [customN, setCustomN]         = useState('');
 
   // Inline status edit
   const [saving, setSaving]       = useState<string | null>(null);
@@ -242,6 +243,10 @@ function AdminLeadsPageInner() {
     }
   }
 
+  function selectN(n: number) {
+    setSelected(new Set(leads.slice(0, n).map(l => l.id)));
+  }
+
   function fmtDate(d: string | null) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -386,11 +391,52 @@ function AdminLeadsPageInner() {
         </div>
       )}
 
-      {/* Hint cuando hay leads sin asignar */}
-      {selected.size === 0 && leads.some(l => !l.assignee) && (
-        <p className="mt-2 text-[11px] text-zinc-600">
-          Tildá las casillas de la izquierda para seleccionar leads → aparece la barra de asignación abajo
-        </p>
+      {/* Selección rápida por cantidad */}
+      {leads.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-zinc-500 shrink-0">Selección rápida:</span>
+          {[50, 100, 200].filter(n => n <= leads.length).map(n => (
+            <button
+              key={n}
+              onClick={() => selectN(n)}
+              className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition"
+            >
+              {n}
+            </button>
+          ))}
+          <button
+            onClick={() => selectN(leads.length)}
+            className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition"
+          >
+            Todos ({leads.length})
+          </button>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min={1}
+              max={leads.length}
+              value={customN}
+              onChange={e => setCustomN(e.target.value)}
+              placeholder="N"
+              className="w-16 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[11px] text-zinc-300 focus:outline-none focus:border-zinc-500 text-center"
+            />
+            <button
+              onClick={() => { const n = parseInt(customN); if (n > 0) selectN(Math.min(n, leads.length)); }}
+              disabled={!customN || parseInt(customN) <= 0}
+              className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-30"
+            >
+              Sel.
+            </button>
+          </div>
+          {selected.size > 0 && (
+            <button
+              onClick={() => setSelected(new Set())}
+              className="rounded-lg border border-zinc-700 px-3 py-1 text-[11px] text-zinc-600 hover:text-zinc-400 transition"
+            >
+              Limpiar ({selected.size})
+            </button>
+          )}
+        </div>
       )}
 
       {/* Table */}
