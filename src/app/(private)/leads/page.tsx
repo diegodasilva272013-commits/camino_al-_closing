@@ -123,12 +123,44 @@ function getMacro(status: string): typeof MACRO[number] | undefined {
   return MACRO.find(m => m.id === entry?.macro);
 }
 
+const PAGE_SIZE = 100;
+
+function PageNav({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null;
+  const pages: (number | '…')[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push('…');
+    for (let i = Math.max(2, page - 1); i <= Math.min(total - 1, page + 1); i++) pages.push(i);
+    if (page < total - 2) pages.push('…');
+    pages.push(total);
+  }
+  return (
+    <div className="shrink-0 flex items-center justify-center gap-1 py-2 border-t border-zinc-800/60">
+      <button onClick={() => onChange(page - 1)} disabled={page === 1}
+        className="px-2 py-1 rounded-lg text-xs text-zinc-500 hover:text-zinc-200 disabled:opacity-30 transition">←</button>
+      {pages.map((p, i) =>
+        p === '…'
+          ? <span key={`e${i}`} className="px-1 text-xs text-zinc-600">…</span>
+          : <button key={p} onClick={() => onChange(p)}
+              className={cn('min-w-[28px] h-7 rounded-lg text-xs font-semibold transition',
+                p === page ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-400' : 'text-zinc-500 hover:text-zinc-200'
+              )}>{p}</button>
+      )}
+      <button onClick={() => onChange(page + 1)} disabled={page === total}
+        className="px-2 py-1 rounded-lg text-xs text-zinc-500 hover:text-zinc-200 disabled:opacity-30 transition">→</button>
+    </div>
+  );
+}
 
 export default function LeadsPage() {
   const [leads, setLeads]             = useState<Lead[]>([]);
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState<string | null>(null);
   const [search, setSearch]           = useState('');
+  const [page, setPage]               = useState(1);
   const [contactLead, setContactLead] = useState<Lead | null>(null);
   const [moveTarget, setMoveTarget]   = useState<Lead | null>(null);
   const [setterName, setSetterName]   = useState('');
@@ -192,15 +224,33 @@ export default function LeadsPage() {
     );
   }, [open, search]);
 
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const pagedVisible = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Conteos TOTALES de cada columna (todos los leads, no solo la página)
+  const byMacroTotal = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const m of MACRO) map[m.id] = 0;
+    for (const l of visible) {
+      const m = getMacro(l.current_status);
+      if (m) map[m.id] = (map[m.id] ?? 0) + 1;
+    }
+    return map;
+  }, [visible]);
+
+  // Cards mostradas: solo el bloque actual
   const byMacro = useMemo(() => {
     const map: Record<string, Lead[]> = {};
     for (const m of MACRO) map[m.id] = [];
-    for (const l of visible) {
+    for (const l of pagedVisible) {
       const m = getMacro(l.current_status);
       if (m) map[m.id].push(l);
     }
     return map;
-  }, [visible]);
+  }, [pagedVisible]);
+
+  useEffect(() => { setPage(1); }, [search]);
 
   // ── Touch drag handlers ──
   function onTouchStart(lead: Lead, e: React.TouchEvent) {
@@ -256,6 +306,11 @@ export default function LeadsPage() {
             <p className="text-[10px] uppercase tracking-widest text-yellow-500/70 font-semibold">Pipeline</p>
             <p className="text-sm font-bold text-white">
               {open.length} leads activos
+              {totalPages > 1 && (
+                <span className="ml-1.5 text-[11px] font-normal text-zinc-500">
+                  · bloque {safePage}/{totalPages}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-1.5 rounded-xl border border-emerald-800/40 bg-emerald-950/20 px-2.5 py-1.5">
@@ -289,7 +344,7 @@ export default function LeadsPage() {
             {/* Tab bar horizontal */}
             <div className="shrink-0 flex overflow-x-auto gap-1 px-2 py-2 border-b border-zinc-800/60 scrollbar-none">
               {MACRO.map(col => {
-                const count    = byMacro[col.id]?.length ?? 0;
+                const count    = byMacroTotal[col.id] ?? 0;
                 const isActive = activeMacro === col.id;
                 return (
                   <button
@@ -375,7 +430,7 @@ export default function LeadsPage() {
                       <div className="flex items-center justify-between mb-1.5">
                         <p className={cn('text-[11px] font-bold uppercase tracking-wider', col.header)}>{col.label}</p>
                         <span className={cn('text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center', col.badge)}>
-                          {colLeads.length}
+                          {byMacroTotal[col.id] ?? 0}
                         </span>
                       </div>
                       <div className={cn('h-0.5 rounded-full', col.bar, 'opacity-50')} />
@@ -411,6 +466,8 @@ export default function LeadsPage() {
             </div>
           </div>
 
+          {/* ── Paginación — compartida mobile y desktop ── */}
+          <PageNav page={safePage} total={totalPages} onChange={p => { setPage(p); window.scrollTo(0, 0); }} />
         </div>
       )}
 
