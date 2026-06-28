@@ -7,17 +7,56 @@ function normalizePhone(p: string | null | undefined): string {
   return (p ?? '').replace(/\D/g, '');
 }
 
+async function authAdmin() {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const admin = createSupabaseAdminClient();
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return null;
+  return admin;
+}
+
+// GET → cuenta cuántos leads se eliminarían (sin borrar nada)
+export async function GET() {
+  try {
+    const admin = await authAdmin();
+    if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+    const { data: all, error } = await admin
+      .from('leads')
+      .select('id, phone, assigned_to_user_id, follow_up_count, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(50000);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const groups = new Map<string, any[]>();
+    for (const lead of all ?? []) {
+      const norm = normalizePhone(lead.phone);
+      if (!norm) continue;
+      const key = `${norm}::${lead.assigned_to_user_id ?? '__unassigned__'}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(lead);
+    }
+
+    let toDelete = 0;
+    for (const [, leads] of groups) {
+      if (leads.length > 1) toDelete += leads.length - 1;
+    }
+
+    return NextResponse.json({ duplicates: toDelete, total: (all ?? []).length });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 // POST → dedup per (phone, assigned_to_user_id): preserva el más activo, borra el resto.
 // NO borra un lead si el mismo teléfono está en lista de otro setter (eso es válido).
 export async function POST() {
   try {
-    const supabase = createSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-    const admin = createSupabaseAdminClient();
-    const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    const admin = await authAdmin();
+    if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     // Fetch all leads — up to 50k
     const { data: all, error: fetchErr } = await admin

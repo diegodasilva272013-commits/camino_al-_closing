@@ -88,18 +88,28 @@ function AdminLeadsPageInner() {
   });
 
   // Dedup
-  const [deduping, setDeduping] = useState(false);
+  const [deduping, setDeduping]       = useState(false);
   const [dedupResult, setDedupResult] = useState('');
+  const [dupServerCount, setDupServerCount] = useState<number | null>(null);
+
+  async function loadDupCount() {
+    try {
+      const res  = await fetch('/api/admin/leads/dedup');
+      const data = await res.json();
+      if (res.ok) setDupServerCount(data.duplicates ?? 0);
+    } catch { /**/ }
+  }
 
   async function runDedup() {
     if (!confirm('¿Eliminar leads duplicados? Se conserva el que tiene más actividad (seguimientos/notas). Esta acción no se puede deshacer.')) return;
     setDeduping(true);
     setDedupResult('');
     try {
-      const res = await fetch('/api/admin/leads/dedup', { method: 'POST' });
+      const res  = await fetch('/api/admin/leads/dedup', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         setDedupResult(data.message ?? 'Listo');
+        setDupServerCount(0);
         await load();
       } else {
         setDedupResult(`Error: ${data.error ?? 'desconocido'}`);
@@ -152,7 +162,7 @@ function AdminLeadsPageInner() {
     } catch { /**/ }
   }
 
-  useEffect(() => { load(1); loadUsers(); }, []);
+  useEffect(() => { load(1); loadUsers(); loadDupCount(); }, []);
   useEffect(() => { load(1); }, [filterStatus, filterUser]);
 
   function handleCSVFile(file: File) {
@@ -219,13 +229,7 @@ function AdminLeadsPageInner() {
   }
 
   const unassigned = leads.filter((l) => !l.assignee).length;
-
-  // Detectar duplicados visibles (mismo teléfono aparece 2+ veces en la lista actual)
-  const phoneCounts = leads.reduce<Record<string, number>>((acc, l) => {
-    acc[l.phone] = (acc[l.phone] ?? 0) + 1;
-    return acc;
-  }, {});
-  const dupCount = Object.values(phoneCounts).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
+  const dupCount   = dupServerCount ?? 0;
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
@@ -235,22 +239,36 @@ function AdminLeadsPageInner() {
         description={`${totalLeads > 0 ? totalLeads.toLocaleString('es-AR') : leads.length} leads · ${unassigned} sin asignar${dupCount > 0 ? ` · ⚠️ ${dupCount} duplicados` : ''}`}
       />
 
-      {/* Alerta de duplicados */}
-      {dupCount > 0 && (
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-red-700/30 bg-red-950/20 px-4 py-3">
-          <Trash2 className="h-4 w-4 text-red-400 shrink-0" />
-          <p className="flex-1 text-sm text-red-300">
-            <span className="font-semibold">{dupCount} leads duplicados</span> encontrados (mismo teléfono).
-          </p>
-          <button
-            onClick={runDedup}
-            disabled={deduping}
-            className="rounded-lg border border-red-700/50 bg-red-900/30 px-4 py-1.5 text-sm font-semibold text-red-400 hover:bg-red-900/50 transition disabled:opacity-50"
-          >
-            {deduping ? 'Eliminando...' : 'Eliminar ahora'}
-          </button>
-        </div>
-      )}
+      {/* Panel de duplicados — siempre visible, conteo real del servidor */}
+      <div className={cn(
+        'mt-4 flex items-center gap-3 rounded-xl border px-4 py-3',
+        dupCount > 0
+          ? 'border-red-700/30 bg-red-950/20'
+          : 'border-zinc-800 bg-zinc-900/30'
+      )}>
+        <Trash2 className={cn('h-4 w-4 shrink-0', dupCount > 0 ? 'text-red-400' : 'text-zinc-600')} />
+        <p className="flex-1 text-sm">
+          {dupServerCount === null ? (
+            <span className="text-zinc-500">Contando duplicados...</span>
+          ) : dupCount > 0 ? (
+            <span className="text-red-300"><span className="font-semibold">{dupCount} leads duplicados</span> (mismo teléfono + mismo setter)</span>
+          ) : (
+            <span className="text-zinc-500">Sin duplicados detectados</span>
+          )}
+        </p>
+        <button
+          onClick={runDedup}
+          disabled={deduping || dupCount === 0}
+          className={cn(
+            'rounded-lg border px-4 py-1.5 text-sm font-semibold transition disabled:opacity-40',
+            dupCount > 0
+              ? 'border-red-700/50 bg-red-900/30 text-red-400 hover:bg-red-900/50'
+              : 'border-zinc-700 bg-zinc-800 text-zinc-500 cursor-default'
+          )}
+        >
+          {deduping ? 'Eliminando...' : 'Eliminar duplicados'}
+        </button>
+      </div>
       {dedupResult && (
         <p className={cn('mt-2 text-sm', dedupResult.startsWith('Error') ? 'text-red-400' : 'text-green-400')}>
           {dedupResult}
