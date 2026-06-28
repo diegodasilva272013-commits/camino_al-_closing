@@ -589,30 +589,30 @@ function LeadCard({
         <p className="text-[10px] text-zinc-600 truncate">{lead.email}</p>
       )}
 
-      {/* Seguimiento + acciones */}
-      <div className="flex items-center gap-1 pt-0.5">
-        <div className="flex gap-0.5 shrink-0">
-          {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
-            <div key={i} className={cn('h-1 w-2 rounded-full', i < lead.follow_up_count ? macroBar : 'bg-zinc-800')} />
-          ))}
-        </div>
-        <div className="flex items-center gap-1 ml-auto shrink-0">
-          <button
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onContact(); }}
-            className="p-1 rounded-lg border border-zinc-700 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition"
-          >
-            <MessageCircle className="h-3 w-3" />
-          </button>
-          <button
-            disabled={saving}
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onMove(); }}
-            className="flex items-center gap-0.5 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-40 whitespace-nowrap"
-          >
-            {saving ? '...' : <>Mover <ChevronRight className="h-3 w-3" /></>}
-          </button>
-        </div>
+      {/* Dots de seguimiento */}
+      <div className="flex gap-0.5">
+        {Array.from({ length: lead.max_follow_ups }).map((_, i) => (
+          <div key={i} className={cn('h-1 w-2 rounded-full', i < lead.follow_up_count ? macroBar : 'bg-zinc-800')} />
+        ))}
+      </div>
+
+      {/* Acciones — fila propia, siempre caben */}
+      <div className="flex items-center justify-end gap-1">
+        <button
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onContact(); }}
+          className="p-1 rounded-lg border border-zinc-700 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition"
+        >
+          <MessageCircle className="h-3 w-3" />
+        </button>
+        <button
+          disabled={saving}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onMove(); }}
+          className="flex items-center gap-0.5 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-40"
+        >
+          {saving ? '...' : <>Mover <ChevronRight className="h-3 w-3" /></>}
+        </button>
       </div>
     </div>
   );
