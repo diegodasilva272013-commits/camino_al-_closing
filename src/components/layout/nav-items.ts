@@ -39,6 +39,7 @@ export const SETTER_NAV: NavItem[] = [
   { label: 'Formularios',       href: '/formularios',      icon: ClipboardCheck },
   { label: 'Entrenamiento',     href: '/trainer',          icon: Swords },
   { label: 'Mi Evolución',      href: '/setter-evolucion', icon: TrendingUp },
+  { label: 'Ranking Setters',   href: '/setter-ranking',   icon: Trophy },
   { label: 'Recursos CAC',      href: '/setter-recursos',  icon: BookOpen },
 ];
 
