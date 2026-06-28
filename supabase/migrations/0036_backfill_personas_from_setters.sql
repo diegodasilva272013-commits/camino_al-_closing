@@ -1,9 +1,9 @@
 -- 0036: backfill personas para setters existentes + trigger para futuros
 -- Regla: ON CONFLICT (user_id) DO NOTHING — no toca las 3 personas ya registradas
 
--- 1. Unique constraint (idempotente — si ya existe no falla)
-ALTER TABLE public.personas
-  ADD CONSTRAINT IF NOT EXISTS personas_user_id_unique UNIQUE (user_id);
+-- 1. Unique index (IF NOT EXISTS sí es válido para índices en PostgreSQL)
+CREATE UNIQUE INDEX IF NOT EXISTS personas_user_id_unique_idx
+  ON public.personas(user_id);
 
 -- 2. Backfill: un INSERT por cada setter en profiles sin fila en personas
 INSERT INTO public.personas (nombre, email, rol_actual, activo, user_id, fecha_ingreso)
