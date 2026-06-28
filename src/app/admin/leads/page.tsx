@@ -63,12 +63,11 @@ function AdminLeadsPageInner() {
   const [importResult, setImportResult] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Assign modal
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignUser, setAssignUser] = useState('');
-  const [assignQty, setAssignQty] = useState(100);
-  const [assigning, setAssigning] = useState(false);
-  const [assignResult, setAssignResult] = useState('');
+  // Selección + asignación inline
+  const [selected, setSelected]       = useState<Set<string>>(new Set());
+  const [assignSetter, setAssignSetter] = useState('');
+  const [assigning, setAssigning]     = useState(false);
+  const [assignMsg, setAssignMsg]     = useState('');
 
   // Inline status edit
   const [saving, setSaving]       = useState<string | null>(null);
@@ -163,7 +162,7 @@ function AdminLeadsPageInner() {
   }
 
   useEffect(() => { load(1); loadUsers(); loadDupCount(); }, []);
-  useEffect(() => { load(1); }, [filterStatus, filterUser]);
+  useEffect(() => { load(1); setSelected(new Set()); setAssignMsg(''); }, [filterStatus, filterUser]);
 
   function handleCSVFile(file: File) {
     const reader = new FileReader();
@@ -203,24 +202,44 @@ function AdminLeadsPageInner() {
     setImporting(false);
   }
 
-  async function doAssign() {
-    if (!assignUser) { setAssignResult('Seleccioná un usuario.'); return; }
+  async function doAssignSelected() {
+    if (!assignSetter) { setAssignMsg('Elegí un setter primero.'); return; }
+    if (!selected.size) { setAssignMsg('Seleccioná al menos un lead.'); return; }
     setAssigning(true);
-    setAssignResult('');
+    setAssignMsg('');
     const res = await fetch('/api/admin/leads/assign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_user_id: assignUser, quantity: assignQty }),
+      body: JSON.stringify({ target_user_id: assignSetter, lead_ids: [...selected] }),
     });
     const data = await res.json();
     if (res.ok) {
-      const warn = data.pending_warning ? `\n⚠️ ${data.pending_warning}` : '';
-      setAssignResult(`✅ ${data.assigned} leads asignados.${warn}`);
+      const warn = data.pending_warning ? ` · ⚠️ ${data.pending_warning}` : '';
+      setAssignMsg(`✅ ${data.assigned} leads asignados.${warn}`);
+      setSelected(new Set());
       await load();
     } else {
-      setAssignResult(`❌ ${data.error}`);
+      setAssignMsg(`❌ ${data.error}`);
     }
     setAssigning(false);
+  }
+
+  function toggleOne(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    const allIds = leads.map(l => l.id);
+    const allSelected = allIds.every(id => selected.has(id));
+    if (allSelected) {
+      setSelected(prev => { const n = new Set(prev); allIds.forEach(id => n.delete(id)); return n; });
+    } else {
+      setSelected(prev => { const n = new Set(prev); allIds.forEach(id => n.add(id)); return n; });
+    }
   }
 
   function fmtDate(d: string | null) {
@@ -292,11 +311,11 @@ function AdminLeadsPageInner() {
           Importar Excel
         </Link>
         <button
-          onClick={() => { setAssignOpen(true); setAssignResult(''); }}
+          onClick={() => setFilterUser('unassigned')}
           className="flex items-center gap-2 rounded-lg border border-blue-700/40 bg-blue-900/20 px-4 py-2 text-sm text-blue-300 hover:bg-blue-900/30 transition"
         >
           <UserPlus className="h-4 w-4" />
-          Asignar leads
+          Ver sin asignar
         </button>
         <button onClick={() => load(page)} disabled={loading} className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs text-brand-muted hover:text-brand-text transition">
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
@@ -362,38 +381,61 @@ function AdminLeadsPageInner() {
           <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="border-b border-[rgba(212,175,55,0.08)] text-left">
-                {['Nombre', 'Teléfono', 'Email', 'País', 'Fuente', 'Estado', 'Seguim.', 'Asignado a', 'Asignado'].map((h) => (
+                <th className="px-3 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-600 bg-zinc-800 accent-yellow-400 cursor-pointer"
+                    checked={leads.length > 0 && leads.every(l => selected.has(l.id))}
+                    onChange={toggleAll}
+                  />
+                </th>
+                {['Nombre', 'Teléfono', 'Estado', 'Seguim.', 'Asignado a', 'Asignado'].map((h) => (
                   <th key={h} className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-brand-gold/50">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[rgba(212,175,55,0.05)]">
               {leads.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-brand-muted">No hay leads todavía.</td></tr>
-              ) : leads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-[rgba(212,175,55,0.02)] transition">
-                  <td className="px-4 py-3 font-medium text-brand-text whitespace-nowrap">
-                    {lead.first_name} {lead.last_name ?? ''}
-                  </td>
-                  <td className="px-4 py-3 text-brand-muted font-mono text-xs">{lead.phone}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{lead.email ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{lead.country ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{lead.source ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <LeadStatusBadge
-                      status={lead.current_status}
-                      onChange={saving === lead.id ? undefined : (s) => patchLead(lead.id, { current_status: s })}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-brand-muted text-center">{lead.follow_up_count}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">
-                    {lead.assignee?.full_name ?? lead.assignee?.email ?? (
-                      <span className="text-orange-400/70 italic">Sin asignar</span>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-brand-muted">No hay leads todavía.</td></tr>
+              ) : leads.map((lead) => {
+                const isSel = selected.has(lead.id);
+                return (
+                  <tr
+                    key={lead.id}
+                    onClick={() => toggleOne(lead.id)}
+                    className={cn(
+                      'cursor-pointer transition',
+                      isSel ? 'bg-yellow-500/5 border-yellow-500/10' : 'hover:bg-[rgba(212,175,55,0.02)]'
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{fmtDate(lead.assigned_at)}</td>
-                </tr>
-              ))}
+                  >
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSel}
+                        onChange={() => toggleOne(lead.id)}
+                        className="rounded border-zinc-600 bg-zinc-800 accent-yellow-400 cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-medium text-brand-text whitespace-nowrap">
+                      {lead.first_name} {lead.last_name ?? ''}
+                    </td>
+                    <td className="px-4 py-3 text-brand-muted font-mono text-xs">{lead.phone}</td>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <LeadStatusBadge
+                        status={lead.current_status}
+                        onChange={saving === lead.id ? undefined : (s) => patchLead(lead.id, { current_status: s })}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-brand-muted text-center">{lead.follow_up_count}</td>
+                    <td className="px-4 py-3 text-xs text-brand-muted">
+                      {lead.assignee?.full_name ?? lead.assignee?.email ?? (
+                        <span className="text-orange-400/70 italic">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-brand-muted">{fmtDate(lead.assigned_at)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -507,74 +549,43 @@ function AdminLeadsPageInner() {
         </div>
       )}
 
-      {/* Assign Modal */}
-      {assignOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[rgba(212,175,55,0.2)] bg-[#0d0d0d] p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold text-brand-text">Asignar Leads</h3>
-              <button onClick={() => setAssignOpen(false)} className="text-brand-muted hover:text-brand-text">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-brand-muted mb-4">
-              Se asignarán leads sin asignar (en orden de creación) al usuario seleccionado.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-brand-muted">Usuario</label>
-                <select
-                  value={assignUser}
-                  onChange={(e) => setAssignUser(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-700 bg-[#111] px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-gold/30"
-                >
-                  <option value="">Seleccioná un usuario</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.full_name ?? u.email}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-brand-muted">Cantidad de leads</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={assignQty}
-                  onChange={(e) => setAssignQty(Number(e.target.value))}
-                  className="w-full rounded-lg border border-zinc-700 bg-[#111] px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-gold/30"
-                />
-              </div>
-            </div>
-
-            <p className="mt-2 text-xs text-brand-muted/60">
-              Disponibles sin asignar: {unassigned}
-            </p>
-
-            {assignResult && (
-              <p className={cn('mt-3 text-sm whitespace-pre-line', assignResult.startsWith('✅') ? 'text-green-400' : 'text-red-400')}>
-                {assignResult}
-              </p>
-            )}
-
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={doAssign}
-                disabled={assigning || !assignUser}
-                className="flex-1 rounded-xl bg-blue-900/30 border border-blue-700/40 py-2.5 text-sm font-semibold text-blue-300 hover:bg-blue-900/40 transition disabled:opacity-40"
-              >
-                {assigning ? 'Asignando...' : `Asignar ${assignQty} leads`}
-              </button>
-              <button
-                onClick={() => setAssignOpen(false)}
-                className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm text-brand-muted hover:text-brand-text transition"
-              >
-                Cerrar
-              </button>
-            </div>
+      {/* ── Barra de asignación — aparece cuando hay leads seleccionados ── */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-700/40 bg-[#0a0a14]/95 backdrop-blur-md px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-blue-300">
+            {selected.size} lead{selected.size !== 1 ? 's' : ''} seleccionado{selected.size !== 1 ? 's' : ''}
+          </span>
+          <div className="flex-1 min-w-[180px]">
+            <select
+              value={assignSetter}
+              onChange={e => { setAssignSetter(e.target.value); setAssignMsg(''); }}
+              className="w-full rounded-lg border border-zinc-700 bg-[#111] px-3 py-2 text-sm text-brand-text focus:outline-none focus:border-blue-500/50"
+            >
+              <option value="">— Elegir setter —</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.full_name ?? u.email}</option>
+              ))}
+            </select>
           </div>
+          <button
+            onClick={doAssignSelected}
+            disabled={assigning || !assignSetter}
+            className="flex items-center gap-2 rounded-lg border border-blue-600/50 bg-blue-900/40 px-5 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-900/60 transition disabled:opacity-40"
+          >
+            <UserPlus className="h-4 w-4" />
+            {assigning ? 'Asignando...' : 'Asignar'}
+          </button>
+          <button
+            onClick={() => { setSelected(new Set()); setAssignMsg(''); }}
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-500 hover:text-zinc-300 transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          {assignMsg && (
+            <span className={cn('text-xs', assignMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400')}>
+              {assignMsg}
+            </span>
+          )}
         </div>
       )}
     </div>
