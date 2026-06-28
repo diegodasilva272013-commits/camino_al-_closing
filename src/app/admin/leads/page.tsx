@@ -393,47 +393,48 @@ function AdminLeadsPageInner() {
 
       {/* Selección rápida por cantidad */}
       {leads.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-zinc-500 shrink-0">Selección rápida:</span>
+        <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-zinc-400 shrink-0">Seleccionar:</span>
           {[50, 100, 200].filter(n => n <= leads.length).map(n => (
             <button
               key={n}
               onClick={() => selectN(n)}
-              className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition"
+              className="rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-1.5 text-xs font-bold text-zinc-200 hover:bg-zinc-700 hover:border-zinc-500 transition"
             >
               {n}
             </button>
           ))}
           <button
             onClick={() => selectN(leads.length)}
-            className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition"
+            className="rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-1.5 text-xs font-bold text-zinc-200 hover:bg-zinc-700 hover:border-zinc-500 transition"
           >
             Todos ({leads.length})
           </button>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 border-l border-zinc-700 pl-3">
             <input
               type="number"
               min={1}
               max={leads.length}
               value={customN}
               onChange={e => setCustomN(e.target.value)}
-              placeholder="N"
-              className="w-16 rounded-lg border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-[11px] text-zinc-300 focus:outline-none focus:border-zinc-500 text-center"
+              onKeyDown={e => { if (e.key === 'Enter') { const n = parseInt(customN); if (n > 0) selectN(Math.min(n, leads.length)); } }}
+              placeholder="Cantidad"
+              className="w-24 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-brand-gold/50 text-center"
             />
             <button
               onClick={() => { const n = parseInt(customN); if (n > 0) selectN(Math.min(n, leads.length)); }}
               disabled={!customN || parseInt(customN) <= 0}
-              className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition disabled:opacity-30"
+              className="rounded-lg border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-xs font-bold text-brand-gold hover:bg-brand-gold/20 transition disabled:opacity-30"
             >
-              Sel.
+              Seleccionar
             </button>
           </div>
           {selected.size > 0 && (
             <button
               onClick={() => setSelected(new Set())}
-              className="rounded-lg border border-zinc-700 px-3 py-1 text-[11px] text-zinc-600 hover:text-zinc-400 transition"
+              className="ml-auto text-xs text-zinc-500 hover:text-zinc-300 transition"
             >
-              Limpiar ({selected.size})
+              Limpiar selección ({selected.size})
             </button>
           )}
         </div>
