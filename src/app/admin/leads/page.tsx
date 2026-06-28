@@ -371,6 +371,28 @@ function AdminLeadsPageInner() {
         </div>
       </div>
 
+      {/* Mensaje de asignación — FUERA de la barra sticky para que se vea aunque la barra desaparezca */}
+      {assignMsg && (
+        <div className={cn(
+          'mt-3 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium',
+          assignMsg.startsWith('✅')
+            ? 'border-green-700/30 bg-green-950/20 text-green-400'
+            : 'border-red-700/30 bg-red-950/20 text-red-400'
+        )}>
+          {assignMsg}
+          <button onClick={() => setAssignMsg('')} className="ml-auto text-current opacity-50 hover:opacity-100">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Hint cuando hay leads sin asignar */}
+      {selected.size === 0 && leads.some(l => !l.assignee) && (
+        <p className="mt-2 text-[11px] text-zinc-600">
+          Tildá las casillas de la izquierda para seleccionar leads → aparece la barra de asignación abajo
+        </p>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="mt-16 flex justify-center">
@@ -551,7 +573,7 @@ function AdminLeadsPageInner() {
 
       {/* ── Barra de asignación — aparece cuando hay leads seleccionados ── */}
       {selected.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-700/40 bg-[#0a0a14]/95 backdrop-blur-md px-4 py-3 flex flex-wrap items-center gap-3">
+        <div className="fixed bottom-0 left-0 lg:left-60 right-0 z-50 border-t border-blue-700/40 bg-[#0a0a14]/95 backdrop-blur-md px-4 py-3 flex flex-wrap items-center gap-3">
           <span className="text-sm font-semibold text-blue-300">
             {selected.size} lead{selected.size !== 1 ? 's' : ''} seleccionado{selected.size !== 1 ? 's' : ''}
           </span>
@@ -581,11 +603,6 @@ function AdminLeadsPageInner() {
           >
             <X className="h-4 w-4" />
           </button>
-          {assignMsg && (
-            <span className={cn('text-xs', assignMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400')}>
-              {assignMsg}
-            </span>
-          )}
         </div>
       )}
     </div>
