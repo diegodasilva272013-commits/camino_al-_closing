@@ -1,6 +1,4 @@
-'use server';
-import { createSupabaseAdminClient } from '@/lib/supabase-server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
