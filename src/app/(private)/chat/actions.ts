@@ -54,7 +54,9 @@ export async function createGroupAction(input: {
   const name = input.name?.trim();
   if (!name) return { error: 'El nombre es requerido' };
 
-  const { data: conv, error: e1 } = await (supabase as any)
+  const admin = createSupabaseAdminClient();
+
+  const { data: conv, error: e1 } = await (admin as any)
     .from('chat_conversations')
     .insert({
       type: input.type,
@@ -76,7 +78,7 @@ export async function createGroupAction(input: {
         role: 'member' as const,
       })),
   ];
-  const { error: e2 } = await (supabase as any)
+  const { error: e2 } = await (admin as any)
     .from('chat_members')
     .insert(members);
   if (e2) return { error: e2.message };
