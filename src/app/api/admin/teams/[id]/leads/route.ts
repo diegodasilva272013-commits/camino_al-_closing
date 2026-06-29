@@ -8,7 +8,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient() as any;
   const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
 

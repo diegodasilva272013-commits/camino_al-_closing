@@ -16,7 +16,7 @@ export async function GET() {
   const user = await requireAdmin(supabase);
   if (!user) return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
 
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient() as any;
   const { data: teams } = await admin
     .from('setter_teams')
     .select('id, name, setter1_id, setter2_id, created_at')
@@ -24,15 +24,15 @@ export async function GET() {
 
   if (!teams?.length) return NextResponse.json([]);
 
-  const setterIds = [...new Set(teams.flatMap(t => [t.setter1_id, t.setter2_id].filter(Boolean)))] as string[];
+  const setterIds = [...new Set(teams.flatMap((t: any) => [t.setter1_id, t.setter2_id].filter(Boolean)))] as string[];
   const { data: profiles } = await admin.from('profiles').select('id, full_name').in('id', setterIds);
-  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.full_name]));
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p.full_name]));
 
   const { data: counts } = await admin.from('team_leads').select('team_id');
   const countMap = new Map<string, number>();
-  for (const l of counts ?? []) countMap.set(l.team_id, (countMap.get(l.team_id) ?? 0) + 1);
+  for (const l of counts ?? []) countMap.set((l as any).team_id, (countMap.get((l as any).team_id) ?? 0) + 1);
 
-  return NextResponse.json(teams.map(t => ({
+  return NextResponse.json(teams.map((t: any) => ({
     ...t,
     setter1_name: profileMap.get(t.setter1_id ?? '') ?? null,
     setter2_name: profileMap.get(t.setter2_id ?? '') ?? null,
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const { name, setter1_id, setter2_id } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 });
 
-  const admin = createSupabaseAdminClient();
+  const admin = createSupabaseAdminClient() as any;
   const { data, error } = await admin
     .from('setter_teams')
     .insert({ name: name.trim(), setter1_id: setter1_id || null, setter2_id: setter2_id || null })
