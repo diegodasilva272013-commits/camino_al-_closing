@@ -74,7 +74,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('cac:theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}",
+              "try{var t=localStorage.getItem('cac:theme');if(t==='light')document.documentElement.classList.add('light');if(localStorage.getItem('cac:splash'))document.documentElement.classList.add('splash-done');}catch(e){}",
           }}
         />
         {/* Splash inline (no depende de React): aparece al instante */}
@@ -85,6 +85,7 @@ export default function RootLayout({
               #cac-splash.cac-hide{opacity:0;pointer-events:none}
               #cac-splash .cac-bg{position:absolute;width:160px;height:160px;background:url('/Logo2.png') center/contain no-repeat;opacity:.9}
               #cac-splash video{position:absolute;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%);object-fit:cover;background:#000}
+              html.splash-done #cac-splash{display:none!important}
             `,
           }}
         />
