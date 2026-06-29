@@ -25,28 +25,19 @@ export default async function SetterRankingPage() {
 
   const admin = createSupabaseAdminClient();
 
-  const [r7, r30, rAll, profileRes] = await Promise.all([
+  const [r7, r30, rAll] = await Promise.all([
     (admin as any).rpc('setter_leaderboard', { p_days: 7 }),
     (admin as any).rpc('setter_leaderboard', { p_days: 30 }),
     (admin as any).rpc('setter_leaderboard', { p_days: 0 }),
-    admin.from('profiles').select('role').eq('id', user.id).single(),
   ]);
 
-  const myRole = profileRes.data?.role as string | undefined;
-  const isAdmin = myRole === 'admin';
+  const data7   = (r7.data   ?? []) as SetterRow[];
+  const data30  = (r30.data  ?? []) as SetterRow[];
+  const dataAll = (rAll.data ?? []) as SetterRow[];
 
-  const rawData7   = (r7.data   ?? []) as SetterRow[];
-  const rawData30  = (r30.data  ?? []) as SetterRow[];
-  const rawDataAll = (rAll.data ?? []) as SetterRow[];
-
-  // Si es admin no aparece en el ranking de setters
-  const data7   = isAdmin ? rawData7.filter(r => r.user_id !== user.id)   : rawData7;
-  const data30  = isAdmin ? rawData30.filter(r => r.user_id !== user.id)  : rawData30;
-  const dataAll = isAdmin ? rawDataAll.filter(r => r.user_id !== user.id) : rawDataAll;
-
-  const me7   = !isAdmin ? data7.find(r => r.user_id === user.id)   ?? null : null;
-  const me30  = !isAdmin ? data30.find(r => r.user_id === user.id)  ?? null : null;
-  const meAll = !isAdmin ? dataAll.find(r => r.user_id === user.id) ?? null : null;
+  const me7   = data7.find(r => r.user_id === user.id)   ?? null;
+  const me30  = data30.find(r => r.user_id === user.id)  ?? null;
+  const meAll = dataAll.find(r => r.user_id === user.id) ?? null;
 
   return (
     <div className="space-y-8">
@@ -76,14 +67,12 @@ export default async function SetterRankingPage() {
           <Crown className="hidden h-16 w-16 text-emerald-400 drop-shadow-[0_0_25px_rgba(52,211,153,0.4)] md:block" />
         </div>
 
-        {/* Mi posición — solo para setters */}
-        {!isAdmin && (
-          <div className="relative mt-6 grid gap-3 md:grid-cols-3">
-            <MyCard label="Esta semana" sublabel="Últimos 7 días"    row={me7}   icon={<Flame className="h-4 w-4" />} />
-            <MyCard label="Este mes"    sublabel="Últimos 30 días"   row={me30}  icon={<TrendingUp className="h-4 w-4" />} />
-            <MyCard label="Histórico"   sublabel="Todos los tiempos" row={meAll} icon={<Sparkles className="h-4 w-4" />} />
-          </div>
-        )}
+        {/* Mi posición */}
+        <div className="relative mt-6 grid gap-3 md:grid-cols-3">
+          <MyCard label="Esta semana" sublabel="Últimos 7 días"    row={me7}   icon={<Flame className="h-4 w-4" />} />
+          <MyCard label="Este mes"    sublabel="Últimos 30 días"   row={me30}  icon={<TrendingUp className="h-4 w-4" />} />
+          <MyCard label="Histórico"   sublabel="Todos los tiempos" row={meAll} icon={<Sparkles className="h-4 w-4" />} />
+        </div>
       </section>
 
       <Board title="Top 10 — Últimos 7 días"       subtitle="El podio de la semana"        icon={<Flame className="h-5 w-5" />}      rows={data7.slice(0, 10)}   currentUserId={user.id} />
