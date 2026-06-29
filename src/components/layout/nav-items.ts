@@ -2,7 +2,7 @@ import {
   LayoutDashboard, GraduationCap, Users, Calendar, FolderOpen, User,
   Shield, MessageSquare, Trophy, Bell, Swords, Users2, BarChart2,
   Target, TrendingUp, BookOpen, ClipboardList, ClipboardCheck,
-  UserCheck, Inbox, Megaphone, Wifi, LayoutGrid, FileSearch,
+  UserCheck, Inbox, Megaphone, Wifi, LayoutGrid, FileSearch, Handshake,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,6 +34,7 @@ export const PLATFORM_NAV: NavItem[] = [
 export const SETTER_NAV: NavItem[] = [
   { label: 'Mi Panel',          href: '/panel',            icon: LayoutGrid },
   { label: 'Mis Leads',         href: '/leads',            icon: Users2 },
+  { label: 'Mi Equipo',         href: '/equipo',           icon: Handshake },
   { label: 'Mis Conversaciones',href: '/conversaciones',   icon: FileSearch },
   { label: 'Inbox',             href: '/inbox',            icon: Inbox },
   { label: 'Formularios',       href: '/formularios',      icon: ClipboardCheck },
@@ -48,6 +49,7 @@ export const SETTER_NAV: NavItem[] = [
 export const ADMIN_NAV: NavItem[] = [
   { label: 'Control Admin', href: '/admin',                 icon: Shield },
   { label: 'Equipo',        href: '/admin/setters',         icon: UserCheck },
+  { label: 'Equipos Dupla', href: '/admin/equipos',         icon: Handshake },
   { label: 'Leads',         href: '/admin/leads-dashboard', icon: BarChart2 },
   { label: 'Inbox Global',  href: '/admin/inbox',           icon: Inbox },
   { label: 'Campañas',      href: '/admin/campanas',        icon: Megaphone },

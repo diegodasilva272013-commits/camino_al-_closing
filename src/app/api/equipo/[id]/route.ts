@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+  const admin = createSupabaseAdminClient();
+
+  // Verificar que el lead pertenece al equipo del setter
+  const { data: lead } = await admin
+    .from('team_leads')
+    .select('team_id')
+    .eq('id', params.id)
+    .single();
+
+  if (!lead) return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 });
+
+  const { data: team } = await admin
+    .from('setter_teams')
+    .select('setter1_id, setter2_id')
+    .eq('id', lead.team_id)
+    .single();
+
+  const isAdmin = await admin.from('profiles').select('role').eq('id', user.id).single()
+    .then(r => r.data?.role === 'admin');
+
+  const isMember = team?.setter1_id === user.id || team?.setter2_id === user.id;
+  if (!isMember && !isAdmin) return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
+
+  const body = await req.json();
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  if (body.current_status !== undefined) {
+    updates.current_status = body.current_status;
+    updates.is_closed = body.current_status === 'NO_CALIFICA';
+  }
+  if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.handled_by !== undefined) updates.handled_by = body.handled_by;
+
+  const { data, error } = await admin
+    .from('team_leads')
+    .update(updates)
+    .eq('id', params.id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
