@@ -1,5 +1,3 @@
-'use server';
-
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
