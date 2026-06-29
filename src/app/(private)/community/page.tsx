@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { COMMUNITY_CATEGORIES } from '@/constants/categories';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { ComposerTrigger } from './_components/composer-trigger';
@@ -186,7 +187,7 @@ export default async function CommunityPage({
           <nav className="-mx-1 overflow-x-auto">
             <ul className="flex min-w-max items-center gap-2 px-1">
               <li>
-                <a
+                <Link
                   href="/community"
                   className={
                     'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
@@ -196,13 +197,13 @@ export default async function CommunityPage({
                   }
                 >
                   Todas
-                </a>
+                </Link>
               </li>
               {COMMUNITY_CATEGORIES.map((c) => {
                 const active = activeCat === c;
                 return (
                   <li key={c}>
-                    <a
+                    <Link
                       href={`/community?cat=${encodeURIComponent(c)}`}
                       className={
                         'inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition ' +
@@ -212,7 +213,7 @@ export default async function CommunityPage({
                       }
                     >
                       {c}
-                    </a>
+                    </Link>
                   </li>
                 );
               })}

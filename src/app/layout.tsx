@@ -109,10 +109,10 @@ export default function RootLayout({
                 var done=false;
                 function hide(){if(done)return;done=true;s.classList.add('cac-hide');setTimeout(function(){s.remove();},600);}
                 try{
-                  if(sessionStorage.getItem('cac:splash')){hide();return;}
+                  if(localStorage.getItem('cac:splash')){hide();return;}
                 }catch(e){}
                 var v=s.querySelector('video');
-                function finish(){try{sessionStorage.setItem('cac:splash','1');}catch(e){}hide();}
+                function finish(){try{localStorage.setItem('cac:splash','1');}catch(e){}hide();}
                 if(v){v.addEventListener('ended',finish);v.addEventListener('error',finish);v.play&&v.play().catch(function(){finish();});}
                 setTimeout(finish,8000);
                 s.addEventListener('click',finish);
