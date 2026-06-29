@@ -123,7 +123,7 @@ function getMacro(status: string): typeof MACRO[number] | undefined {
   return MACRO.find(m => m.id === entry?.macro);
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 500;
 
 function PageNav({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
   if (total <= 1) return null;
