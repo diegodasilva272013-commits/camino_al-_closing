@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .single();
 
   const isAdmin = await admin.from('profiles').select('role').eq('id', user.id).single()
-    .then(r => r.data?.role === 'admin');
+    .then((r: any) => r.data?.role === 'admin');
 
   const isMember = team?.setter1_id === user.id || team?.setter2_id === user.id;
   if (!isMember && !isAdmin) return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
