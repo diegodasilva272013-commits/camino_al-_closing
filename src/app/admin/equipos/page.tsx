@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users2, Plus, Upload, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { Users2, Plus, Upload, ChevronDown, ChevronUp, Check, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type TeamRow = {
@@ -12,10 +12,13 @@ type TeamRow = {
 };
 type SetterOption = { id: string; full_name: string | null };
 
+const BLOQUES = [50, 100, 200];
+
 export default function AdminEquiposPage() {
-  const [teams,   setTeams]   = useState<TeamRow[]>([]);
-  const [setters, setSetters] = useState<SetterOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [teams,        setTeams]        = useState<TeamRow[]>([]);
+  const [setters,      setSetters]      = useState<SetterOption[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [poolCount,    setPoolCount]    = useState<number | null>(null);
 
   // Form crear equipo
   const [showCreate, setShowCreate] = useState(false);
@@ -25,24 +28,35 @@ export default function AdminEquiposPage() {
   const [creating,   setCreating]   = useState(false);
   const [createOk,   setCreateOk]   = useState(false);
 
-  // Form cargar leads
+  // Panel cargar leads
   const [uploadTeam,   setUploadTeam]   = useState<string | null>(null);
+  const [uploadMode,   setUploadMode]   = useState<'pool' | 'paste'>('pool');
   const [rawLeads,     setRawLeads]     = useState('');
   const [uploading,    setUploading]    = useState(false);
   const [uploadResult, setUploadResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [teamsRes, settersRes] = await Promise.all([
+    const [teamsRes, settersRes, poolRes] = await Promise.all([
       fetch('/api/admin/teams').then(r => r.json()),
       fetch('/api/admin/setters-list').then(r => r.json()).catch(() => []),
+      fetch('/api/admin/leads/sin-asignar').then(r => r.json()).catch(() => ({ count: null })),
     ]);
     setTeams(Array.isArray(teamsRes) ? teamsRes : []);
     setSetters(Array.isArray(settersRes) ? settersRes : []);
+    setPoolCount(typeof poolRes?.count === 'number' ? poolRes.count : null);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  function openUpload(teamId: string) {
+    if (uploadTeam === teamId) { setUploadTeam(null); return; }
+    setUploadTeam(teamId);
+    setUploadMode('pool');
+    setRawLeads('');
+    setUploadResult(null);
+  }
 
   async function createTeam() {
     if (!newName.trim()) return;
@@ -61,28 +75,41 @@ export default function AdminEquiposPage() {
     }
   }
 
-  // Parsea el texto pegado: "Nombre Apellido | teléfono" o "Nombre,Apellido,Teléfono"
+  async function importFromPool(cantidad: number) {
+    if (!uploadTeam) return;
+    setUploading(true);
+    setUploadResult(null);
+    const res = await fetch(`/api/admin/teams/${uploadTeam}/leads-pool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cantidad }),
+    });
+    const json = await res.json();
+    setUploading(false);
+    if (res.ok) {
+      setUploadResult(`✓ ${json.inserted} leads importados del pool`);
+      load();
+    } else {
+      setUploadResult(`Error: ${json.error}`);
+    }
+  }
+
   function parseLeads(raw: string) {
     return raw.split('\n')
       .map(line => line.trim()).filter(Boolean)
       .map(line => {
-        // soporte: "," o "|" o tab como separador
         const parts = line.split(/[,|\t]/).map(p => p.trim());
-        if (parts.length >= 3) {
-          return { first_name: parts[0], last_name: parts[1], phone: parts[2], email: parts[3] ?? null };
-        }
-        // si solo 2 partes: nombre + teléfono
+        if (parts.length >= 3) return { first_name: parts[0], last_name: parts[1], phone: parts[2], email: parts[3] ?? null };
         if (parts.length === 2) {
-          const [namePart, phone] = parts;
-          const words = namePart.split(' ');
-          return { first_name: words[0], last_name: words.slice(1).join(' ') || null, phone };
+          const words = parts[0].split(' ');
+          return { first_name: words[0], last_name: words.slice(1).join(' ') || null, phone: parts[1] };
         }
         return null;
       })
       .filter(Boolean) as { first_name: string; last_name: string | null; phone: string; email: string | null }[];
   }
 
-  async function uploadLeads() {
+  async function uploadPasted() {
     if (!uploadTeam || !rawLeads.trim()) return;
     const leads = parseLeads(rawLeads);
     if (!leads.length) { setUploadResult('No se pudo parsear ningún lead. Revisá el formato.'); return; }
@@ -116,6 +143,16 @@ export default function AdminEquiposPage() {
           Nuevo equipo
         </button>
       </div>
+
+      {/* Pool sin asignar */}
+      {poolCount !== null && (
+        <div className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+          <Database className="h-4 w-4 text-yellow-500 shrink-0" />
+          <p className="text-sm text-zinc-300">
+            Pool disponible: <span className="font-bold text-white">{poolCount.toLocaleString()}</span> leads sin asignar a ningún setter
+          </p>
+        </div>
+      )}
 
       {/* Form crear equipo */}
       {showCreate && (
@@ -184,7 +221,7 @@ export default function AdminEquiposPage() {
                   <p className="text-xl font-bold text-white">{team.lead_count}</p>
                   <p className="text-[10px] text-zinc-600">leads</p>
                 </div>
-                <button onClick={() => { setUploadTeam(uploadTeam === team.id ? null : team.id); setUploadResult(null); setRawLeads(''); }}
+                <button onClick={() => openUpload(team.id)}
                   className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-zinc-600 hover:text-white transition">
                   <Upload className="h-3.5 w-3.5" />
                   Cargar leads
@@ -192,34 +229,76 @@ export default function AdminEquiposPage() {
                 </button>
               </div>
 
-              {/* Panel de carga de leads */}
+              {/* Panel de carga */}
               {uploadTeam === team.id && (
-                <div className="border-t border-zinc-800 px-5 py-4 space-y-3 bg-zinc-950/40">
-                  <p className="text-xs text-zinc-400 font-medium">
-                    Pegá los leads — un lead por línea, con el formato:
-                  </p>
-                  <div className="text-[11px] text-zinc-600 space-y-0.5 font-mono bg-zinc-900/60 rounded-lg px-3 py-2">
-                    <p>Nombre, Apellido, Teléfono</p>
-                    <p>Nombre, Apellido, Teléfono, Email (opcional)</p>
-                    <p className="text-zinc-700">— también acepta | o tabs como separador —</p>
+                <div className="border-t border-zinc-800 bg-zinc-950/40">
+                  {/* Tabs */}
+                  <div className="flex border-b border-zinc-800">
+                    <button onClick={() => { setUploadMode('pool'); setUploadResult(null); }}
+                      className={cn('flex-1 py-2.5 text-xs font-semibold transition flex items-center justify-center gap-1.5',
+                        uploadMode === 'pool' ? 'text-yellow-400 border-b-2 border-yellow-400 -mb-px' : 'text-zinc-500 hover:text-zinc-300')}>
+                      <Database className="h-3.5 w-3.5" />
+                      Desde pool sin asignar
+                      {poolCount !== null && <span className="ml-1 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{poolCount.toLocaleString()}</span>}
+                    </button>
+                    <button onClick={() => { setUploadMode('paste'); setUploadResult(null); }}
+                      className={cn('flex-1 py-2.5 text-xs font-semibold transition',
+                        uploadMode === 'paste' ? 'text-yellow-400 border-b-2 border-yellow-400 -mb-px' : 'text-zinc-500 hover:text-zinc-300')}>
+                      Pegar manualmente
+                    </button>
                   </div>
-                  <textarea value={rawLeads} onChange={e => setRawLeads(e.target.value)} rows={8}
-                    placeholder={"Juan, Pérez, 5491112345678\nMaría, García, 5491198765432\n..."}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600 resize-none font-mono" />
-                  {uploadResult && (
-                    <p className={cn('text-xs font-medium', uploadResult.startsWith('✓') ? 'text-emerald-400' : 'text-red-400')}>
-                      {uploadResult}
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <button onClick={() => { setUploadTeam(null); setRawLeads(''); setUploadResult(null); }}
-                      className="flex-1 rounded-xl border border-zinc-700 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition">
-                      Cancelar
-                    </button>
-                    <button onClick={uploadLeads} disabled={uploading || !rawLeads.trim()}
-                      className="flex-1 rounded-xl bg-yellow-500 py-2.5 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50 transition">
-                      {uploading ? 'Cargando...' : `Cargar ${parseLeads(rawLeads).length || ''} leads`}
-                    </button>
+
+                  <div className="px-5 py-4 space-y-4">
+                    {uploadMode === 'pool' ? (
+                      <>
+                        <p className="text-xs text-zinc-400">
+                          Seleccioná cuántos leads sin asignar querés mover al pool de este equipo:
+                        </p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {BLOQUES.map(n => (
+                            <button key={n} onClick={() => importFromPool(n)}
+                              disabled={uploading || (poolCount !== null && poolCount < 1)}
+                              className="rounded-xl border border-zinc-700 bg-zinc-900 py-4 text-center hover:border-yellow-500/50 hover:bg-yellow-500/5 disabled:opacity-40 transition group">
+                              <p className="text-2xl font-bold text-white group-hover:text-yellow-400 transition">{n}</p>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">leads</p>
+                            </button>
+                          ))}
+                        </div>
+                        {poolCount === 0 && (
+                          <p className="text-xs text-amber-400">No hay leads sin asignar disponibles en el pool.</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[11px] text-zinc-600 space-y-0.5 font-mono bg-zinc-900/60 rounded-lg px-3 py-2">
+                          <p>Nombre, Apellido, Teléfono</p>
+                          <p>Nombre, Apellido, Teléfono, Email (opcional)</p>
+                          <p className="text-zinc-700">— también acepta | o tabs —</p>
+                        </div>
+                        <textarea value={rawLeads} onChange={e => setRawLeads(e.target.value)} rows={7}
+                          placeholder={"Juan, Pérez, 5491112345678\nMaría, García, 5491198765432\n..."}
+                          className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600 resize-none font-mono" />
+                      </>
+                    )}
+
+                    {uploadResult && (
+                      <p className={cn('text-xs font-medium', uploadResult.startsWith('✓') ? 'text-emerald-400' : 'text-red-400')}>
+                        {uploadResult}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button onClick={() => { setUploadTeam(null); setRawLeads(''); setUploadResult(null); }}
+                        className="flex-1 rounded-xl border border-zinc-700 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition">
+                        Cerrar
+                      </button>
+                      {uploadMode === 'paste' && (
+                        <button onClick={uploadPasted} disabled={uploading || !rawLeads.trim()}
+                          className="flex-1 rounded-xl bg-yellow-500 py-2.5 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50 transition">
+                          {uploading ? 'Cargando...' : `Cargar ${parseLeads(rawLeads).length || ''} leads`}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
