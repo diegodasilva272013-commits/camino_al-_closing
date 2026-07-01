@@ -232,9 +232,11 @@ $$;
 grant execute on function public.setter_leaderboard(int) to authenticated;
 
 
--- ── 3. team_leaderboard: SOLO trabajo en leads del equipo ────────────
--- El score de la dupla refleja únicamente lo que hacen juntos
--- en sus team_leads. No mezcla historial personal de cada setter.
+-- ── 3. team_leaderboard: lee team_leads.current_status directamente ──
+-- No depende de team_lead_activities (tabla nueva, vacía).
+-- Los puntos reflejan el estado ACTUAL de cada lead del equipo,
+-- que es el resultado real del trabajo hecho hasta hoy.
+-- handled_by = qué setter trabajó ese lead.
 
 drop function if exists public.team_leaderboard(int);
 
@@ -259,17 +261,13 @@ security definer
 set search_path = public
 as $$
   with
-  since as (
-    select case
-      when p_days > 0 then now() - (p_days || ' days')::interval
-      else '1970-01-01'::timestamptz
-    end as ts
-  ),
-  -- Puntos por trabajo en team_leads — ÚNICA fuente para el ranking de duplas
-  team_pts as (
+  -- Puntos por estado actual de cada team_lead
+  -- p_days filtra por updated_at del lead (cuándo se trabajó)
+  team_lead_pts as (
     select
-      tla.user_id,
-      sum(case tla.new_status
+      tl.team_id,
+      tl.handled_by                                    as user_id,
+      sum(case tl.current_status
         when 'APERTURA_ENVIADA'     then 3
         when 'CONTACTADO'           then 5
         when 'NO_RESPONDE'          then 2
@@ -283,39 +281,50 @@ as $$
         when 'REUNION_PROPUESTA'    then 35
         when 'REUNION_AGENDADA'     then 60
         else 0
-      end)::int as pts,
-      count(*) filter (where tla.new_status = 'REUNION_AGENDADA')::int as meetings,
-      count(*) filter (where tla.type = 'NOTE_ADDED')::int             as notes
-    from public.team_lead_activities tla
-    where tla.created_at >= (select ts from since)
-    group by tla.user_id
+      end)::int                                        as pts,
+      count(*) filter (
+        where tl.current_status = 'REUNION_AGENDADA'
+      )::int                                           as meetings
+    from public.team_leads tl
+    where tl.is_closed = false
+      and (
+        p_days = 0
+        or tl.updated_at >= now() - (p_days || ' days')::interval
+      )
+    group by tl.team_id, tl.handled_by
+  ),
+  -- Score por equipo: suma lo de setter1 + setter2 dentro del mismo team_id
+  team_score as (
+    select
+      tlp.team_id,
+      sum(tlp.pts)::int      as leads_pts,
+      sum(tlp.meetings)::int as meetings,
+      sum(tlp.pts)::int      as score
+    from team_lead_pts tlp
+    group by tlp.team_id
   ),
   profs as (
     select id, full_name, avatar_url from public.profiles
   )
   select
-    t.id                                                                          as team_id,
-    t.name                                                                        as team_name,
+    t.id                                                              as team_id,
+    t.name                                                            as team_name,
     t.setter1_id,
-    p1.full_name                                                                  as setter1_name,
-    p1.avatar_url                                                                 as setter1_avatar,
+    p1.full_name                                                      as setter1_name,
+    p1.avatar_url                                                     as setter1_avatar,
     t.setter2_id,
-    p2.full_name                                                                  as setter2_name,
-    p2.avatar_url                                                                 as setter2_avatar,
-    (coalesce(tp1.pts,0) + coalesce(tp1.notes,0)*3
-     + coalesce(tp2.pts,0) + coalesce(tp2.notes,0)*3)::int                       as score,
-    (coalesce(tp1.pts,0) + coalesce(tp2.pts,0))::int                             as leads_pts,
-    (coalesce(tp1.meetings,0) + coalesce(tp2.meetings,0))::int                   as meetings,
+    p2.full_name                                                      as setter2_name,
+    p2.avatar_url                                                     as setter2_avatar,
+    coalesce(ts.score,    0)::int                                     as score,
+    coalesce(ts.leads_pts,0)::int                                     as leads_pts,
+    coalesce(ts.meetings, 0)::int                                     as meetings,
     (rank() over (
-      order by (coalesce(tp1.pts,0) + coalesce(tp1.notes,0)*3
-                + coalesce(tp2.pts,0) + coalesce(tp2.notes,0)*3) desc,
-               t.name asc nulls last
+      order by coalesce(ts.score, 0) desc, t.name asc nulls last
     ))::int as rank
   from public.setter_teams t
-  left join profs     p1  on p1.id  = t.setter1_id
-  left join profs     p2  on p2.id  = t.setter2_id
-  left join team_pts  tp1 on tp1.user_id = t.setter1_id
-  left join team_pts  tp2 on tp2.user_id = t.setter2_id
+  left join profs      p1 on p1.id = t.setter1_id
+  left join profs      p2 on p2.id = t.setter2_id
+  left join team_score ts on ts.team_id = t.id
   order by rank asc, t.name asc nulls last;
 $$;
 
