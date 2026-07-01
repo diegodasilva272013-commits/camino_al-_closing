@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users2, Plus, Upload, ChevronDown, ChevronUp, Check, Database, AlertCircle, ChevronRight, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Users2, Plus, Upload, ChevronDown, ChevronUp, Check, Database, AlertCircle, ChevronRight, RefreshCw, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 
@@ -36,6 +37,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function AdminEquiposPage() {
+  const router = useRouter();
   const [teams,      setTeams]      = useState<TeamRow[]>([]);
   const [setters,    setSetters]    = useState<SetterOption[]>([]);
   const [poolCount,  setPoolCount]  = useState<number | null>(null);
@@ -294,6 +296,11 @@ export default function AdminEquiposPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => router.push(`/admin/equipos/${team.id}`)}
+                      className="flex items-center gap-1.5 rounded-xl border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-brand-gold/50 hover:text-brand-gold transition">
+                      <Eye className="h-3.5 w-3.5" />
+                      Gestionar
+                    </button>
                     <button onClick={() => openUpload(team.id)}
                       className={cn('flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition',
                         isUploading ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white')}>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server';
+import { ACTIVITY_TYPES } from '@/constants/leads';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Verificar que el lead pertenece al equipo del setter
   const { data: lead } = await admin
     .from('team_leads')
-    .select('team_id')
+    .select('team_id, current_status')
     .eq('id', params.id)
     .single();
 
@@ -34,11 +35,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  if (body.current_status !== undefined) {
+  if (body.current_status !== undefined && body.current_status !== lead.current_status) {
     updates.current_status = body.current_status;
     updates.is_closed = body.current_status === 'NO_CALIFICA';
+    await admin.from('team_lead_activities').insert({
+      team_lead_id:    params.id,
+      user_id:         user.id,
+      type:            ACTIVITY_TYPES.STATUS_CHANGE,
+      previous_status: lead.current_status,
+      new_status:      body.current_status,
+    });
   }
-  if (body.notes !== undefined) updates.notes = body.notes;
+
+  if (body.notes !== undefined) {
+    updates.notes = body.notes;
+    await admin.from('team_lead_activities').insert({
+      team_lead_id: params.id,
+      user_id:      user.id,
+      type:         ACTIVITY_TYPES.NOTE_ADDED,
+      note:         body.notes,
+    });
+  }
+
   if (body.handled_by !== undefined) updates.handled_by = body.handled_by;
 
   const { data, error } = await admin

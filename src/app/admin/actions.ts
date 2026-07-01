@@ -313,7 +313,12 @@ export async function saveResourceAction(
   const supabase = createSupabaseServerClient();
   let file_url: string | null = null;
 
-  if (file && file.size > 0) {
+  // Prioridad 1: URL ya subida directo a Supabase desde el cliente (ResourceUploadField)
+  const preUploadedUrl = clean(formData.get('file_url'), 1000);
+  if (preUploadedUrl) {
+    file_url = preUploadedUrl;
+  } else if (file && file.size > 0) {
+    // Fallback: subida via server action (limitada a ~4.5 MB por Vercel)
     if (file.size > MAX_RESOURCE_BYTES) {
       return { error: 'El archivo supera 100 MB.' };
     }

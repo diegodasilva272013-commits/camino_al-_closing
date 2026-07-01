@@ -451,29 +451,44 @@ function ConversationView({
   }, []);
 
   const loadMessages = useCallback(async () => {
-    const { data } = await supabase
+    // No usar join profiles(…) — chat_messages no tiene FK a profiles en la DB,
+    // PostgREST devuelve error y data queda null. Fetch separado para los autores.
+    const { data: rawMsgs } = await supabase
       .from('chat_messages')
-      .select(
-        'id, conversation_id, user_id, content, media_url, media_type, media_name, reply_to_id, created_at, deleted_at, profiles(full_name, avatar_url)'
-      )
+      .select('id, conversation_id, user_id, content, media_url, media_type, media_name, reply_to_id, created_at, deleted_at')
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
       .limit(200);
-    const list: ChatMessage[] = ((data as any[]) ?? []).map((m) => ({
-      id: m.id,
-      conversation_id: m.conversation_id,
-      user_id: m.user_id,
-      content: m.content,
-      media_url: m.media_url,
-      media_type: m.media_type as MediaKind | null,
-      media_name: m.media_name,
-      reply_to_id: m.reply_to_id,
-      created_at: m.created_at,
-      deleted_at: m.deleted_at,
-      author: m.profiles
-        ? { full_name: m.profiles.full_name, avatar_url: m.profiles.avatar_url }
-        : null,
-    }));
+
+    const msgs = (rawMsgs as any[]) ?? [];
+
+    // Fetch perfiles únicos para mostrar nombres y avatares
+    const uids = [...new Set(msgs.map((m: any) => m.user_id as string))];
+    const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+    if (uids.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', uids);
+      for (const p of (profs as any[]) ?? []) profileMap.set(p.id, p);
+    }
+
+    const list: ChatMessage[] = msgs.map((m: any) => {
+      const prof = profileMap.get(m.user_id) ?? null;
+      return {
+        id: m.id,
+        conversation_id: m.conversation_id,
+        user_id: m.user_id,
+        content: m.content,
+        media_url: m.media_url,
+        media_type: m.media_type as MediaKind | null,
+        media_name: m.media_name,
+        reply_to_id: m.reply_to_id,
+        created_at: m.created_at,
+        deleted_at: m.deleted_at,
+        author: prof ? { full_name: prof.full_name, avatar_url: prof.avatar_url } : null,
+      };
+    });
     setMessages(list);
     scrollToBottom();
   }, [supabase, conv.id, scrollToBottom]);

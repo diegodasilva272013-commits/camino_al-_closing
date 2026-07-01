@@ -3,6 +3,7 @@ import {
   Shield, MessageSquare, Trophy, Bell, Swords, Users2, BarChart2,
   Target, TrendingUp, BookOpen, ClipboardList, ClipboardCheck,
   UserCheck, Inbox, Megaphone, Wifi, LayoutGrid, FileSearch, Handshake,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -41,7 +42,9 @@ export const SETTER_NAV: NavItem[] = [
   { label: 'Entrenamiento',     href: '/trainer',          icon: Swords },
   { label: 'Mi Evolución',      href: '/setter-evolucion', icon: TrendingUp },
   { label: 'Ranking Setters',   href: '/setter-ranking',   icon: Trophy },
+  { label: 'Ranking Equipos',   href: '/equipo-ranking',   icon: Handshake },
   { label: 'Recursos CAC',      href: '/setter-recursos',  icon: BookOpen },
+  { label: 'Strikes Equipo',    href: '/strikes',           icon: AlertTriangle },
 ];
 
 // ─── 3. Admin — solo rol admin (dirección del equipo) ────────────────────────
@@ -62,6 +65,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Evolution API', href: '/admin/evolution',       icon: Wifi },
   { label: 'Calendario',    href: '/setter-calendario',     icon: Calendar },
   { label: 'Recursos',      href: '/resources',             icon: FolderOpen },
+  { label: 'Strikes',      href: '/admin/strikes',         icon: AlertTriangle },
 ];
 
 // ─── Legacy exports (para compatibilidad) ────────────────────────────────────

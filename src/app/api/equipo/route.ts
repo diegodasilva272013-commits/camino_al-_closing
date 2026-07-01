@@ -12,7 +12,7 @@ export async function GET() {
 
   const { data: team } = await admin
     .from('setter_teams')
-    .select('id, name, setter1_id, setter2_id')
+    .select('id, name, avatar_url, setter1_id, setter2_id')
     .or(`setter1_id.eq.${user.id},setter2_id.eq.${user.id}`)
     .single();
 

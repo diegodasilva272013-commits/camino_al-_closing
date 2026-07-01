@@ -7,9 +7,9 @@ import {
   TextArea,
   SelectField,
   Checkbox,
-  FileField,
   DeleteButton,
 } from '@/app/admin/_components/admin-form';
+import { ResourceUploadField } from '@/app/admin/_components/resource-upload-field';
 import { RESOURCE_CATEGORIES } from '@/constants/categories';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +47,7 @@ export default async function AdminResourcesPage() {
             <Field label="Título" name="title" required />
             <TextArea label="Descripción" name="description" />
             <SelectField label="Categoría" name="category" options={categoryOptions} required />
-            <FileField label="Archivo (opcional)" name="file" />
+            <ResourceUploadField label="Archivo PDF / plantilla (opcional)" name="file_url" />
             <Field
               label="O enlace externo"
               name="external_url"
@@ -101,7 +101,7 @@ export default async function AdminResourcesPage() {
                       defaultValue={r.category}
                       required
                     />
-                    <FileField label="Reemplazar archivo" name="file" />
+                    <ResourceUploadField label="Reemplazar archivo" name="file_url" />
                     <Field
                       label="Enlace externo"
                       name="external_url"

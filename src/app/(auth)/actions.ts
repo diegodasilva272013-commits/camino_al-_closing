@@ -6,10 +6,10 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 import type { AuthActionState } from './types';
 
 function getOrigin(): string {
-  // En producción usar NEXT_PUBLIC_SITE_URL, en local cae a localhost.
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  );
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  // Vercel inyecta VERCEL_URL automáticamente en cada deploy (sin protocolo)
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
 }
 
 export async function loginAction(
@@ -127,15 +127,33 @@ export async function forgotPasswordAction(
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getOrigin()}/login`,
+    redirectTo: `${getOrigin()}/api/auth/callback?next=/reset-password`,
   });
 
   if (error) return { error: traduceError(error.message) };
 
   return {
     ok: true,
-    message: 'Si el email existe, te enviamos un enlace para restablecer tu contraseña.',
+    message: 'Si el email está registrado, vas a recibir un enlace para restablecer tu contraseña.',
   };
+}
+
+export async function resetPasswordAction(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const password  = String(formData.get('password')  ?? '');
+  const password2 = String(formData.get('password2') ?? '');
+
+  if (!password || password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' };
+  if (password !== password2) return { error: 'Las contraseñas no coinciden.' };
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) return { error: traduceError(error.message) };
+
+  return { ok: true, message: 'Contraseña actualizada correctamente.' };
 }
 
 export async function logoutAction() {
