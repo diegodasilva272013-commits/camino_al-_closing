@@ -37,6 +37,7 @@ export const SETTER_NAV: NavItem[] = [
   { label: 'Mi Panel',          href: '/panel',            icon: LayoutGrid },
   { label: 'Mis Leads',         href: '/leads',            icon: Users2 },
   { label: 'Mi Equipo',         href: '/equipo',           icon: Handshake },
+  { label: 'Mis Tareas',        href: '/tareas',            icon: ClipboardList },
   { label: 'Mis Conversaciones',href: '/conversaciones',   icon: FileSearch },
   { label: 'Inbox',             href: '/inbox',            icon: Inbox },
   { label: 'Formularios',       href: '/formularios',      icon: ClipboardCheck },

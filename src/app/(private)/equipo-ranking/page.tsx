@@ -147,6 +147,7 @@ const MEDAL = {
 
 function PodiumCard({ row, medal }: { row: TeamRow; medal: 'gold' | 'silver' | 'bronze' }) {
   const cfg = MEDAL[medal];
+  const meetingPts = row.meetings * 60;
   return (
     <div className="flex flex-col items-center gap-2">
       {/* Avatares dupla */}
@@ -162,9 +163,6 @@ function PodiumCard({ row, medal }: { row: TeamRow; medal: 'gold' | 'silver' | '
         <p className="text-[10px] text-zinc-500 truncate max-w-[120px] text-center">
           {[row.setter1_name, row.setter2_name].filter(Boolean).join(' + ')}
         </p>
-        {row.meetings > 0 && (
-          <span className="text-[10px] text-emerald-400">🗓 {row.meetings} reuniones</span>
-        )}
       </div>
       {/* Pedestal */}
       <div className={`relative w-full overflow-hidden rounded-t-lg bg-gradient-to-b ${cfg.grad} ${cfg.height}`}>
@@ -175,6 +173,21 @@ function PodiumCard({ row, medal }: { row: TeamRow; medal: 'gold' | 'silver' | '
           <p className={`text-[10px] font-medium ${cfg.txt} opacity-70`}>puntos</p>
         </div>
       </div>
+      {/* Desglose de puntos */}
+      <div className="w-full space-y-0.5 text-center">
+        <div className="flex items-center justify-center gap-1 text-[10px]">
+          <span className="text-emerald-400 font-semibold">🗓 {row.meetings} reun.</span>
+          <span className="text-zinc-700">·</span>
+          <span className="text-emerald-500/70">+{meetingPts} pts</span>
+        </div>
+        {row.leads_pts > 0 && (
+          <div className="flex items-center justify-center gap-1 text-[10px]">
+            <span className="text-teal-400 font-semibold">🎯 leads</span>
+            <span className="text-zinc-700">·</span>
+            <span className="text-teal-500/70">+{row.leads_pts} pts</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -182,6 +195,7 @@ function PodiumCard({ row, medal }: { row: TeamRow; medal: 'gold' | 'silver' | '
 // ── Fila resto ────────────────────────────────────────────────────────────────
 
 function RestRow({ row }: { row: TeamRow }) {
+  const meetingPts = row.meetings * 60;
   return (
     <li className="flex items-center gap-3 py-3 hover:bg-white/[0.02] transition">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#161616] font-display text-sm font-bold text-brand-muted ring-1 ring-zinc-800">
@@ -196,14 +210,14 @@ function RestRow({ row }: { row: TeamRow }) {
         <p className="text-[11px] text-zinc-500 truncate">
           {[row.setter1_name, row.setter2_name].filter(Boolean).join(' · ')}
         </p>
-        <div className="flex gap-3 text-[10px] mt-0.5">
-          {row.meetings > 0  && <span className="text-emerald-400/80">🗓 {row.meetings} reuniones</span>}
-          {row.leads_pts > 0 && <span className="text-teal-400/70">🎯 {row.leads_pts} pts leads</span>}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] mt-0.5">
+          <span className="text-emerald-400/80">🗓 {row.meetings} reun. <span className="text-emerald-600/70">(+{meetingPts} pts)</span></span>
+          <span className="text-teal-400/70">🎯 leads <span className="text-teal-600/60">(+{row.leads_pts} pts)</span></span>
         </div>
       </div>
       <div className="text-right shrink-0">
         <p className="font-display text-base font-bold text-brand-text">{row.score}</p>
-        <p className="text-[10px] text-brand-muted">pts</p>
+        <p className="text-[10px] text-brand-muted">pts total</p>
       </div>
     </li>
   );

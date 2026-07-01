@@ -69,6 +69,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/setter-recursos') ||
     pathname.startsWith('/setter-calendario') ||
     pathname.startsWith('/equipo') ||
+    pathname.startsWith('/tareas') ||
     pathname.startsWith('/wins') ||
     pathname.startsWith('/setter-ranking') ||
     pathname.startsWith('/equipo-ranking') ||
