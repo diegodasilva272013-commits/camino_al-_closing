@@ -3,7 +3,7 @@ import {
   Shield, MessageSquare, Trophy, Bell, Swords, Users2, BarChart2,
   Target, TrendingUp, BookOpen, ClipboardList, ClipboardCheck,
   UserCheck, Inbox, Megaphone, Wifi, LayoutGrid, FileSearch, Handshake,
-  AlertTriangle,
+  AlertTriangle, ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -54,6 +54,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Control Admin', href: '/admin',                 icon: Shield },
   { label: 'Equipo',        href: '/admin/setters',         icon: UserCheck },
   { label: 'Equipos Dupla', href: '/admin/equipos',         icon: Handshake },
+  { label: 'Tareas Duplas', href: '/admin/duplas',          icon: ListChecks },
   { label: 'Leads',         href: '/admin/leads-dashboard', icon: BarChart2 },
   { label: 'Inbox Global',  href: '/admin/inbox',           icon: Inbox },
   { label: 'Campañas',      href: '/admin/campanas',        icon: Megaphone },

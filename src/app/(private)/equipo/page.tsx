@@ -5,6 +5,7 @@ import {
   RefreshCw, Search, X, ChevronRight, Users2, StickyNote,
   BarChart2, MessageSquare, Settings, LayoutGrid,
   Star, TrendingUp, Camera, Check, AlertCircle, Loader2, Send,
+  ClipboardList, AlertTriangle,
 } from 'lucide-react';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ type TeamLead = {
 };
 type Member  = { id: string; full_name: string | null; avatar_url: string | null };
 type Team    = { id: string; name: string; avatar_url: string | null; setter1_id: string; setter2_id: string };
-type TabId   = 'kanban' | 'metricas' | 'conversaciones' | 'ajustes';
+type TabId   = 'kanban' | 'metricas' | 'conversaciones' | 'ajustes' | 'tareas';
 
 // ─── Kanban config (idéntica a /leads) ───────────────────────────────────────
 
@@ -137,6 +138,7 @@ export default function EquipoPage() {
 
   const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'kanban',        label: 'Leads',           icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+    { id: 'tareas',        label: 'Tareas',          icon: <ClipboardList className="h-3.5 w-3.5" /> },
     { id: 'metricas',      label: 'Métricas',        icon: <BarChart2 className="h-3.5 w-3.5" /> },
     { id: 'conversaciones',label: 'Conversaciones',  icon: <MessageSquare className="h-3.5 w-3.5" /> },
     { id: 'ajustes',       label: 'Ajustes',         icon: <Settings className="h-3.5 w-3.5" /> },
@@ -270,6 +272,11 @@ export default function EquipoPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── TAB: TAREAS ── */}
+      {tab === 'tareas' && (
+        <TareasTab teamId={team.id} meId={meId} />
       )}
 
       {/* ── TAB: MÉTRICAS ── */}
@@ -710,6 +717,204 @@ function ConversacionesTab({ teamId, meId }: { teamId: string; meId: string }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ─── TareasTab ────────────────────────────────────────────────────────────────
+
+type TareaEstado = {
+  team: any;
+  estado: any;
+  partner_estado: any;
+  partner_profile: any;
+  config: { aperturas_meta: number; contactados_meta: number; conv_meta: number };
+  strikes: number;
+  fecha: string;
+  minutos_restantes: number;
+};
+
+function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="h-2 rounded-full bg-zinc-800">
+      <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function StrikeDots({ count }: { count: number }) {
+  const dots = Array.from({ length: 3 }).map((_, i) => i < count);
+  return (
+    <div className="flex gap-1.5 items-center">
+      {dots.map((active, i) => (
+        <span key={i} className={cn('h-3 w-3 rounded-full border',
+          active ? 'bg-red-500 border-red-400' : 'bg-zinc-800 border-zinc-700')} />
+      ))}
+      {count >= 3 && <span className="text-[10px] text-red-400 font-bold ml-1">BLOQUEADO</span>}
+    </div>
+  );
+}
+
+function formatMinutes(min: number): string {
+  if (min <= 0) return '00:00';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function TareasTab({ teamId, meId }: { teamId: string; meId: string }) {
+  const [data, setData] = useState<TareaEstado | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mins, setMins] = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await fetch('/api/duplas/estado').then(r => r.json()).catch(() => null);
+    setData(r);
+    setMins(r?.minutos_restantes ?? 0);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Countdown each minute
+  useEffect(() => {
+    const id = setInterval(() => setMins(m => Math.max(0, m - 1)), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (loading) return (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-yellow-500 border-t-transparent" />
+    </div>
+  );
+
+  if (!data?.team) return (
+    <div className="flex flex-1 items-center justify-center text-zinc-600 text-sm">Sin equipo activo</div>
+  );
+
+  const { estado, partner_estado, partner_profile, config, strikes, fecha } = data;
+
+  const ap = estado?.aperturas_count   ?? 0;
+  const co = estado?.contactados_count ?? 0;
+  const cv = estado?.conv_count        ?? 0;
+
+  const TASKS = [
+    { label: 'Aperturas enviadas', count: ap, meta: config.aperturas_meta, ok: estado?.task_aperturas_ok,   color: 'bg-blue-500' },
+    { label: 'Contactados',        count: co, meta: config.contactados_meta, ok: estado?.task_contactados_ok, color: 'bg-indigo-500' },
+    { label: 'Conversaciones',     count: cv, meta: config.conv_meta,        ok: estado?.task_conv_ok,        color: 'bg-emerald-500' },
+  ];
+
+  const allOk = estado?.all_tasks_ok;
+  const urgent = mins <= 60 && !allOk;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-5">
+
+      {/* Header con fecha y countdown */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tareas del {fecha}</p>
+          <p className={cn('text-[11px] mt-0.5', urgent ? 'text-red-400 font-bold' : 'text-zinc-600')}>
+            {allOk ? '✅ Completadas' : `⏱ Quedan ${formatMinutes(mins)} para medianoche`}
+          </p>
+        </div>
+        <button onClick={load}
+          className="rounded-xl border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-300 transition">
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Mis tareas */}
+      <div className={cn('rounded-2xl border p-4 space-y-4',
+        allOk ? 'border-emerald-700/30 bg-emerald-950/10' : urgent ? 'border-red-700/30 bg-red-950/10' : 'border-zinc-800 bg-zinc-900/30')}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-white">Mis tareas de hoy</p>
+          {allOk
+            ? <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">✓ Completado</span>
+            : <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full',
+                urgent ? 'text-red-400 bg-red-500/15' : 'text-yellow-400 bg-yellow-500/15')}>
+                Pendiente
+              </span>
+          }
+        </div>
+
+        {TASKS.map(t => (
+          <div key={t.label} className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5">
+                {t.ok
+                  ? <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  : <div className="h-3.5 w-3.5 rounded-full border border-zinc-600 shrink-0" />
+                }
+                <span className={t.ok ? 'text-zinc-400 line-through' : 'text-zinc-300'}>{t.label}</span>
+              </div>
+              <span className={cn('font-bold tabular-nums', t.ok ? 'text-emerald-400' : 'text-zinc-400')}>
+                {t.count}/{t.meta}
+              </span>
+            </div>
+            <ProgressBar value={t.count} max={t.meta} color={t.ok ? 'bg-emerald-500' : t.color} />
+          </div>
+        ))}
+      </div>
+
+      {/* Strikes */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-zinc-400">Mis strikes</p>
+          <AlertTriangle className={cn('h-3.5 w-3.5', strikes > 0 ? 'text-red-400' : 'text-zinc-700')} />
+        </div>
+        <StrikeDots count={strikes} />
+        {strikes === 0 && <p className="text-[11px] text-zinc-600 mt-1.5">Sin strikes ✓ Seguí así.</p>}
+        {strikes === 1 && <p className="text-[11px] text-yellow-500/70 mt-1.5">1 strike acumulado. Podés tener hasta 2 más antes del bloqueo.</p>}
+        {strikes === 2 && <p className="text-[11px] text-orange-400 mt-1.5 font-semibold">⚠ 2 strikes. Un strike más y tu cuenta será bloqueada.</p>}
+        {strikes >= 3 && <p className="text-[11px] text-red-400 mt-1.5 font-bold">Tu cuenta está bloqueada. Hablá con coordinación.</p>}
+      </div>
+
+      {/* Estado del compañero */}
+      {partner_profile && (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            {partner_profile.avatar_url
+              ? <img src={partner_profile.avatar_url} className="h-8 w-8 rounded-full object-cover" alt="" />
+              : <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-bold text-zinc-400">
+                  {partner_profile.full_name?.[0] ?? '?'}
+                </div>
+            }
+            <div>
+              <p className="text-xs font-semibold text-white">{partner_profile.full_name}</p>
+              <p className="text-[10px] text-zinc-600">Tu compañero/a de dupla</p>
+            </div>
+            {partner_estado?.all_tasks_ok
+              ? <span className="ml-auto text-[11px] text-emerald-400 font-bold">✓ Completo</span>
+              : <span className="ml-auto text-[11px] text-zinc-600">Pendiente</span>
+            }
+          </div>
+          {partner_estado && (
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { label: 'Aperturas',     value: partner_estado.aperturas_count,   meta: config.aperturas_meta },
+                { label: 'Contactados',   value: partner_estado.contactados_count,  meta: config.contactados_meta },
+                { label: 'Conversaciones', value: partner_estado.conv_count,        meta: config.conv_meta },
+              ].map(s => (
+                <div key={s.label} className="rounded-xl bg-zinc-800/50 py-2">
+                  <p className="text-base font-bold text-white">{s.value}</p>
+                  <p className="text-[9px] text-zinc-600">{s.label}</p>
+                  <p className="text-[9px] text-zinc-700">/{s.meta}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {!partner_estado && (
+            <p className="text-xs text-zinc-600">Sin datos de hoy todavía</p>
+          )}
+        </div>
+      )}
+
+      <p className="text-[11px] text-zinc-700 text-center">
+        Las tareas se detectan automáticamente cada 15 minutos.
+      </p>
     </div>
   );
 }

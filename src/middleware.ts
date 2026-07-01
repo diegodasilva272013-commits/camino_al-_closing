@@ -68,6 +68,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/setter-evolucion') ||
     pathname.startsWith('/setter-recursos') ||
     pathname.startsWith('/setter-calendario') ||
+    pathname.startsWith('/equipo') ||
+    pathname.startsWith('/wins') ||
+    pathname.startsWith('/setter-ranking') ||
+    pathname.startsWith('/equipo-ranking') ||
+    pathname.startsWith('/strikes') ||
+    pathname.startsWith('/bloqueado') ||
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/admin');
 
@@ -84,6 +90,17 @@ export async function middleware(request: NextRequest) {
     if (!onboardingDone) {
       const url = request.nextUrl.clone();
       url.pathname = '/onboarding';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Cuenta bloqueada → redirigir a /bloqueado (excepto si ya está ahí o es admin)
+  if (user && isPrivateRoute && pathname !== '/bloqueado' && !pathname.startsWith('/admin')) {
+    const isBloqueado = user.user_metadata?.bloqueado === true;
+    if (isBloqueado) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/bloqueado';
       url.search = '';
       return NextResponse.redirect(url);
     }
