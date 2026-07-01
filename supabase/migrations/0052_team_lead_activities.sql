@@ -232,7 +232,9 @@ $$;
 grant execute on function public.setter_leaderboard(int) to authenticated;
 
 
--- ── 3. Reescribir team_leaderboard: incluye AMBAS fuentes ────────────
+-- ── 3. team_leaderboard: SOLO trabajo en leads del equipo ────────────
+-- El score de la dupla refleja únicamente lo que hacen juntos
+-- en sus team_leads. No mezcla historial personal de cada setter.
 
 drop function if exists public.team_leaderboard(int);
 
@@ -263,80 +265,57 @@ as $$
       else '1970-01-01'::timestamptz
     end as ts
   ),
-  -- Puntos por lead personal
-  personal as (
+  -- Puntos por trabajo en team_leads — ÚNICA fuente para el ranking de duplas
+  team_pts as (
     select
-      user_id,
-      sum(case new_status
-        when 'APERTURA_ENVIADA'     then 3  when 'CONTACTADO'          then 5
-        when 'NO_RESPONDE'          then 2  when 'RESPONDIO'           then 10
-        when 'INTERES_DETECTADO'    then 12 when 'INVITADO_AL_GRUPO'   then 15
-        when 'INGRESO_AL_GRUPO'     then 18 when 'ACTIVO_EN_GRUPO'     then 20
-        when 'DIAGNOSTICO_INICIADO' then 25 when 'DIAGNOSTICO_PROFUNDO'then 30
-        when 'REUNION_PROPUESTA'    then 35 when 'REUNION_AGENDADA'    then 60
+      tla.user_id,
+      sum(case tla.new_status
+        when 'APERTURA_ENVIADA'     then 3
+        when 'CONTACTADO'           then 5
+        when 'NO_RESPONDE'          then 2
+        when 'RESPONDIO'            then 10
+        when 'INTERES_DETECTADO'    then 12
+        when 'INVITADO_AL_GRUPO'    then 15
+        when 'INGRESO_AL_GRUPO'     then 18
+        when 'ACTIVO_EN_GRUPO'      then 20
+        when 'DIAGNOSTICO_INICIADO' then 25
+        when 'DIAGNOSTICO_PROFUNDO' then 30
+        when 'REUNION_PROPUESTA'    then 35
+        when 'REUNION_AGENDADA'     then 60
         else 0
       end)::int as pts,
-      count(*) filter (where new_status = 'REUNION_AGENDADA')::int as meetings,
-      count(*)  filter (where type = 'NOTE_ADDED')::int as notes
-    from public.lead_activities
-    where created_at >= (select ts from since)
-      and type in ('STATUS_CHANGE','NOTE_ADDED')
-    group by user_id
-  ),
-  -- Puntos por lead de equipo
-  team as (
-    select
-      user_id,
-      sum(case new_status
-        when 'APERTURA_ENVIADA'     then 3  when 'CONTACTADO'          then 5
-        when 'NO_RESPONDE'          then 2  when 'RESPONDIO'           then 10
-        when 'INTERES_DETECTADO'    then 12 when 'INVITADO_AL_GRUPO'   then 15
-        when 'INGRESO_AL_GRUPO'     then 18 when 'ACTIVO_EN_GRUPO'     then 20
-        when 'DIAGNOSTICO_INICIADO' then 25 when 'DIAGNOSTICO_PROFUNDO'then 30
-        when 'REUNION_PROPUESTA'    then 35 when 'REUNION_AGENDADA'    then 60
-        else 0
-      end)::int as pts,
-      count(*) filter (where new_status = 'REUNION_AGENDADA')::int as meetings,
-      count(*)  filter (where type = 'NOTE_ADDED')::int as notes
-    from public.team_lead_activities
-    where created_at >= (select ts from since)
-      and type in ('STATUS_CHANGE','NOTE_ADDED')
-    group by user_id
-  ),
-  setter_score as (
-    select
-      coalesce(p.user_id, t.user_id) as user_id,
-      (coalesce(p.pts,0) + coalesce(t.pts,0)
-       + (coalesce(p.notes,0) + coalesce(t.notes,0)) * 3) as score,
-      (coalesce(p.pts,0)    + coalesce(t.pts,0))           as leads_pts,
-      (coalesce(p.meetings,0) + coalesce(t.meetings,0))    as meetings
-    from personal p
-    full outer join team t on t.user_id = p.user_id
+      count(*) filter (where tla.new_status = 'REUNION_AGENDADA')::int as meetings,
+      count(*) filter (where tla.type = 'NOTE_ADDED')::int             as notes
+    from public.team_lead_activities tla
+    where tla.created_at >= (select ts from since)
+    group by tla.user_id
   ),
   profs as (
     select id, full_name, avatar_url from public.profiles
   )
   select
-    t.id                                                              as team_id,
-    t.name                                                            as team_name,
+    t.id                                                                          as team_id,
+    t.name                                                                        as team_name,
     t.setter1_id,
-    p1.full_name                                                      as setter1_name,
-    p1.avatar_url                                                     as setter1_avatar,
+    p1.full_name                                                                  as setter1_name,
+    p1.avatar_url                                                                 as setter1_avatar,
     t.setter2_id,
-    p2.full_name                                                      as setter2_name,
-    p2.avatar_url                                                     as setter2_avatar,
-    (coalesce(s1.score,0) + coalesce(s2.score,0))::int               as score,
-    (coalesce(s1.leads_pts,0) + coalesce(s2.leads_pts,0))::int       as leads_pts,
-    (coalesce(s1.meetings,0)  + coalesce(s2.meetings,0))::int        as meetings,
+    p2.full_name                                                                  as setter2_name,
+    p2.avatar_url                                                                 as setter2_avatar,
+    (coalesce(tp1.pts,0) + coalesce(tp1.notes,0)*3
+     + coalesce(tp2.pts,0) + coalesce(tp2.notes,0)*3)::int                       as score,
+    (coalesce(tp1.pts,0) + coalesce(tp2.pts,0))::int                             as leads_pts,
+    (coalesce(tp1.meetings,0) + coalesce(tp2.meetings,0))::int                   as meetings,
     (rank() over (
-      order by (coalesce(s1.score,0) + coalesce(s2.score,0)) desc,
+      order by (coalesce(tp1.pts,0) + coalesce(tp1.notes,0)*3
+                + coalesce(tp2.pts,0) + coalesce(tp2.notes,0)*3) desc,
                t.name asc nulls last
     ))::int as rank
   from public.setter_teams t
-  left join profs       p1 on p1.id = t.setter1_id
-  left join profs       p2 on p2.id = t.setter2_id
-  left join setter_score s1 on s1.user_id = t.setter1_id
-  left join setter_score s2 on s2.user_id = t.setter2_id
+  left join profs     p1  on p1.id  = t.setter1_id
+  left join profs     p2  on p2.id  = t.setter2_id
+  left join team_pts  tp1 on tp1.user_id = t.setter1_id
+  left join team_pts  tp2 on tp2.user_id = t.setter2_id
   order by rank asc, t.name asc nulls last;
 $$;
 
