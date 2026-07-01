@@ -24,6 +24,7 @@ export const PLATFORM_NAV: NavItem[] = [
   { label: 'Dashboard',   href: '/dashboard',   icon: LayoutDashboard },
   { label: 'Clases',      href: '/classes',     icon: GraduationCap },
   { label: 'Comunidad',   href: '/community',   icon: Users },
+  { label: 'Muro de Wins', href: '/wins',       icon: Trophy },
   { label: 'Ranking',     href: '/leaderboard', icon: Trophy },
   { label: 'Mensajes',    href: '/chat',        icon: MessageSquare },
   { label: 'Comunicados', href: '/comunicados', icon: Bell },
