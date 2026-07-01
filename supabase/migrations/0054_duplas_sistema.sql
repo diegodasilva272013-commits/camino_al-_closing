@@ -20,16 +20,20 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS bloqueado_at     timestamptz,
   ADD COLUMN IF NOT EXISTS bloqueado_motivo text;
 
--- ── strikes: tipo y dupla_id ─────────────────────────────────────────
-ALTER TABLE public.strikes
-  ADD COLUMN IF NOT EXISTS tipo     text NOT NULL DEFAULT 'manual',
-  ADD COLUMN IF NOT EXISTS dupla_id uuid REFERENCES public.setter_teams(id) ON DELETE SET NULL;
-
--- tipo CHECK
-ALTER TABLE public.strikes
-  DROP CONSTRAINT IF EXISTS strikes_tipo_check;
-ALTER TABLE public.strikes
-  ADD CONSTRAINT strikes_tipo_check CHECK (tipo IN ('manual', 'tarea_diaria'));
+-- ── strikes: tipo y dupla_id (solo si la tabla ya existe) ────────────
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'strikes') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='strikes' AND column_name='tipo') THEN
+      ALTER TABLE public.strikes ADD COLUMN tipo text NOT NULL DEFAULT 'manual';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='strikes' AND column_name='dupla_id') THEN
+      ALTER TABLE public.strikes ADD COLUMN dupla_id uuid REFERENCES public.setter_teams(id) ON DELETE SET NULL;
+    END IF;
+    ALTER TABLE public.strikes DROP CONSTRAINT IF EXISTS strikes_tipo_check;
+    ALTER TABLE public.strikes ADD CONSTRAINT strikes_tipo_check CHECK (tipo IN ('manual', 'tarea_diaria'));
+  END IF;
+END $$;
 
 -- ── dupla_config: metas configurables ────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.dupla_config (
