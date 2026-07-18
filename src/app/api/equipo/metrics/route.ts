@@ -20,6 +20,7 @@ export async function GET() {
   const memberIds = [team.setter1_id, team.setter2_id].filter(Boolean) as string[];
 
   const [leadsRes, profilesRes, conversRes] = await Promise.all([
+    // current_status y handled_by viven en team_leads; no necesitamos contacto para métricas
     admin.from('team_leads').select('id, current_status, handled_by, created_at').eq('team_id', team.id),
     admin.from('profiles').select('id, full_name, avatar_url, points').in('id', memberIds),
     admin.from('team_conversation_analyses')
