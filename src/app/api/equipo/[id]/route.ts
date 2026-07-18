@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Verificar que el lead pertenece al equipo del setter
   const { data: lead } = await admin
     .from('team_leads')
-    .select('team_id, current_status')
+    .select('team_id, current_status, source_lead_id')
     .eq('id', params.id)
     .single();
 
@@ -38,6 +38,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.current_status !== undefined && body.current_status !== lead.current_status) {
     updates.current_status = body.current_status;
     updates.is_closed = body.current_status === 'NO_CALIFICA';
+
+    const now = new Date().toISOString();
+
+    // Actividad en team_lead_activities (historial del equipo)
     await admin.from('team_lead_activities').insert({
       team_lead_id:    params.id,
       user_id:         user.id,
@@ -45,6 +49,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       previous_status: lead.current_status,
       new_status:      body.current_status,
     });
+
+    // Sincronizar al lead fuente — una sola fuente de verdad para el admin
+    if (lead.source_lead_id) {
+      await Promise.all([
+        admin.from('leads').update({
+          current_status: body.current_status,
+          last_action_at: now,
+          updated_at:     now,
+        }).eq('id', lead.source_lead_id),
+        admin.from('lead_activities').insert({
+          lead_id:         lead.source_lead_id,
+          user_id:         user.id,
+          type:            ACTIVITY_TYPES.STATUS_CHANGE,
+          previous_status: lead.current_status,
+          new_status:      body.current_status,
+        }),
+      ]);
+    }
   }
 
   if (body.notes !== undefined) {

@@ -252,15 +252,24 @@ function AdminLeadsPageInner() {
     return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
   }
 
-  const unassigned = leads.filter((l) => !l.assignee).length;
-  const dupCount   = dupServerCount ?? 0;
+  const unassigned    = leads.filter((l) => !l.assignee).length;
+  const noContactados = leads.filter((l) => l.current_status === 'NO_CONTACTADO').length;
+  const dupCount      = dupServerCount ?? 0;
+
+  // Descripción del header: total · no contactados (reales) · duplicados
+  const headerDesc = [
+    `${(totalLeads > 0 ? totalLeads : leads.length).toLocaleString('es-AR')} leads`,
+    noContactados > 0 ? `🔴 ${noContactados} sin contactar` : null,
+    unassigned > 0    ? `${unassigned} sin asignar`         : null,
+    dupCount > 0      ? `⚠️ ${dupCount} duplicados`         : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="min-h-screen bg-[#080808] px-4 py-6 lg:px-8">
       <PageHeader
         eyebrow="Admin · Leads"
         title="Gestión de Leads"
-        description={`${totalLeads > 0 ? totalLeads.toLocaleString('es-AR') : leads.length} leads · ${unassigned} sin asignar${dupCount > 0 ? ` · ⚠️ ${dupCount} duplicados` : ''}`}
+        description={headerDesc}
       />
 
       {/* Panel de duplicados — siempre visible, conteo real del servidor */}
@@ -474,7 +483,11 @@ function AdminLeadsPageInner() {
                     onClick={() => toggleOne(lead.id)}
                     className={cn(
                       'cursor-pointer transition',
-                      isSel ? 'bg-yellow-500/5 border-yellow-500/10' : 'hover:bg-[rgba(212,175,55,0.02)]'
+                      isSel
+                        ? 'bg-yellow-500/5 border-yellow-500/10'
+                        : lead.current_status === 'NO_CONTACTADO'
+                          ? 'bg-red-950/20 border-l-2 border-l-red-800/50 hover:bg-red-950/30'
+                          : 'hover:bg-[rgba(212,175,55,0.02)]'
                     )}
                   >
                     <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
