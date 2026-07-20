@@ -85,9 +85,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .from('team_leads')
     .update(updates)
     .eq('id', params.id)
-    .select()
+    .select('*, lead:leads!source_lead_id(first_name, last_name, phone, email, country)')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Aplanar datos de contacto — igual que el GET de /api/equipo
+  return NextResponse.json({
+    ...data,
+    first_name: data.lead?.first_name ?? data.first_name ?? '',
+    last_name:  data.lead?.last_name  ?? data.last_name  ?? null,
+    phone:      data.lead?.phone      ?? data.phone      ?? '',
+    email:      data.lead?.email      ?? data.email      ?? null,
+    country:    data.lead?.country    ?? data.country    ?? null,
+    lead:       undefined,
+  });
 }

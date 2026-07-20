@@ -76,6 +76,8 @@ function AdminLeadsPageInner() {
   const [page, setPage]           = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLeads, setTotalLeads] = useState(0);
+  const [setterNoContactado, setSetterNoContactado]   = useState<number | null>(null);
+  const [loadingSetterCount, setLoadingSetterCount]   = useState(false);
 
   // Realtime — refleja en tiempo real los cambios de setters
   useLeadsRealtime({
@@ -164,6 +166,18 @@ function AdminLeadsPageInner() {
 
   useEffect(() => { load(1); loadUsers(); loadDupCount(); }, []);
   useEffect(() => { load(1); setSelected(new Set()); setAssignMsg(''); }, [filterStatus, filterUser]);
+
+  // Cuando se selecciona un setter: contar sus leads NO_CONTACTADO del total (no solo la página)
+  useEffect(() => {
+    if (!filterUser || filterUser === 'unassigned') { setSetterNoContactado(null); return; }
+    setLoadingSetterCount(true);
+    const p = new URLSearchParams({ user_id: filterUser, status: 'NO_CONTACTADO', per_page: '1' });
+    fetch(`/api/admin/leads?${p}`)
+      .then(r => r.json())
+      .then(d => setSetterNoContactado(d.total ?? 0))
+      .catch(() => setSetterNoContactado(null))
+      .finally(() => setLoadingSetterCount(false));
+  }, [filterUser]);
 
   function handleCSVFile(file: File) {
     const reader = new FileReader();
@@ -346,41 +360,111 @@ function AdminLeadsPageInner() {
       </div>
 
       {/* Filters */}
-      <div className="mt-4 flex flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-brand-muted" />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-zinc-800 bg-[#111] px-3 py-1.5 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/30"
-          >
-            <option value="">Todos los estados</option>
-            {LEAD_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-          </select>
-          {filterStatus && (
-            <button onClick={() => setFilterStatus('')} className="text-brand-muted hover:text-brand-text">
-              <X className="h-3.5 w-3.5" />
+      <div className="mt-4 space-y-3">
+        <div className="flex flex-wrap gap-3">
+          {/* Estado */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-brand-muted" />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-[#111] px-3 py-1.5 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/30"
+            >
+              <option value="">Todos los estados</option>
+              {LEAD_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+            </select>
+            {filterStatus && (
+              <button onClick={() => setFilterStatus('')} className="text-brand-muted hover:text-brand-text">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Setter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-brand-muted" />
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-[#111] px-3 py-1.5 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/30"
+            >
+              <option value="">Todos los setters</option>
+              <option value="unassigned">Sin asignar</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.full_name ?? u.email}</option>
+              ))}
+            </select>
+            {filterUser && (
+              <button onClick={() => setFilterUser('')} className="text-brand-muted hover:text-brand-text">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Acceso rápido: sin contactar */}
+          {filterStatus !== 'NO_CONTACTADO' && (
+            <button
+              onClick={() => setFilterStatus('NO_CONTACTADO')}
+              className="flex items-center gap-1.5 rounded-lg border border-red-700/40 bg-red-950/15 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-950/30 transition"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+              Sin contactar
+            </button>
+          )}
+
+          {/* Limpiar filtros */}
+          {(filterStatus || filterUser) && (
+            <button
+              onClick={() => { setFilterStatus(''); setFilterUser(''); }}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition"
+            >
+              <X className="h-3 w-3" />
+              Limpiar
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-brand-muted" />
-          <select
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            className="rounded-lg border border-zinc-800 bg-[#111] px-3 py-1.5 text-xs text-brand-muted focus:outline-none focus:border-brand-gold/30"
-          >
-            <option value="">Todos los setters</option>
-            <option value="unassigned">Sin asignar</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.full_name ?? u.email}</option>
-            ))}
-          </select>
-          {filterUser && (
-            <button onClick={() => setFilterUser('')} className="text-brand-muted hover:text-brand-text">
-              <X className="h-3.5 w-3.5" />
-            </button>
+        {/* Resultado del filtro activo */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn(
+            'rounded-lg border px-3 py-1 text-xs font-semibold',
+            loading ? 'border-zinc-800 text-zinc-500' : 'border-zinc-700 bg-zinc-900/50 text-zinc-200'
+          )}>
+            {loading ? 'Cargando...' : `${totalLeads.toLocaleString('es-AR')} leads`}
+            {(filterStatus || filterUser) && !loading && (
+              <span className="ml-1 font-normal text-zinc-500">encontrados</span>
+            )}
+          </span>
+
+          {/* Badge: setter seleccionado → sus NO_CONTACTADO (del total, no solo la página) */}
+          {filterUser && filterUser !== 'unassigned' && (
+            <span className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-semibold',
+              loadingSetterCount
+                ? 'border-zinc-800 text-zinc-500'
+                : setterNoContactado && setterNoContactado > 0
+                  ? 'border-red-700/40 bg-red-950/20 text-red-300'
+                  : 'border-emerald-800/40 bg-emerald-950/20 text-emerald-400'
+            )}>
+              <span className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                loadingSetterCount ? 'bg-zinc-600'
+                  : setterNoContactado && setterNoContactado > 0 ? 'bg-red-400' : 'bg-emerald-400'
+              )} />
+              {loadingSetterCount
+                ? 'Contando...'
+                : setterNoContactado !== null
+                  ? `${setterNoContactado} sin contactar`
+                  : ''}
+              {!loadingSetterCount && setterNoContactado !== null && setterNoContactado > 0 && (
+                <button
+                  onClick={() => setFilterStatus('NO_CONTACTADO')}
+                  className="ml-1 underline opacity-70 hover:opacity-100 font-normal"
+                >
+                  ver
+                </button>
+              )}
+            </span>
           )}
         </div>
       </div>
