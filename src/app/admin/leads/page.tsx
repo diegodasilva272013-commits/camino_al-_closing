@@ -28,12 +28,29 @@ type Lead = {
 
 type Profile = { id: string; full_name: string | null; email: string };
 
+function normalizeHeader(s: string): string {
+  return s.trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '_');
+}
+
 function parseCSV(text: string) {
-  const lines = text.trim().split('\n');
+  const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const rawHeaders = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+  const headers = rawHeaders.map(normalizeHeader);
   return lines.slice(1).map((line) => {
-    const vals = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+    // Manejo básico de campos entre comillas con comas internas
+    const vals: string[] = [];
+    let cur = '';
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; continue; }
+      cur += c;
+    }
+    vals.push(cur.trim());
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
     return obj;
@@ -194,9 +211,9 @@ function AdminLeadsPageInner() {
     setImporting(true);
     setImportResult('');
     const rows = csvRows.map((r) => ({
-      first_name: r.firstname || r.first_name || r.nombre || '',
+      first_name: r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || '',
       last_name:  r.lastname  || r.last_name  || r.apellido || '',
-      phone:      r.phone || r.telefono || r.tel || '',
+      phone:      r.phone || r.telefono || r.tel || r.celular || r.whatsapp || r.nro_celular || r.numero || r.movil || '',
       country:    r.country || r.pais || '',
       source:     r.source || r.fuente || '',
     }));
