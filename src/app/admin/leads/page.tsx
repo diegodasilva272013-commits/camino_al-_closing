@@ -31,7 +31,10 @@ type Profile = { id: string; full_name: string | null; email: string };
 function normalizeHeader(s: string): string {
   return s.trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, '_');
+    .replace(/[^\w\s]/g, '')   // quita puntuación: puntos, guiones, paréntesis, etc.
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 function parseCSV(text: string) {
@@ -211,16 +214,36 @@ function AdminLeadsPageInner() {
     setImporting(true);
     setImportResult('');
     try {
+      const PHONE_RE = /^\+?[\d\s\-().]{7,}$/;
       const rows = csvRows
-        .map((r) => ({
-          first_name: r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || '',
-          last_name:  r.lastname  || r.last_name  || r.apellido || '',
-          phone:      r.phone || r.telefono || r.tel || r.celular || r.whatsapp || r.nro_celular || r.numero || r.movil || '',
-          country:    r.country || r.pais || '',
-          source:     r.source || r.fuente || '',
-        }))
+        .map((r) => {
+          const phone = (
+            r.phone || r.telefono || r.tel || r.celular || r.whatsapp ||
+            r.nro_celular || r.nro_tel || r.nro_telefono || r.numero ||
+            r.movil || r.numero_de_whatsapp || r.numero_whatsapp ||
+            r.telefonos || r.celulares || r.contacto ||
+            // fallback: primera columna cuyo valor parezca un teléfono
+            Object.values(r).find((v) => PHONE_RE.test(String(v ?? ''))) ||
+            ''
+          ).replace(/\s/g, '');
+          const first_name = (
+            r.firstname || r.first_name || r.nombre || r.nombre_completo ||
+            r['nombre_y_apellido'] || r.nombres || r.nombre_apellido || r.name || ''
+          );
+          return {
+            first_name,
+            last_name: r.lastname || r.last_name || r.apellido || r.apellidos || '',
+            phone,
+            country:   r.country || r.pais || '',
+            source:    r.source  || r.fuente || '',
+          };
+        })
         .filter((r) => r.phone && r.first_name);
-      if (!rows.length) { setImportResult('❌ Ninguna fila tiene teléfono y nombre válidos'); return; }
+      if (!rows.length) {
+        const sample = csvRows[0] ? Object.keys(csvRows[0]).join(', ') : '(sin filas)';
+        setImportResult(`❌ Ninguna fila válida. Columnas detectadas: ${sample}`);
+        return;
+      }
       const res = await fetch('/api/admin/leads/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -703,17 +726,34 @@ function AdminLeadsPageInner() {
               />
             </div>
 
-            {csvRows.length > 0 && (
-              <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-zinc-800 bg-[#111] p-3">
-                <p className="mb-1 text-[10px] uppercase tracking-widest text-brand-muted/60">Vista previa</p>
-                {csvRows.slice(0, 5).map((r, i) => (
-                  <p key={i} className="text-xs text-brand-muted">
-                    {r.firstname || r.first_name} {r.lastname || r.last_name} · {r.phone || r.telefono} · {r.country || r.pais}
+            {csvRows.length > 0 && (() => {
+              const PHONE_RE2 = /^\+?[\d\s\-().]{7,}$/;
+              const mapped = csvRows.map((r) => {
+                const phone = (
+                  r.phone || r.telefono || r.tel || r.celular || r.whatsapp ||
+                  r.nro_celular || r.nro_tel || r.nro_telefono || r.numero ||
+                  r.movil || r.numero_de_whatsapp || r.numero_whatsapp ||
+                  r.telefonos || r.celulares || r.contacto ||
+                  Object.values(r).find((v) => PHONE_RE2.test(String(v ?? ''))) || ''
+                ).replace(/\s/g, '');
+                const first_name = r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || r.nombres || r.name || '';
+                return { first_name, phone };
+              });
+              const valid = mapped.filter(r => r.phone && r.first_name).length;
+              const cols  = csvRows[0] ? Object.keys(csvRows[0]).join(', ') : '';
+              return (
+                <div className="mt-3 rounded-lg border border-zinc-800 bg-[#111] p-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-widest text-brand-muted/60">Columnas detectadas</p>
+                  <p className="text-[11px] text-brand-muted/70 break-all">{cols}</p>
+                  <p className="text-xs mt-1">
+                    <span className={valid === csvRows.length ? 'text-green-400' : 'text-yellow-400'}>
+                      {valid} / {csvRows.length} filas con teléfono y nombre válidos
+                    </span>
+                    {valid < csvRows.length && <span className="text-brand-muted/50"> · {csvRows.length - valid} sin teléfono/nombre → se omiten</span>}
                   </p>
-                ))}
-                {csvRows.length > 5 && <p className="text-xs text-brand-muted/50">... y {csvRows.length - 5} más</p>}
-              </div>
-            )}
+                </div>
+              );
+            })()}
 
             {importResult && (
               <p className={cn('mt-3 text-sm whitespace-pre-line', importResult.startsWith('✅') ? 'text-green-400' : 'text-red-400')}>
