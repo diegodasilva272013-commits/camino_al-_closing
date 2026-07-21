@@ -82,15 +82,17 @@ export default function EquipoPage() {
 
   async function patchLead(id: string, updates: Record<string, unknown>) {
     setSaving(id);
-    const res = await fetch(`/api/equipo/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
-    }
+    try {
+      const res = await fetch(`/api/equipo/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
+      }
+    } catch { /* red o JSON mal formado — el state no se toca */ }
     setSaving(null);
     setMoveTarget(null);
     setDragging(null);
