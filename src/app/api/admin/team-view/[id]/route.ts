@@ -50,11 +50,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     handled_by:     tl.handled_by,
     created_at:     tl.created_at,
     updated_at:     tl.updated_at,
-    first_name:     tl.lead?.first_name ?? '',
-    last_name:      tl.lead?.last_name  ?? null,
-    phone:          tl.lead?.phone      ?? '',
-    email:          tl.lead?.email      ?? null,
-    country:        tl.lead?.country    ?? null,
+    first_name:     tl.lead?.first_name ?? tl.first_name ?? '',
+    last_name:      tl.lead?.last_name  ?? tl.last_name  ?? null,
+    phone:          tl.lead?.phone      ?? tl.phone      ?? '',
+    email:          tl.lead?.email      ?? tl.email      ?? null,
+    country:        tl.lead?.country    ?? tl.country    ?? null,
   }));
 
   return NextResponse.json({
