@@ -3,6 +3,7 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function normalizePhone(p: string | null | undefined): string {
   return (p ?? '').replace(/\D/g, '');
@@ -74,11 +75,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ imported: 0, skipped, batch_id: batchId, message: 'Todos los teléfonos ya existen en la base de datos.' });
     }
 
-    const { data, error } = await admin.from('leads').insert(toInsert).select('id');
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Insertar en chunks de 500 para evitar timeout con lotes grandes
+    const CHUNK = 500;
+    let imported = 0;
+    for (let i = 0; i < toInsert.length; i += CHUNK) {
+      const chunk = toInsert.slice(i, i + CHUNK);
+      const { data, error } = await admin.from('leads').insert(chunk).select('id');
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      imported += data?.length ?? 0;
+    }
 
     return NextResponse.json({
-      imported: data?.length ?? 0,
+      imported,
       skipped,
       batch_id: batchId,
     });
