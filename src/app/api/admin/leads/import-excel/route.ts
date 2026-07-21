@@ -4,6 +4,7 @@ import { LEAD_STATUSES, type LeadStatus } from '@/constants/leads';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 type IncomingRow = {
   first_name?: string;
@@ -199,14 +200,22 @@ export async function POST(req: NextRequest) {
     });
     const skipped = insertsDeduped.length - newInserts.length - toReassign.length;
 
-    // Actualizar asignación de leads que estaban sin setter
+    // Actualizar asignación de leads que estaban sin setter (agrupados por setter)
     let reassigned = 0;
+    const bySetterMap = new Map<string, { phones: string[]; assigned_at: string }>();
     for (const r of toReassign) {
-      await admin
+      if (!r.assigned_to_user_id) continue;
+      const key = r.assigned_to_user_id;
+      if (!bySetterMap.has(key)) bySetterMap.set(key, { phones: [], assigned_at: r.assigned_at ?? nowIso });
+      bySetterMap.get(key)!.phones.push(r.phone);
+    }
+    for (const [setterId, { phones, assigned_at }] of bySetterMap) {
+      const { data: updated } = await admin
         .from('leads')
-        .update({ assigned_to_user_id: r.assigned_to_user_id, assigned_at: r.assigned_at })
-        .eq('phone', r.phone);
-      reassigned++;
+        .update({ assigned_to_user_id: setterId, assigned_at })
+        .in('phone', phones)
+        .select('id');
+      reassigned += updated?.length ?? 0;
     }
 
     const CHUNK = 500;

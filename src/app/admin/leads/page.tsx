@@ -210,28 +210,36 @@ function AdminLeadsPageInner() {
     if (!csvRows.length) return;
     setImporting(true);
     setImportResult('');
-    const rows = csvRows.map((r) => ({
-      first_name: r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || '',
-      last_name:  r.lastname  || r.last_name  || r.apellido || '',
-      phone:      r.phone || r.telefono || r.tel || r.celular || r.whatsapp || r.nro_celular || r.numero || r.movil || '',
-      country:    r.country || r.pais || '',
-      source:     r.source || r.fuente || '',
-    }));
-    const res = await fetch('/api/admin/leads/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      const skipMsg = data.skipped > 0 ? ` · ${data.skipped} omitidos (ya existían)` : '';
-      setImportResult(`✅ ${data.imported} leads importados${skipMsg}. Lote: ${data.batch_id}`);
-      setCsvRows([]);
-      await load();
-    } else {
-      setImportResult(`❌ ${data.error}`);
+    try {
+      const rows = csvRows
+        .map((r) => ({
+          first_name: r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || '',
+          last_name:  r.lastname  || r.last_name  || r.apellido || '',
+          phone:      r.phone || r.telefono || r.tel || r.celular || r.whatsapp || r.nro_celular || r.numero || r.movil || '',
+          country:    r.country || r.pais || '',
+          source:     r.source || r.fuente || '',
+        }))
+        .filter((r) => r.phone && r.first_name);
+      if (!rows.length) { setImportResult('❌ Ninguna fila tiene teléfono y nombre válidos'); return; }
+      const res = await fetch('/api/admin/leads/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const skipMsg = data.skipped > 0 ? ` · ${data.skipped} omitidos (ya existían)` : '';
+        setImportResult(`✅ ${data.imported} leads importados${skipMsg}. Lote: ${data.batch_id}`);
+        setCsvRows([]);
+        await load();
+      } else {
+        setImportResult(`❌ ${data.error}`);
+      }
+    } catch (err: any) {
+      setImportResult(`❌ Error de red: ${err?.message ?? 'timeout'}`);
+    } finally {
+      setImporting(false);
     }
-    setImporting(false);
   }
 
   async function doAssignSelected() {
