@@ -1,8 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/team-diagnosis",    "schedule": "0 8 * * *" },
-    { "path": "/api/cron/detect-tareas",     "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/midnight-strikes",  "schedule": "5 3 * * *" },
-    { "path": "/api/cron/reminder",          "schedule": "0 22-23,0-2 * * *" }
+    { "path": "/api/cron/team-diagnosis",   "schedule": "0 8 * * *" },
+    { "path": "/api/cron/midnight-strikes", "schedule": "5 3 * * *" }
   ]
 }

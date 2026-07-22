@@ -1,0 +1,28 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'        # detect-tareas — cada 15 min UTC
+    - cron: '0 22,23,0,1,2 * * *' # reminder — 22h/23h/00h/01h/02h UTC
+  workflow_dispatch: {}
+
+jobs:
+  detect-tareas:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/detect-tareas
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://camino-al-closing.vercel.app/api/cron/detect-tareas
+
+  reminder:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22,23,0,1,2 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/reminder
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://camino-al-closing.vercel.app/api/cron/reminder
