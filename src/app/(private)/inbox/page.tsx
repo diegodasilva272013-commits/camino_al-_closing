@@ -178,7 +178,7 @@ function InboxPageInner() {
                 className="flex items-center gap-1.5 rounded-xl bg-yellow-500/10 border border-yellow-500/25 px-3 py-1.5 text-xs font-bold text-yellow-400 hover:bg-yellow-500/20 transition">
                 <MessageSquare className="h-3.5 w-3.5" /> Contactar
               </button>
-              <a href={`https://wa.me/${selected.leads.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
+              <a href={`https://wa.me/${String(selected.leads.phone ?? '').replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition">
                 WhatsApp
               </a>

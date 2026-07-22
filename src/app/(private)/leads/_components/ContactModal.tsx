@@ -98,7 +98,7 @@ export function ContactModal({ lead, setterName, onClose, onSent }: Props) {
         return;
       }
       // Open WhatsApp with the message
-      const phone = lead.phone.replace(/\D/g, '');
+      const phone = String(lead.phone ?? '').replace(/\D/g, '');
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message.trim())}`, '_blank');
       onSent(lead.id);
     } catch {

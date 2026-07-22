@@ -105,7 +105,7 @@ export default function EquipoPage() {
     const q = search.trim().toLowerCase();
     if (!q) return active;
     return active.filter(l =>
-      `${l.first_name} ${l.last_name ?? ''}`.toLowerCase().includes(q) || (l.phone ?? '').includes(q)
+      `${l.first_name} ${l.last_name ?? ''}`.toLowerCase().includes(q) || String(l.phone ?? '').includes(q)
     );
   }, [leads, search]);
 

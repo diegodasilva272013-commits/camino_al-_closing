@@ -550,7 +550,7 @@ function LeadCard({
   onTouchMove: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
 }) {
-  const waPhone  = lead.phone.replace(/\D/g, '');
+  const waPhone  = String(lead.phone ?? '').replace(/\D/g, '');
   const fullName = `${lead.first_name} ${lead.last_name ?? ''}`.trim();
 
   return (

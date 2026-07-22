@@ -897,7 +897,7 @@ function KLeadCard({ lead, macro, saving, onMove, onNote, onDragStart, onDragEnd
         {STATUS_LABELS[lead.current_status as LeadStatus] ?? lead.current_status}
       </span>
       <p className="text-[13px] font-bold text-white">{lead.first_name} {lead.last_name ?? ''}</p>
-      <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+      <a href={`https://wa.me/${String(lead.phone ?? '').replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
         onClick={e => e.stopPropagation()} className="text-[11px] text-blue-400 font-mono block hover:text-blue-300">{lead.phone}</a>
       {lead.notes && <p className="text-[10px] text-zinc-500 line-clamp-2 bg-zinc-900/60 rounded-lg px-2 py-1">{lead.notes}</p>}
       <div className="flex items-center justify-end gap-1">

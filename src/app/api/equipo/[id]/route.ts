@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     ...data,
     first_name: data.lead?.first_name ?? data.first_name ?? '',
     last_name:  data.lead?.last_name  ?? data.last_name  ?? null,
-    phone:      data.lead?.phone      ?? data.phone      ?? '',
+    phone:      String(data.lead?.phone ?? data.phone ?? ''),
     email:      data.lead?.email      ?? data.email      ?? null,
     country:    data.lead?.country    ?? data.country    ?? null,
     lead:       undefined,
