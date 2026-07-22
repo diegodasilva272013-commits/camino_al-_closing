@@ -550,11 +550,13 @@ function ConversacionesTab({ teamId, meId }: { teamId: string; meId: string }) {
   async function submit() {
     if (!rawText.trim()) return;
     setSending(true);
-    const res  = await fetch('/api/equipo/conversaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ raw_text: rawText }) });
-    const json = await res.json();
+    try {
+      const res  = await fetch('/api/equipo/conversaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ raw_text: rawText }) });
+      const json = await res.json();
+      if (res.ok) { setRawText(''); setShowNew(false); load(); }
+      else alert(json.error);
+    } catch { /* red */ }
     setSending(false);
-    if (res.ok) { setRawText(''); setShowNew(false); load(); }
-    else alert(json.error);
   }
 
   async function openConv(c: ConvAnalysis) {
@@ -567,13 +569,15 @@ function ConversacionesTab({ teamId, meId }: { teamId: string; meId: string }) {
   async function submitReflection() {
     if (!selected) return;
     setReflecting(true);
-    const res  = await fetch(`/api/equipo/conversaciones/${selected.id}/reflect`, {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ answers }),
-    });
-    const json = await res.json();
+    try {
+      const res  = await fetch(`/api/equipo/conversaciones/${selected.id}/reflect`, {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ answers }),
+      });
+      const json = await res.json();
+      if (res.ok) { setReflResult(json); load(); }
+      else alert(json.error);
+    } catch { /* red */ }
     setReflecting(false);
-    if (res.ok) { setReflResult(json); load(); }
-    else alert(json.error);
   }
 
   if (selected) return (
@@ -933,26 +937,30 @@ function AjustesTab({ team, onSaved }: { team: Team; onSaved: (t: Partial<Team>)
 
   async function uploadPhoto(file: File) {
     setUploading(true);
-    const form = new FormData();
-    form.append('file', file);
-    const res  = await fetch('/api/equipo/upload-avatar', { method: 'POST', body: form });
-    const json = await res.json();
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res  = await fetch('/api/equipo/upload-avatar', { method: 'POST', body: form });
+      const json = await res.json();
+      if (res.ok) { setAvatarUrl(json.avatar_url); onSaved({ avatar_url: json.avatar_url }); }
+      else alert(json.error);
+    } catch { /* red */ }
     setUploading(false);
-    if (res.ok) { setAvatarUrl(json.avatar_url); onSaved({ avatar_url: json.avatar_url }); }
-    else alert(json.error);
   }
 
   async function save() {
     setSaving(true);
-    const res = await fetch('/api/equipo/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch('/api/equipo/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const json = await res.json();
+      if (res.ok) { onSaved({ name }); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+      else alert(json.error);
+    } catch { /* red */ }
     setSaving(false);
-    if (res.ok) { onSaved({ name }); setSaved(true); setTimeout(() => setSaved(false), 2000); }
-    else alert(json.error);
   }
 
   return (

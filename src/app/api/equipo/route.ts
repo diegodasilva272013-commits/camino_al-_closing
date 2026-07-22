@@ -4,6 +4,7 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  try {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -14,7 +15,7 @@ export async function GET() {
     .from('setter_teams')
     .select('id, name, avatar_url, setter1_id, setter2_id')
     .or(`setter1_id.eq.${user.id},setter2_id.eq.${user.id}`)
-    .single();
+    .maybeSingle();
 
   if (!team) return NextResponse.json({ team: null, leads: [] });
 
@@ -49,4 +50,8 @@ export async function GET() {
     leads,
     members: profilesRes.data ?? [],
   });
+  } catch (err: any) {
+    console.error('[/api/equipo] error:', err?.message);
+    return NextResponse.json({ team: null, leads: [], members: [] });
+  }
 }

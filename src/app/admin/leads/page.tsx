@@ -170,7 +170,7 @@ function AdminLeadsPageInner() {
     // Soporta respuesta paginada { data, total, ... } o array legacy
     const leads = Array.isArray(json) ? json : (json.data ?? []);
     setLeads(leads);
-    if (json.total_pages) setTotalPages(json.total_pages);
+    setTotalPages(json.total_pages ?? 1);
     if (json.total !== undefined) setTotalLeads(json.total);
     setPage(p);
     setLoading(false);
@@ -225,7 +225,7 @@ function AdminLeadsPageInner() {
             // fallback: primera columna cuyo valor parezca un teléfono
             Object.values(r).find((v) => PHONE_RE.test(String(v ?? ''))) ||
             ''
-          ).replace(/\s/g, '');
+          ).replace(/\.0+$/, '').replace(/\s/g, '');
           const first_name = (
             r.firstname || r.first_name || r.nombre || r.nombre_completo ||
             r['nombre_y_apellido'] || r.nombres || r.nombre_apellido || r.name || ''
@@ -735,7 +735,7 @@ function AdminLeadsPageInner() {
                   r.movil || r.numero_de_whatsapp || r.numero_whatsapp ||
                   r.telefonos || r.celulares || r.contacto ||
                   Object.values(r).find((v) => PHONE_RE2.test(String(v ?? ''))) || ''
-                ).replace(/\s/g, '');
+                ).replace(/\.0+$/, '').replace(/\s/g, '');
                 const first_name = r.firstname || r.first_name || r.nombre || r.nombre_completo || r['nombre_y_apellido'] || r.nombres || r.name || '';
                 return { first_name, phone };
               });
