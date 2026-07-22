@@ -40,7 +40,7 @@ export async function GET() {
     updated_at:     tl.updated_at,
     first_name:     tl.lead?.first_name ?? tl.first_name ?? '',
     last_name:      tl.lead?.last_name  ?? tl.last_name  ?? null,
-    phone:          tl.lead?.phone      ?? tl.phone      ?? '',
+    phone:          String(tl.lead?.phone      ?? tl.phone      ?? ''),
     email:          tl.lead?.email      ?? tl.email      ?? null,
     country:        tl.lead?.country    ?? tl.country    ?? null,
   }));
