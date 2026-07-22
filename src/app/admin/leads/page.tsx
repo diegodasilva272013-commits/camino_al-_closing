@@ -222,7 +222,6 @@ function AdminLeadsPageInner() {
             r.nro_celular || r.nro_tel || r.nro_telefono || r.numero ||
             r.movil || r.numero_de_whatsapp || r.numero_whatsapp ||
             r.telefonos || r.celulares || r.contacto ||
-            // fallback: primera columna cuyo valor parezca un teléfono
             Object.values(r).find((v) => PHONE_RE.test(String(v ?? ''))) ||
             ''
           ).replace(/\.0+$/, '').replace(/\s/g, '');
@@ -244,20 +243,36 @@ function AdminLeadsPageInner() {
         setImportResult(`❌ Ninguna fila válida. Columnas detectadas: ${sample}`);
         return;
       }
-      const res = await fetch('/api/admin/leads/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        const skipMsg = data.skipped > 0 ? ` · ${data.skipped} omitidos (ya existían)` : '';
-        setImportResult(`✅ ${data.imported} leads importados${skipMsg}. Lote: ${data.batch_id}`);
-        setCsvRows([]);
-        await load();
-      } else {
-        setImportResult(`❌ ${data.error}`);
+
+      // Lotes de 500 para evitar timeout en Vercel (10.000 leads = 20 requests)
+      const CHUNK = 500;
+      const batchId = `batch-${Date.now()}`;
+      let totalImported = 0;
+      let totalSkipped  = 0;
+
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const done  = Math.min(i + CHUNK, rows.length);
+        setImportResult(`⏳ Importando ${done} / ${rows.length}...`);
+
+        const res = await fetch('/api/admin/leads/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: chunk, batch_id: batchId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setImportResult(`❌ Error en lote ${i / CHUNK + 1}: ${data.error}`);
+          return;
+        }
+        totalImported += data.imported ?? 0;
+        totalSkipped  += data.skipped  ?? 0;
       }
+
+      const skipMsg = totalSkipped > 0 ? ` · ${totalSkipped} omitidos (ya existían)` : '';
+      setImportResult(`✅ ${totalImported} leads importados${skipMsg}. Lote: ${batchId}`);
+      setCsvRows([]);
+      await load();
     } catch (err: any) {
       setImportResult(`❌ Error de red: ${err?.message ?? 'timeout'}`);
     } finally {
