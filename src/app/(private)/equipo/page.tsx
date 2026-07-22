@@ -10,6 +10,15 @@ import {
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 
+// Captura errores antes de que React monte — guarda en sessionStorage para mostrar en el siguiente render
+if (typeof window !== 'undefined') {
+  const save = (msg: string) => {
+    try { sessionStorage.setItem('__equipo_last_error', msg); } catch { /* noop */ }
+  };
+  window.addEventListener('error', (e) => save(`JS Error: ${e.message} (${e.filename}:${e.lineno})`), { once: true });
+  window.addEventListener('unhandledrejection', (e) => save(`Unhandled: ${String(e.reason)}`), { once: true });
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type TeamLead = {
@@ -55,6 +64,7 @@ export default function EquipoPage() {
   const [members, setMembers]     = useState<Member[]>([]);
   const [loading, setLoading]     = useState(true);
   const [meId, setMeId]           = useState('');
+  const [lastError, setLastError] = useState<string | null>(null);
 
   // Kanban state
   const [saving, setSaving]           = useState<string | null>(null);
@@ -78,6 +88,12 @@ export default function EquipoPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     fetch('/api/profile/me').then(r => r.json()).then(d => { if (d.id) setMeId(d.id); }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    try {
+      const err = sessionStorage.getItem('__equipo_last_error');
+      if (err) { setLastError(err); sessionStorage.removeItem('__equipo_last_error'); }
+    } catch { /* noop */ }
   }, []);
 
   async function patchLead(id: string, updates: Record<string, unknown>) {
@@ -123,6 +139,14 @@ export default function EquipoPage() {
     for (const l of visible) { const m = getMacro(l.current_status); if (m) map[m.id].push(l); }
     return map;
   }, [visible]);
+
+  if (lastError) return (
+    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#080808] px-6 text-center">
+      <p className="text-red-400 font-bold">Error detectado — mandá este texto a Diego:</p>
+      <p className="text-yellow-300 text-xs font-mono max-w-sm break-all bg-zinc-900 rounded-xl p-4">{lastError}</p>
+      <button onClick={() => setLastError(null)} className="mt-2 rounded-xl bg-yellow-500 px-5 py-2.5 text-sm font-bold text-black">Reintentar</button>
+    </div>
+  );
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-[#080808]">
