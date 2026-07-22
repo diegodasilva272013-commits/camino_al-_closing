@@ -90,7 +90,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-brand-black text-brand-text antialiased">
+      <body suppressHydrationWarning className="min-h-screen bg-brand-black text-brand-text antialiased">
         <div id="cac-splash" aria-hidden="true">
           <div className="cac-bg" />
           <video
@@ -108,7 +108,7 @@ export default function RootLayout({
                 var s=document.getElementById('cac-splash');
                 if(!s)return;
                 var done=false;
-                function hide(){if(done)return;done=true;s.classList.add('cac-hide');setTimeout(function(){s.remove();},600);}
+                function hide(){if(done)return;done=true;s.classList.add('cac-hide');}
                 try{
                   if(localStorage.getItem('cac:splash')){hide();return;}
                 }catch(e){}
