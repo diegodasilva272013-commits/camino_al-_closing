@@ -5,9 +5,10 @@ export type CurrentUserContext = {
   email: string | null;
   fullName: string | null;
   avatarUrl: string | null;
-  role: 'student' | 'mentor' | 'admin' | 'setter';
+  role: 'student' | 'mentor' | 'admin' | 'setter' | 'closer';
   isAdmin: boolean;
   isSetter: boolean;
+  isCloser: boolean;
 };
 
 export async function getCurrentUserContext(): Promise<CurrentUserContext | null> {
@@ -43,7 +44,7 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
       }
     }
 
-    const role = (profile?.role ?? 'student') as 'student' | 'mentor' | 'admin' | 'setter';
+    const role = (profile?.role ?? 'student') as 'student' | 'mentor' | 'admin' | 'setter' | 'closer';
 
     return {
       userId: user.id,
@@ -53,6 +54,7 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
       role,
       isAdmin: role === 'admin',
       isSetter: role === 'setter',
+      isCloser: role === 'closer',
     };
   } catch {
     return null;

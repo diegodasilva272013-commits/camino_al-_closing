@@ -3,7 +3,7 @@ import {
   Shield, MessageSquare, Trophy, Bell, Swords, Users2, BarChart2,
   Target, TrendingUp, BookOpen, ClipboardList, ClipboardCheck,
   UserCheck, Inbox, Megaphone, Wifi, LayoutGrid, FileSearch, Handshake,
-  AlertTriangle, ListChecks,
+  AlertTriangle, ListChecks, CalendarDays, Clock, List,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -49,7 +49,15 @@ export const SETTER_NAV: NavItem[] = [
   { label: 'Strikes Equipo',    href: '/strikes',           icon: AlertTriangle },
 ];
 
-// ─── 3. Admin — solo rol admin (dirección del equipo) ────────────────────────
+// ─── 3. Closer — solo rol closer ─────────────────────────────────────────────
+
+export const CLOSER_NAV: NavItem[] = [
+  { label: 'Mi Agenda',        href: '/agenda',                  icon: CalendarDays },
+  { label: 'Mi Disponibilidad',href: '/agenda/disponibilidad',   icon: Clock },
+  { label: 'Mis Reuniones',    href: '/agenda/reuniones',        icon: List },
+];
+
+// ─── 4. Admin — solo rol admin (dirección del equipo) ────────────────────────
 
 export const ADMIN_NAV: NavItem[] = [
   { label: 'Control Admin', href: '/admin',                 icon: Shield },
@@ -69,6 +77,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Calendario',    href: '/setter-calendario',     icon: Calendar },
   { label: 'Recursos',      href: '/resources',             icon: FolderOpen },
   { label: 'Strikes',      href: '/admin/strikes',         icon: AlertTriangle },
+  { label: 'Agenda Closers', href: '/admin/agenda',         icon: CalendarDays },
 ];
 
 // ─── Legacy exports (para compatibilidad) ────────────────────────────────────

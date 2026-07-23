@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { RefreshCw, Search, X, MessageCircle, ChevronRight, Wifi } from 'lucide-react';
+import { RefreshCw, Search, X, MessageCircle, ChevronRight, Wifi, CalendarPlus } from 'lucide-react';
 import { ContactModal } from './_components/ContactModal';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 import { useLeadsRealtime } from '@/hooks/useLeadsRealtime';
+import { AgendarWizard } from '@/components/agenda/agendar-wizard';
 
 type Lead = {
   id: string;
@@ -163,6 +164,7 @@ export default function LeadsPage() {
   const [page, setPage]               = useState(1);
   const [contactLead, setContactLead] = useState<Lead | null>(null);
   const [moveTarget, setMoveTarget]   = useState<Lead | null>(null);
+  const [agendarLead, setAgendarLead] = useState<Lead | null>(null);
   const [setterName, setSetterName]   = useState('');
   const [activeMacro, setActiveMacro] = useState<MacroId>('sin_contactar');
 
@@ -398,6 +400,7 @@ export default function LeadsPage() {
                       isDragging={false}
                       onMove={() => setMoveTarget(lead)}
                       onContact={() => setContactLead(lead)}
+                      onAgendar={() => setAgendarLead(lead)}
                       onDragStart={() => setDragging(lead)}
                       onDragEnd={() => { setDragging(null); setDragOver(null); }}
                       onTouchStart={e => onTouchStart(lead, e)}
@@ -454,6 +457,7 @@ export default function LeadsPage() {
                             isDragging={dragging?.id === lead.id}
                             onMove={() => setMoveTarget(lead)}
                             onContact={() => setContactLead(lead)}
+                            onAgendar={() => setAgendarLead(lead)}
                             onDragStart={() => setDragging(lead)}
                             onDragEnd={() => { setDragging(null); setDragOver(null); }}
                             onTouchStart={e => onTouchStart(lead, e)}
@@ -487,6 +491,16 @@ export default function LeadsPage() {
               : l
             ));
           }}
+        />
+      )}
+
+      {/* Wizard agendar con closer */}
+      {agendarLead && (
+        <AgendarWizard
+          leadId={agendarLead.id}
+          leadName={`${agendarLead.first_name} ${agendarLead.last_name ?? ''}`.trim()}
+          onClose={() => setAgendarLead(null)}
+          onAgendado={() => { setAgendarLead(null); load(); }}
         />
       )}
 
@@ -533,9 +547,14 @@ export default function LeadsPage() {
   );
 }
 
+const AGENDAR_STATUSES = new Set([
+  'RESPONDIO','INTERES_DETECTADO','INVITADO_AL_GRUPO','INGRESO_AL_GRUPO','ACTIVO_EN_GRUPO',
+  'DIAGNOSTICO_INICIADO','DIAGNOSTICO_PROFUNDO','REUNION_PROPUESTA','REUNION_AGENDADA',
+]);
+
 function LeadCard({
   lead, macroBar, macroBadge, saving, isDragging,
-  onMove, onContact, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd,
+  onMove, onContact, onAgendar, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd,
 }: {
   lead: Lead;
   macroBar: string;
@@ -544,6 +563,7 @@ function LeadCard({
   isDragging: boolean;
   onMove: () => void;
   onContact: () => void;
+  onAgendar: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -601,7 +621,7 @@ function LeadCard({
       </div>
 
       {/* Acciones — fila propia, siempre caben */}
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-1 flex-wrap">
         <button
           onMouseDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onContact(); }}
@@ -609,6 +629,16 @@ function LeadCard({
         >
           <MessageCircle className="h-3 w-3" />
         </button>
+        {AGENDAR_STATUSES.has(lead.current_status) && (
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onAgendar(); }}
+            title="Agendar con closer"
+            className="p-1 rounded-lg border border-emerald-800/60 text-emerald-600 hover:text-emerald-400 hover:border-emerald-600/60 transition"
+          >
+            <CalendarPlus className="h-3 w-3" />
+          </button>
+        )}
         <button
           disabled={saving}
           onMouseDown={e => e.stopPropagation()}

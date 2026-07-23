@@ -74,6 +74,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/setter-ranking') ||
     pathname.startsWith('/equipo-ranking') ||
     pathname.startsWith('/strikes') ||
+    pathname.startsWith('/agenda') ||
     pathname.startsWith('/bloqueado') ||
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/admin');
@@ -126,6 +127,23 @@ export async function middleware(request: NextRequest) {
     if (role !== 'admin') {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Protección extra: /agenda/disponibilidad solo para closer y admin
+  if (user && pathname.startsWith('/agenda/disponibilidad')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const role = (profile as { role?: string } | null)?.role;
+    if (role !== 'closer' && role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/agenda';
       url.search = '';
       return NextResponse.redirect(url);
     }

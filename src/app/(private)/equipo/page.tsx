@@ -5,8 +5,9 @@ import {
   RefreshCw, Search, X, ChevronRight, Users2, StickyNote,
   BarChart2, MessageSquare, Settings, LayoutGrid,
   Star, TrendingUp, Camera, Check, AlertCircle, Loader2, Send,
-  ClipboardList, AlertTriangle,
+  ClipboardList, AlertTriangle, CalendarPlus,
 } from 'lucide-react';
+import { AgendarWizard } from '@/components/agenda/agendar-wizard';
 import { STATUS_LABELS, type LeadStatus } from '@/constants/leads';
 import { cn } from '@/lib/utils';
 
@@ -63,6 +64,7 @@ export default function EquipoPage() {
   const [noteModal, setNoteModal]     = useState<TeamLead | null>(null);
   const [noteDraft, setNoteDraft]     = useState('');
   const [moveTarget, setMoveTarget]   = useState<TeamLead | null>(null);
+  const [agendarLead, setAgendarLead] = useState<TeamLead | null>(null);
   const [dragging, setDragging]       = useState<TeamLead | null>(null);
   const [dragOver, setDragOver]       = useState<MacroId | null>(null);
 
@@ -229,6 +231,7 @@ export default function EquipoPage() {
                         onMove={() => setMoveTarget(lead)}
                         onNote={() => { setNoteModal(lead); setNoteDraft(lead.notes ?? ''); }}
                         onClaim={() => patchLead(lead.id, { handled_by: lead.handled_by === meId ? null : meId })}
+                        onAgendar={() => setAgendarLead(lead)}
                         onDragStart={() => setDragging(lead)} onDragEnd={() => { setDragging(null); setDragOver(null); }} />
                     ))}
                 </div>
@@ -264,6 +267,7 @@ export default function EquipoPage() {
                             onMove={() => setMoveTarget(lead)}
                             onNote={() => { setNoteModal(lead); setNoteDraft(lead.notes ?? ''); }}
                             onClaim={() => patchLead(lead.id, { handled_by: lead.handled_by === meId ? null : meId })}
+                            onAgendar={() => setAgendarLead(lead)}
                             onDragStart={() => setDragging(lead)} onDragEnd={() => { setDragging(null); setDragOver(null); }} />
                         ))}
                     </div>
@@ -293,6 +297,16 @@ export default function EquipoPage() {
       {/* ── TAB: AJUSTES ── */}
       {tab === 'ajustes' && (
         <AjustesTab team={team} onSaved={(updated) => setTeam(prev => prev ? { ...prev, ...updated } : prev)} />
+      )}
+
+      {/* Wizard agendar con closer */}
+      {agendarLead && (
+        <AgendarWizard
+          teamLeadId={agendarLead.id}
+          leadName={`${agendarLead.first_name} ${agendarLead.last_name ?? ''}`.trim()}
+          onClose={() => setAgendarLead(null)}
+          onAgendado={() => { setAgendarLead(null); load(); }}
+        />
       )}
 
       {/* Modal notas */}
@@ -353,10 +367,15 @@ export default function EquipoPage() {
 
 // ─── LeadCard ─────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, macroBar, macroBadge, saving, handledBy, meId, onMove, onNote, onClaim, onDragStart, onDragEnd }: {
+const AGENDAR_STATUSES = new Set([
+  'RESPONDIO','INTERES_DETECTADO','INVITADO_AL_GRUPO','INGRESO_AL_GRUPO','ACTIVO_EN_GRUPO',
+  'DIAGNOSTICO_INICIADO','DIAGNOSTICO_PROFUNDO','REUNION_PROPUESTA','REUNION_AGENDADA',
+]);
+
+function LeadCard({ lead, macroBar, macroBadge, saving, handledBy, meId, onMove, onNote, onClaim, onAgendar, onDragStart, onDragEnd }: {
   lead: TeamLead; macroBar: string; macroBadge: string; saving: boolean;
   handledBy: string | null; meId: string;
-  onMove: () => void; onNote: () => void; onClaim: () => void;
+  onMove: () => void; onNote: () => void; onClaim: () => void; onAgendar: () => void;
   onDragStart: () => void; onDragEnd: () => void;
 }) {
   const isMe = lead.handled_by === meId;
@@ -378,11 +397,18 @@ function LeadCard({ lead, macroBar, macroBadge, saving, handledBy, meId, onMove,
         onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}
         className="text-[11px] text-blue-400 font-mono block hover:text-blue-300">{lead.phone}</a>
       {lead.notes && <p className="text-[10px] text-zinc-500 line-clamp-2 bg-zinc-900/60 rounded-lg px-2 py-1">{lead.notes}</p>}
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-1 flex-wrap">
         <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onNote(); }}
           className={cn('p-1 rounded-lg border transition', lead.notes ? 'border-yellow-700/40 text-yellow-600 hover:text-yellow-400' : 'border-zinc-700 text-zinc-500 hover:text-zinc-200')}>
           <StickyNote className="h-3 w-3" />
         </button>
+        {AGENDAR_STATUSES.has(lead.current_status) && (
+          <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onAgendar(); }}
+            title="Agendar con closer"
+            className="p-1 rounded-lg border border-emerald-800/60 text-emerald-600 hover:text-emerald-400 hover:border-emerald-600/60 transition">
+            <CalendarPlus className="h-3 w-3" />
+          </button>
+        )}
         <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onClaim(); }}
           className={cn('px-2 py-1 rounded-lg border text-[10px] font-semibold transition',
             isMe ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' : 'border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:text-zinc-200')}>

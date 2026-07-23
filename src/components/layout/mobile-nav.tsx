@@ -8,7 +8,7 @@ import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
-import { PLATFORM_NAV, SETTER_NAV, ADMIN_NAV, type NavItem } from './nav-items';
+import { PLATFORM_NAV, SETTER_NAV, ADMIN_NAV, CLOSER_NAV, type NavItem } from './nav-items';
 
 function NavLink({ item, pathname, onClose }: { item: NavItem; pathname: string; onClose: () => void }) {
   const Icon = item.icon;
@@ -55,6 +55,7 @@ export function MobileNav({
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const isSetter = role === 'setter' || isAdmin;
+  const isCloser = role === 'closer';
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -120,6 +121,11 @@ export function MobileNav({
                 <>
                   <Section items={PLATFORM_NAV} pathname={pathname} onClose={() => setOpen(false)} />
                   <Section label="Setter CAC" items={SETTER_NAV} pathname={pathname} onClose={() => setOpen(false)} />
+                </>
+              ) : isCloser ? (
+                <>
+                  <Section items={PLATFORM_NAV} pathname={pathname} onClose={() => setOpen(false)} />
+                  <Section label="Closer CAC" items={CLOSER_NAV} pathname={pathname} onClose={() => setOpen(false)} />
                 </>
               ) : (
                 <Section items={PLATFORM_NAV} pathname={pathname} onClose={() => setOpen(false)} />

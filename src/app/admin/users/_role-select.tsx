@@ -3,7 +3,7 @@
 import { useTransition } from 'react';
 import { updateUserRoleAction } from '@/app/admin/actions';
 
-type Role = 'student' | 'setter' | 'mentor' | 'admin';
+type Role = 'student' | 'setter' | 'mentor' | 'admin' | 'closer';
 
 export function RoleSelect({ userId, current }: { userId: string; current: string }) {
   const [pending, startTransition] = useTransition();
@@ -21,6 +21,7 @@ export function RoleSelect({ userId, current }: { userId: string; current: strin
       <option value="setter">Setter</option>
       <option value="mentor">Mentor</option>
       <option value="admin">Admin</option>
+      <option value="closer">Closer</option>
     </select>
   );
 }

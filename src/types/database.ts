@@ -4,7 +4,9 @@
  * Más adelante se pueden regenerar con `supabase gen types typescript`.
  */
 
-export type Role = 'student' | 'mentor' | 'admin' | 'setter';
+export type Role = 'student' | 'mentor' | 'admin' | 'setter' | 'closer';
+
+export type ReunioneEstado = 'agendada' | 'reprogramada' | 'completada' | 'no_show' | 'cancelada';
 
 export type EventType =
   | 'live_class'
@@ -781,6 +783,66 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['opening_messages']['Insert']>;
+        Relationships: [];
+      };
+      closer_availability: {
+        Row: {
+          id: string;
+          closer_id: string;
+          dia_semana: number;
+          hora_inicio: string;
+          hora_fin: string;
+          activa: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          closer_id: string;
+          dia_semana: number;
+          hora_inicio: string;
+          hora_fin: string;
+          activa?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['closer_availability']['Insert']>;
+        Relationships: [];
+      };
+      reuniones: {
+        Row: {
+          id: string;
+          lead_id: string | null;
+          team_lead_id: string | null;
+          closer_id: string;
+          setter_id: string;
+          inicio: string;
+          duracion_min: number;
+          estado: ReunioneEstado;
+          conversacion_whatsapp: string;
+          notas: string | null;
+          resultado: string | null;
+          estado_lead_anterior: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id?: string | null;
+          team_lead_id?: string | null;
+          closer_id: string;
+          setter_id: string;
+          inicio: string;
+          duracion_min?: number;
+          estado?: ReunioneEstado;
+          conversacion_whatsapp: string;
+          notas?: string | null;
+          resultado?: string | null;
+          estado_lead_anterior?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['reuniones']['Insert']>;
         Relationships: [];
       };
     };

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { brand } from '@/constants/branding';
 import { BrandLogo } from '@/components/brand/brand-logo';
-import { PLATFORM_NAV, SETTER_NAV, ADMIN_NAV, type NavItem } from './nav-items';
+import { PLATFORM_NAV, SETTER_NAV, ADMIN_NAV, CLOSER_NAV, type NavItem } from './nav-items';
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
@@ -51,6 +51,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const isSetter = role === 'setter' || isAdmin;
+  const isCloser = role === 'closer';
 
   return (
     <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-[rgba(212,175,55,0.12)] lg:bg-[#0a0a0a]">
@@ -76,6 +77,12 @@ export function Sidebar({
           <>
             <Section items={PLATFORM_NAV} pathname={pathname} />
             <Section label="Setter CAC" items={SETTER_NAV} pathname={pathname} />
+          </>
+        ) : isCloser ? (
+          /* ── CLOSER: plataforma + agenda ────────────────────────────────── */
+          <>
+            <Section items={PLATFORM_NAV} pathname={pathname} />
+            <Section label="Closer CAC" items={CLOSER_NAV} pathname={pathname} />
           </>
         ) : (
           /* ── ESTUDIANTE: solo plataforma ────────────────────────────────── */
