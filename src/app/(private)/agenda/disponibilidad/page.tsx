@@ -107,7 +107,7 @@ export default function DisponibilidadPage() {
       <div className="mb-5 flex items-center justify-between">
         <p className="text-sm text-brand-muted">
           Zona horaria:{' '}
-          <span className="font-medium text-brand-gold">America/Caracas (UTC-4)</span>
+          <span className="font-medium text-brand-gold">America/Argentina/Buenos Aires (UTC-3)</span>
         </p>
         <p className="text-xs text-brand-muted">
           Podés agregar múltiples franjas por día

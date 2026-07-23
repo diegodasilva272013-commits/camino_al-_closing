@@ -1,1 +1,1 @@
-export const APP_TIMEZONE = 'America/Caracas';
+export const APP_TIMEZONE = 'America/Argentina/Buenos_Aires';

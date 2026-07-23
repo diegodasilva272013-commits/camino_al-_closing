@@ -57,8 +57,8 @@ export async function GET(
     return NextResponse.json([]);
   }
 
-  // Rango UTC del día Caracas (UTC-4:00)
-  const inicioUTC = new Date(`${fecha}T04:00:00Z`); // 00:00 Caracas = 04:00 UTC
+  // Rango UTC del día Argentina (UTC-3:00)
+  const inicioUTC = new Date(`${fecha}T03:00:00Z`); // 00:00 Argentina = 03:00 UTC
   const finUTC    = new Date(inicioUTC.getTime() + 24 * 60 * 60 * 1000);
 
   const { data: reunionesOcupadas } = await admin

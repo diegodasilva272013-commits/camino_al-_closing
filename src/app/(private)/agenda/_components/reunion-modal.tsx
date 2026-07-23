@@ -224,7 +224,7 @@ export function ReunionModal({ reunion, onClose, onUpdated, currentUserId, curre
                 </button>
               ) : (
                 <div className="space-y-2 rounded-lg border border-[rgba(212,175,55,0.2)] bg-[#111] p-3">
-                  <label className="text-xs text-brand-muted">Nueva fecha y hora (Caracas)</label>
+                  <label className="text-xs text-brand-muted">Nueva fecha y hora (Argentina, UTC-3)</label>
                   <input
                     type="datetime-local"
                     value={nuevoInicio}
@@ -237,8 +237,8 @@ export function ReunionModal({ reunion, onClose, onUpdated, currentUserId, curre
                       onClick={() => {
                         // Convertir datetime-local (Caracas) a UTC ISO
                         const localDate = new Date(nuevoInicio);
-                        // datetime-local no tiene timezone — asumimos Caracas UTC-4
-                        const utcMs = localDate.getTime() + 4 * 60 * 60 * 1000;
+                        // datetime-local no tiene timezone — asumimos Argentina UTC-3
+                        const utcMs = localDate.getTime() + 3 * 60 * 60 * 1000;
                         patch({ estado: 'reprogramada', inicio: new Date(utcMs).toISOString() });
                       }}
                       className="rounded-md bg-brand-gold px-3 py-1.5 text-xs font-medium text-black disabled:opacity-60"
