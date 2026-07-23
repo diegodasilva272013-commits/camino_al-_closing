@@ -57,9 +57,9 @@ function SetterRow({ profile, tdr, config, strikes }: { profile: Profile | null;
       <span className="text-xs text-zinc-300 w-20 truncate">{name}</span>
       {tdr ? (
         <div className="flex gap-2 flex-1">
-          <MiniBar value={tdr.aperturas_count}   max={m.aperturas_meta}   ok={tdr.task_aperturas_ok   ?? false} />
-          <MiniBar value={tdr.contactados_count}  max={m.contactados_meta} ok={tdr.task_contactados_ok ?? false} />
-          <MiniBar value={tdr.conv_count}         max={m.conv_meta}        ok={tdr.task_conv_ok        ?? false} />
+          <MiniBar value={tdr.aperturas_count}  max={m.aperturas_meta}   ok={tdr.aperturas_count  >= m.aperturas_meta} />
+          <MiniBar value={tdr.contactados_count} max={m.contactados_meta} ok={tdr.contactados_count >= m.contactados_meta} />
+          <MiniBar value={tdr.conv_count}        max={m.conv_meta}        ok={tdr.conv_count        >= m.conv_meta} />
           {tdr.all_tasks_ok && <span className="text-[11px] text-emerald-400 font-bold ml-1">✓</span>}
         </div>
       ) : (
