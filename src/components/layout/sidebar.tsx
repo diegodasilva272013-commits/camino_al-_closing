@@ -66,10 +66,11 @@ export function Sidebar({
 
       <nav className="flex-1 space-y-0 overflow-y-auto px-3 py-4">
         {isAdmin ? (
-          /* ── ADMIN: plataforma + setter + herramientas de admin ────────── */
+          /* ── ADMIN: plataforma + setter + closer + herramientas de admin ─ */
           <>
             <Section items={PLATFORM_NAV} pathname={pathname} />
             <Section label="Setter CAC" items={SETTER_NAV} pathname={pathname} />
+            <Section label="Closer CAC" items={CLOSER_NAV} pathname={pathname} />
             <Section label="Admin" items={ADMIN_NAV} pathname={pathname} />
           </>
         ) : isSetter ? (
