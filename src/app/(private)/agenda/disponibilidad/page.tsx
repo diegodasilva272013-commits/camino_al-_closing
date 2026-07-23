@@ -177,7 +177,7 @@ export default function DisponibilidadPage() {
                 {/* Sin franjas + hint */}
                 {fs.length === 0 && !isAdding && (
                   <div className="px-4 py-3">
-                    <p className="text-xs text-brand-muted">Sin horario — hacé click en "Agregar franja"</p>
+                    <p className="text-xs text-brand-muted">Sin horario — hacé click en Agregar franja</p>
                   </div>
                 )}
 
