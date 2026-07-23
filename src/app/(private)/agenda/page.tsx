@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { APP_TIMEZONE } from '@/constants/timezone';
 import { ReunionModal } from './_components/reunion-modal';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 type Reunion = {
   id: string;
@@ -69,6 +70,18 @@ export default function AgendaPage() {
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<Reunion | null>(null);
   const [expandDia, setExpandDia] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const [currentRole,   setCurrentRole]   = useState<string | undefined>();
+
+  useEffect(() => {
+    const sb = createSupabaseBrowserClient();
+    sb.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data } = await sb.from('profiles').select('role').eq('id', user.id).single();
+      setCurrentRole((data as { role?: string } | null)?.role ?? undefined);
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -302,6 +315,8 @@ export default function AgendaPage() {
           reunion={selected}
           onClose={() => setSelected(null)}
           onUpdated={() => { setSelected(null); load(); }}
+          currentUserId={currentUserId}
+          currentRole={currentRole}
         />
       )}
     </div>
