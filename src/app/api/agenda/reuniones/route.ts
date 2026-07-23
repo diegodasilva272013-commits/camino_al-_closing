@@ -13,13 +13,12 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const admin = createSupabaseAdminClient() as any;
-  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
-  const role = profile?.role as string;
-
   const url = req.nextUrl;
-  const desde  = url.searchParams.get('desde');
-  const hasta  = url.searchParams.get('hasta');
-  const estado = url.searchParams.get('estado');
+  const desde     = url.searchParams.get('desde');
+  const hasta     = url.searchParams.get('hasta');
+  const estado    = url.searchParams.get('estado');
+  const setterId  = url.searchParams.get('setter_id');
+  const closerId  = url.searchParams.get('closer_id');
 
   let query = admin
     .from('reuniones')
@@ -32,14 +31,8 @@ export async function GET(req: NextRequest) {
     `)
     .order('inicio', { ascending: true });
 
-  // Filtrar por rol
-  if (role === 'setter') {
-    query = query.eq('setter_id', user.id);
-  } else if (role === 'closer') {
-    query = query.eq('closer_id', user.id);
-  }
-  // admin ve todo
-
+  if (setterId) query = query.eq('setter_id', setterId);
+  if (closerId) query = query.eq('closer_id', closerId);
   if (desde)  query = query.gte('inicio', desde);
   if (hasta)  query = query.lte('inicio', hasta);
   if (estado) query = query.eq('estado', estado);

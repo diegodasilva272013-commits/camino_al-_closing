@@ -47,12 +47,13 @@ export const SETTER_NAV: NavItem[] = [
   { label: 'Ranking Equipos',   href: '/equipo-ranking',   icon: Handshake },
   { label: 'Recursos CAC',      href: '/setter-recursos',  icon: BookOpen },
   { label: 'Strikes Equipo',    href: '/strikes',           icon: AlertTriangle },
+  { label: 'Agenda',            href: '/agenda',            icon: CalendarDays },
 ];
 
 // ─── 3. Closer — solo rol closer ─────────────────────────────────────────────
 
 export const CLOSER_NAV: NavItem[] = [
-  { label: 'Mi Agenda',        href: '/agenda',                  icon: CalendarDays },
+  { label: 'Agenda',            href: '/agenda',                  icon: CalendarDays },
   { label: 'Mi Disponibilidad',href: '/agenda/disponibilidad',   icon: Clock },
   { label: 'Mis Reuniones',    href: '/agenda/reuniones',        icon: List },
 ];
@@ -77,7 +78,8 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Calendario',    href: '/setter-calendario',     icon: Calendar },
   { label: 'Recursos',      href: '/resources',             icon: FolderOpen },
   { label: 'Strikes',      href: '/admin/strikes',         icon: AlertTriangle },
-  { label: 'Agenda Closers', href: '/admin/agenda',         icon: CalendarDays },
+  { label: 'Mi Disponibilidad', href: '/agenda/disponibilidad', icon: Clock },
+  { label: 'Mis Reuniones',    href: '/agenda/reuniones',       icon: List },
 ];
 
 // ─── Legacy exports (para compatibilidad) ────────────────────────────────────
