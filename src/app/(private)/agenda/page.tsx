@@ -22,7 +22,6 @@ type Reunion = {
   closer: { id: string; full_name: string | null; avatar_url: string | null } | null;
   setter: { id: string; full_name: string | null; avatar_url: string | null } | null;
   lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
-  team_lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
 };
 
 const ESTADO_DOT: Record<string, string> = {
@@ -52,7 +51,7 @@ function getHourMinCaracas(iso: string) {
 }
 
 function getLeadName(r: Reunion) {
-  const l = r.lead ?? r.team_lead;
+  const l = r.lead;
   if (!l) return 'Lead eliminado';
   return `${l.first_name}${l.last_name ? ' ' + l.last_name : ''}`;
 }

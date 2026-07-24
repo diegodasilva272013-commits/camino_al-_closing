@@ -22,7 +22,6 @@ type Reunion = {
   closer: { id: string; full_name: string | null; avatar_url: string | null } | null;
   setter: { id: string; full_name: string | null; avatar_url: string | null } | null;
   lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
-  team_lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
 };
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -86,9 +85,8 @@ export default function ReunionesPage() {
   const historial = reuniones.filter(r => !['agendada', 'reprogramada'].includes(r.estado));
 
   function getLeadName(r: Reunion) {
-    const l = r.lead ?? r.team_lead;
-    if (!l) return 'Lead eliminado';
-    return `${l.first_name}${l.last_name ? ' ' + l.last_name : ''}`;
+    if (!r.lead) return 'Lead eliminado';
+    return `${r.lead.first_name}${r.lead.last_name ? ' ' + r.lead.last_name : ''}`;
   }
 
   function Row({ r }: { r: Reunion }) {

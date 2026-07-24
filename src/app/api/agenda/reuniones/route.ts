@@ -26,8 +26,7 @@ export async function GET(req: NextRequest) {
       *,
       closer:closer_id(id, full_name, avatar_url),
       setter:setter_id(id, full_name, avatar_url),
-      lead:lead_id(id, first_name, last_name, phone, current_status),
-      team_lead:team_lead_id(id, first_name, last_name, phone, current_status)
+      lead:lead_id(id, first_name, last_name, phone, current_status)
     `)
     .order('inicio', { ascending: true });
 

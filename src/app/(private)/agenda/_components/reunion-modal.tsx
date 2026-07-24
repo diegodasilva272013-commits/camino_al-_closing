@@ -20,7 +20,6 @@ type ReunionFull = {
   closer: { id: string; full_name: string | null; avatar_url: string | null } | null;
   setter: { id: string; full_name: string | null; avatar_url: string | null } | null;
   lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
-  team_lead: { id: string; first_name: string; last_name: string | null; phone: string; current_status: string } | null;
 };
 
 type Props = {
@@ -64,7 +63,7 @@ export function ReunionModal({ reunion, onClose, onUpdated, currentUserId, curre
   const isAdmin  = currentRole === 'admin';
   const isActive = ['agendada', 'reprogramada'].includes(reunion.estado);
 
-  const lead = reunion.lead ?? reunion.team_lead;
+  const lead = reunion.lead;
   const leadName = lead ? `${lead.first_name}${lead.last_name ? ' ' + lead.last_name : ''}` : 'Lead eliminado';
 
   async function patch(body: object) {
