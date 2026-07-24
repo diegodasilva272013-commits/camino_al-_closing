@@ -77,9 +77,8 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Evolution API', href: '/admin/evolution',       icon: Wifi },
   { label: 'Calendario',    href: '/setter-calendario',     icon: Calendar },
   { label: 'Recursos',      href: '/resources',             icon: FolderOpen },
-  { label: 'Strikes',      href: '/admin/strikes',         icon: AlertTriangle },
-  { label: 'Mi Disponibilidad', href: '/agenda/disponibilidad', icon: Clock },
-  { label: 'Mis Reuniones',    href: '/agenda/reuniones',       icon: List },
+  { label: 'Strikes',          href: '/admin/strikes',   icon: AlertTriangle },
+  { label: 'Agenda Closers',   href: '/admin/agenda',    icon: CalendarDays },
 ];
 
 // ─── Legacy exports (para compatibilidad) ────────────────────────────────────
