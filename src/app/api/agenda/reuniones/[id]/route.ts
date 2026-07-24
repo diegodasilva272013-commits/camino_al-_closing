@@ -19,10 +19,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .from('reuniones')
     .select(`
       *,
-      closer:profiles!reuniones_closer_id_fkey(id, full_name, avatar_url, email),
-      setter:profiles!reuniones_setter_id_fkey(id, full_name, avatar_url),
-      lead:leads(id, first_name, last_name, phone, email, current_status),
-      team_lead:team_leads(id, first_name, last_name, phone, current_status)
+      closer:closer_id(id, full_name, avatar_url, email),
+      setter:setter_id(id, full_name, avatar_url),
+      lead:lead_id(id, first_name, last_name, phone, email, current_status),
+      team_lead:team_lead_id(id, first_name, last_name, phone, current_status)
     `)
     .eq('id', params.id)
     .single();

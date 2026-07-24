@@ -68,6 +68,7 @@ export default function AgendaPage() {
   const [view, setView]   = useState<'mes' | 'semana' | 'dia'>('mes');
   const [reuniones, setReuniones] = useState<Reunion[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [apiError, setApiError]   = useState<string | null>(null);
   const [selected, setSelected]   = useState<Reunion | null>(null);
   const [expandDia, setExpandDia] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -85,11 +86,16 @@ export default function AgendaPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // Rango del mes en UTC (con margen de ±1 día para cubrir diferencias de TZ)
+    setApiError(null);
     const desde = new Date(year, month, 0).toISOString();
     const hasta  = new Date(year, month + 1, 2).toISOString();
     const res = await fetch(`/api/agenda/reuniones?desde=${desde}&hasta=${hasta}`);
-    if (res.ok) setReuniones(await res.json());
+    if (res.ok) {
+      setReuniones(await res.json());
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setApiError(body.error ?? `Error ${res.status}`);
+    }
     setLoading(false);
   }, [year, month]);
 
@@ -169,6 +175,12 @@ export default function AgendaPage() {
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
+
+      {apiError && (
+        <div className="mb-4 rounded-lg border border-red-700/40 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+          Error al cargar reuniones: {apiError}
+        </div>
+      )}
 
       {/* Vista mes */}
       {view === 'mes' && (
